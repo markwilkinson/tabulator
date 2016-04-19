@@ -63,7 +63,7 @@ tabulator.panes.register( {
 
 
 
-        if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.sparqlUpdate(kb);
+        if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(kb);
 
         var plist = kb.statementsMatching(subject)
         var qlist = kb.statementsMatching(undefined, undefined, subject)

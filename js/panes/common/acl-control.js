@@ -45,7 +45,7 @@ tabulator.panes.utils.preventBrowserDropEvents = function(document) {
 
 tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
     var kb = tabulator.kb;
-    var updater = new tabulator.rdf.sparqlUpdate(kb);
+    var updater = new tabulator.rdf.UpdateManager(kb);
     var ACL = tabulator.ns.acl;
     var doc = subject.doc(); // The ACL is actually to the doc describing the thing
 
@@ -127,13 +127,14 @@ tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
             return { pred: 'origin', obj: obj} // The only way to know an origin alas
           }
           if (ns.vcard('WebID').uri in types) return {pred: 'agent', obj: obj}
+          if (ns.vcard('Group').uri in types || obj.sameTerm(ns.foaf('Agent'))
+            || obj.sameTerm(ns.rdf('Resource'))   || obj.sameTerm(ns.owl('Thing'))) {
+            return { pred: 'agentClass', obj: obj} // @@ note vcard membership not RDFs
+          }
           if (ns.vcard('Individual').uri in types || ns.foaf('Person').uri in types || ns.foaf('Agent').uri in types) {
             var pref = kb.any(obj, ns.foaf('preferredURI'))
             if (pref) return { pred: 'agent', obj: $rdf.sym(pref)}
             return { pred: 'agent', obj: obj}
-          }
-          if (ns.vcard('Group').uri in types) {
-            return { pred: 'agentClass', obj: obj} // @@ note vcard membership not RDFs
           }
           if (ns.solid('AppProvider').uri in types) {
             return { pred: 'origin', obj: obj}
@@ -153,7 +154,7 @@ tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
           } else { // Linked controls
               tabulator.panes.utils.makeACLGraphbyCombo(kb2, doc, box.mainByCombo, aclDoc, true, true);
           }
-          var updater =  tabulator.updater = tabulator.updater || new tabulator.rdf.sparqlUpdate(kb);
+          var updater =  tabulator.updater = tabulator.updater || new tabulator.rdf.UpdateManager(kb);
           updater.put(aclDoc, kb2.statementsMatching(undefined, undefined, undefined, aclDoc),
               'text/turtle', function(uri, ok, message){
               if (!ok) {

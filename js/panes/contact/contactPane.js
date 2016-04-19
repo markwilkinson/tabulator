@@ -254,7 +254,7 @@ tabulator.panes.register( {
 
 
 
-        var updater = new tabulator.rdf.sparqlUpdate(kb);
+        var updater = new tabulator.rdf.UpdateManager(kb);
         tabulator.panes.utils.preventBrowserDropEvents(dom);
 
         var plist = kb.statementsMatching(subject)
@@ -548,7 +548,7 @@ tabulator.panes.register( {
 
               var toolsPane = function(selectedGroups, groupsMainTable) {
                   var kb = tabulator.kb, ns = tabulator.ns;
-                  var updater = new tabulator.rdf.sparqlUpdate(kb);
+                  var updater = new tabulator.rdf.UpdateManager(kb);
                   var ACL = tabulator.ns.acl, VCARD = tabulator.ns.vcard;
                   var doc = $rdf.sym(book.uri.split('#')[0]); // The ACL is actually to the doc describing the thing
 

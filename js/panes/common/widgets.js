@@ -387,7 +387,7 @@ tabulator.panes.field[tabulator.ns.ui('Options').uri] = function(
 */
 tabulator.panes.field[tabulator.ns.ui('Multiple').uri] = function(
                                     dom, container, already, subject, form, store, callback) {
-    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.sparqlUpdate(kb);
+    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(kb);
     var kb = tabulator.kb;
     var box = dom.createElement('table');
     // We don't indent multiple as it is a sort of a prefix o fthe next field and has contents of one.
@@ -1154,7 +1154,7 @@ tabulator.panes.utils.promptForNew = function(dom, kb, subject, predicate, theCl
 // @param callback - takes (boolean ok, string errorBody)
 
 tabulator.panes.utils.makeDescription = function(dom, kb, subject, predicate, store, callback) {
-    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.sparqlUpdate(kb); // @@ Use a common one attached to each fetcher or merge with fetcher
+    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(kb); // @@ Use a common one attached to each fetcher or merge with fetcher
     var group = dom.createElement('div');
 
     var sts = kb.statementsMatching(subject, predicate,undefined); // Only one please
@@ -1249,7 +1249,7 @@ tabulator.panes.utils.makeDescription = function(dom, kb, subject, predicate, st
 
 tabulator.panes.utils.makeSelectForOptions = function(dom, kb, subject, predicate,
                 possible, options, store, callback) {
-    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.sparqlUpdate(kb);
+    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(kb);
     tabulator.log.debug('Select list length now '+ possible.length)
     var n = 0; var uris ={}; // Count them
     for (var i=0; i < possible.length; i++) {
@@ -1457,7 +1457,7 @@ tabulator.panes.utils.makeSelectForNestedCategory = function(
 */
 tabulator.panes.utils.buildCheckboxForm = function(dom, kb, lab, del, ins, form, store) {
     var box = dom.createElement('div');
-    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.sparqlUpdate(kb);
+    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(kb);
     var tx = dom.createTextNode(lab);
     var editable = tabulator.sparql.editable(store.uri);
     tx.className = 'question';

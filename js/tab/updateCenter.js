@@ -4,13 +4,13 @@
 //   This code has migrated into rdflib, in sparqlUpdate.js
 
 function updateCenter(kb){
-    
+
     //require webdav
-    var sparqlService = new tabulator.rdf.sparqlUpdate(kb);
+    var sparqlService = new tabulator.rdf.UpdateManager(kb);
     return {
-    
+
     sparql: sparqlService,
-    
+
     update_statement: function update_statement(st, callback, newObject) {
         //this._mutate_statement(st, callback, 'UPDATE', newObject);
         var st2 = $rdf.st(st.subject, st.predicate, newObject, st.why);
@@ -20,11 +20,11 @@ function updateCenter(kb){
         dump("insert statement:"+st.toNT()+" into "+st.why+"\n");
         // this._mutate_statement(st, callback, 'INSERT');
         sparqlService.update([], [st], callback);
-    },    
+    },
     delete_statement: function delete_statement(st, callback) {
         // this._mutate_statement(st, callback, 'DELETE');
         sparqlService.update([st], [], callback);
     },
     };//end of return
-    
+
 }

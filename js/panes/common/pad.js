@@ -26,7 +26,7 @@ if (tabulator.audioContext) {
         return function (duration, frequency, type, finishedCallback) {
 
             duration = + (duration | 0.3);
-            
+
             // Only 0-4 are valid types.
             type = type || 'sine'; // sine, square, sawtooth, triangle
 
@@ -62,23 +62,23 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
     var table = dom.createElement('table');
     var kb = tabulator.kb;
     // var mainRow = table.appendChild(dom.createElement('tr'));
-    
+
     var fetcher = tabulator.sf;
     var ns = tabulator.ns;
-    
-    tabulator.updater = tabulator.updater || new tabulator.rdf.sparqlUpdate(kb);
+
+    tabulator.updater = tabulator.updater || new tabulator.rdf.UpdateManager(kb);
     var updater = tabulator.updater;
 
     var waitingForLogin = false;
 
     var PAD = $rdf.Namespace('http://www.w3.org/ns/pim/pad#');
-    
+
     var currentNode, currentOffset;
-    
+
     table.setAttribute('style', 'padding: 1em; width:100%;');
 
     var upstreamStatus = null, downstreamStatus = null;
-    
+
     if (options.statusArea) {
         var t = options.statusArea.appendChild(dom.createElement('table'));
         var tr = t.appendChild(dom.createElement('tr'));
@@ -87,7 +87,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
         upstreamStatus.setAttribute('style', 'width:50%');
         downstreamStatus.setAttribute('style', 'width:50%');
     }
-    
+
     var complain = function(message, upstream) {
         console.log(message);
         if (options.statusArea) {
@@ -95,14 +95,14 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             tabulator.panes.utils.errorMessageBlock(dom, message, 'pink'));
         }
     }
-    
+
     var clearStatus = function(upsteam) {
         if (options.statusArea) {
             options.statusArea.innerHTML = '';
         }
     };
 
-    
+
     var setPartStyle = function(part, colors, pending) {
         var chunk = part.subject;
         colors = colors || '';
@@ -120,15 +120,15 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
         }
 
         var indent = kb.any(chunk, PAD('indent'));
-        
+
         indent = indent ? indent.value : 0;
-        var style =  (indent >= 0) ? // 
+        var style =  (indent >= 0) ? //
             // baseStyle + 'padding-left: ' + (indent * 3) + 'em;'
             baseStyle + 'text-indent: ' + (indent * 3) + 'em;'
-            :   headingCore + headingStyle[ -1 - indent ]; 
+            :   headingCore + headingStyle[ -1 - indent ];
         part.setAttribute('style', style + colors);
     }
-    
+
 
     var removePart = function(part) {
         var chunk = part.subject;
@@ -139,7 +139,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             console.log("You can't delete the only line.")
             return;
         }
-        
+
         var del = kb.statementsMatching(chunk, undefined, undefined, padDoc)
                 .concat(kb.statementsMatching(undefined, undefined, chunk, padDoc));
         var ins = [ $rdf.st(prev, PAD('next'), next, padDoc) ];
@@ -171,7 +171,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             };
         })
     }// removePart
-    
+
     var changeIndent = function(part, chunk, delta) {
         var del = kb.statementsMatching(chunk, PAD('indent'));
         var current =  del.length? Number(del[0].object.value) : 0;
@@ -188,7 +188,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             }
         });
     }
-    
+
     // Use this sort of code to split the line when return pressed in the middle @@
     var doGetCaretPosition =function doGetCaretPosition (oField) {
         var iCaretPos = 0;
@@ -217,7 +217,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
         return (iCaretPos);
     }
 
-    
+
     var addListeners = function(part, chunk) {
 
         part.addEventListener('keydown', function(event){
@@ -242,16 +242,16 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
                 console.log("    go ahead line before " + queue[queueProperty]);
                 newChunk(part, before); // was document.activeElement
                 break;
-                
+
             case 8: // Delete
                 if (part.value.length === 0 ) {
                     console.log("Delete key line " + chunk.uri.slice(-4) + " state " + part.state)
-                    
+
                     switch (part.state) {
                     case 1: // contents being sent
                     case 2: // contents need to be sent again
                         part.state = 4; // delete me
-                        return; 
+                        return;
                     case 3: // being deleted already
                     case 4: // already deleme state
                         return;
@@ -276,7 +276,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
                 updater.requestDownstreamAction(padDoc, reloadAndSync);
                 event.preventDefault();
                 break;
-                
+
             case 38: // Up
                 if (part.parentNode.previousSibling) {
                     part.parentNode.previousSibling.firstChild.focus();
@@ -302,7 +302,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             del = [ $rdf.st(chunk, ns.sioc('content'), old, padDoc)];
             ins = [ $rdf.st(chunk, ns.sioc('content'), part.value, padDoc)];
             var newOne = part.value;
-            
+
             // DEBUGGING ONLY
             if (part.lastSent) {
                 if (old != part.lastSent)  {
@@ -310,25 +310,25 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
                 }
             }
             part.lastSent = newOne;
-            
-            
+
+
             console.log(" Patch proposed to " + chunk.uri.slice(-4) + " '"  + old + "' -> '" + newOne + "' ");
             updater.update(del, ins, function(uri, ok, error_body, xhr){
                 if (!ok) {
                     // alert("clash " + error_body);
                     console.log("    patch FAILED " + xhr.status + " for '" + old + "' -> '" + newOne + "': " + error_body);
                     if (xhr.status === 409) { // Conflict -  @@ we assume someone else
-                        setPartStyle(part,'color: black;  background-color: #fdd;'); 
+                        setPartStyle(part,'color: black;  background-color: #fdd;');
                         part.state = 0; // Needs downstream refresh
                         tabulator.panes.utils.beep(0.5, 512); // Ooops clash with other person
                         setTimeout(function(){
                             updater.requestDownstreamAction(padDoc, reloadAndSync);
                         }, 1000);
-                        
+
                     } else {
                         setPartStyle(part,'color: black;  background-color: #fdd;'); // failed pink
                         part.state = 0;
-                        complain("    Error " + xhr.status + " sending data: " + error_body, true);   
+                        complain("    Error " + xhr.status + " sending data: " + error_body, true);
                         tabulator.panes.utils.beep(1.0, 128); // Other
                         // @@@   Do soemthing more serious with other errors eg auth, etc
                     }
@@ -336,7 +336,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
                     clearStatus(true);// upstream
                     setPartStyle(part); // synced
                     console.log("    Patch ok '"  + old + "' -> '" + newOne + "' ");
-                    
+
                     if (part.state === 4) { //  delete me
                         part.state = 3;
                         removePart(part);
@@ -372,7 +372,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
                 updateStore(part);
             }
         }); // listener
-        
+
     } // addlisteners
 
 
@@ -398,8 +398,8 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
         return part
     };
 
-    
-           
+
+
     var newChunk = function(ele, before) { // element of chunk being split
         var kb = tabulator.kb, tr1;
 
@@ -438,7 +438,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
                 $rdf.st(chunk, PAD('next'), next, padDoc),
                 $rdf.st(chunk, ns.dc('author'), me, padDoc),
                 $rdf.st(chunk, ns.sioc('content'), '', padDoc)];
-        if (indent > 0) { // Do not inherit 
+        if (indent > 0) { // Do not inherit
             ins.push($rdf.st(chunk, PAD('indent'), indent, padDoc));
         }
 
@@ -469,12 +469,12 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             complain(msg);
             failed++;
         }
-    
+
         if (!kb.the(subject, PAD('next'))) {
             complain2("No initial next pointer");
             return false; // can't do linked list
         }
-        for (var chunk = kb.the(subject, PAD('next'));  
+        for (var chunk = kb.the(subject, PAD('next'));
             !chunk.sameTerm(subject);
             chunk = kb.the(chunk, PAD('next'))) {
             var label = chunk.uri.split('#')[1];
@@ -492,10 +492,10 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
 
             var k = kb.each(chunk, ns.sioc('content')).length
             if (k !== 1) complain2("Should be 1 not "+k+" contents for " + label);
-        
+
             var k = kb.each(chunk, ns.dc('author')).length
             if (k !== 1) complain2("Should be 1 not "+k+" author for " + label);
-            
+
             var sts = kb.statementsMatching(undefined, ns.sioc('contents'));
             sts.map(function(st){ if (!found[st.subject.uri]) {
                     complain2("Loose chunk! " + st.subject.uri);
@@ -519,11 +519,11 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
         var last = kb.the(undefined, PAD('previous'), subject);
         var chunk = first; //  = kb.the(subject, PAD('next'));
         var row;
-            
+
         // First see which of the logical chunks have existing physical manifestations
         var manif = [];
         // Find which lines correspond to existing chunks
-        for (var chunk = kb.the(subject, PAD('next'));  
+        for (var chunk = kb.the(subject, PAD('next'));
             !chunk.sameTerm(subject);
             chunk = kb.the(chunk, PAD('next'))) {
             for (var i=0; i< table.children.length; i++) {
@@ -533,7 +533,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
                 }
             }
         }
-        
+
         // Remove any deleted lines
         for (var i = table.children.length -1; i >= 0 ; i--) {
             row = table.children[i];
@@ -543,13 +543,13 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
         }
         // Insert any new lines and update old ones
         row = table.firstChild; // might be null
-        for (var chunk = kb.the(subject, PAD('next'));  
+        for (var chunk = kb.the(subject, PAD('next'));
             !chunk.sameTerm(subject);
             chunk = kb.the(chunk, PAD('next'))) {
             var text = kb.any(chunk, ns.sioc('content')).value;
             // superstitious -- don't mess with unchanged input fields
             // which may be selected by the user
-            if (row && manif[chunk.uri]) { 
+            if (row && manif[chunk.uri]) {
                 var part = row.firstChild;
                 if (text !== part.value) {
                     part.value = text;
@@ -563,10 +563,10 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             }
         };
     };
-    
-    
+
+
     // Refresh the DOM tree
-  
+
     var refreshTree = function(root) {
         if (root.refresh) {
             root.refresh();
@@ -588,7 +588,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             refreshTree(table);
         }
     };
-    
+
     var reloadAndSync = function() {
         if (reloading) {
             console.log("   Already reloading - stop")
@@ -620,10 +620,10 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
         }
         tryReload();
     }
-    
+
     table.refresh = sync; // Catch downward propagating refresh events
     table.reloadAndSync = reloadAndSync;
-    
+
     if (exists) {
         console.log("Existing pad.");
         if (consistencyCheck()) {
@@ -633,7 +633,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             }
         } else {
             console.log(table.textContent = "Inconsistent data. Abort");
-        } 
+        }
     } else { // Make new pad
         console.log("No pad exists - making new one.");
         var insertables = [
@@ -641,7 +641,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             $rdf.st(subject, ns.dc('author'), me, padDoc),
             $rdf.st(subject, ns.dc('created'), new Date(), padDoc),
             $rdf.st(subject, PAD('next'), subject, padDoc)];
-        
+
         updater.update([], insertables, function(uri,ok,error_body){
             if (!ok) {
                 complainIfBad(ok, error_body);

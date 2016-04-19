@@ -13,7 +13,7 @@ tabulator.Icon.tooltips[tabulator.Icon.src.icon_money] = 'Period'
 tabulator.panes.register( {
 
     icon: tabulator.Icon.src.icon_money,
-    
+
     name: 'period',
 
     // Does the subject deserve this pane?
@@ -73,7 +73,7 @@ tabulator.panes.register( {
 
 
 
-        var sparqlService = new tabulator.rdf.sparqlUpdate(kb);
+        var sparqlService = new tabulator.rdf.UpdateManager(kb);
 
 
         var plist = kb.statementsMatching(subject)

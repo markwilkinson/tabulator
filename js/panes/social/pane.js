@@ -1,7 +1,7 @@
 /*
    Second generation social network functionality for foaf
 */
-       
+
 tabulator.panes.register(tabulator.panes.newsocialpane= {
 
     icon:tabulator.Icon.src.icon_social,
@@ -19,7 +19,7 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
       //custom event handler
       function CustomEvents(){
         this._events ={};
-      } 
+      }
       CustomEvents.prototype.addEventListener = function(en,evt){
         e= this._events;
         e[en] = e[en]||[];
@@ -33,7 +33,7 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
         for (var i = 0; i < e[en].length; i++){
           e[en][i].apply(context,args)
         }
-      } 
+      }
       //----------------------------------------------
       //ISO 8601 DATE
       //----------------------------------------------
@@ -55,11 +55,11 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
         var theTime = arrDateTime[1].replace("Z","").split(":");
 
         this.setUTCDate(1);
-        this.setUTCFullYear(theDate[0]);  
-        this.setUTCMonth(theDate[1]);  
-        this.setUTCDate(theDate[2]);  
-        this.setUTCHours(theTime[0]);  
-        this.setUTCMinutes(theTime[1]);  
+        this.setUTCFullYear(theDate[0]);
+        this.setUTCMonth(theDate[1]);
+        this.setUTCDate(theDate[2]);
+        this.setUTCHours(theTime[0]);
+        this.setUTCMinutes(theTime[1]);
         this.setUTCSeconds(theTime[2]);
 
         return this;
@@ -77,16 +77,16 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
       var rss = tabulator.rdf.Namespace("http://purl.org/rss/1.0/");
       var kb = tabulator.kb;
       var sf = tabulator.fetcher;
-      var sparqlUpdater = new tabulator.rdf.sparqlUpdate(kb);
+      var sparqlUpdater = new tabulator.rdf.UpdateManager(kb);
       var Events = new CustomEvents();
 
-      
+
       sf.lookUpThing(kb.sym('http://foaf.qdos.com/reverse/?path=' + encodeURIComponent(s.uri)));
       var workspace =kb.statementsMatching(null,cloud('contains'),s);
       workspace = (workspace.length > 0 )? workspace[0].subject.uri:false;
       var socialpane = doc.createElement('div');
       socialpane.id = "social";
-      
+
 
       //GET RELATIONSHIP DATA
       var fin = kb.statementsMatching(null,foaf('knows'), kb.canon(s));
@@ -104,9 +104,9 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
         }
         if(friend){
           acq['friends'].push(fin[i].subject);
-          checked[i] = true;              
+          checked[i] = true;
         }
-        else{ acq['unconfirmed'].push(fo[1]); }      
+        else{ acq['unconfirmed'].push(fo[1]); }
       }
       for (var fi in Iterator(fin)){
         if (!(fi[0] in checked)){
@@ -182,9 +182,9 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
       }
       //LISTENERS-----------------------------------------------
       function updateFriends(that) //TODO  update users friends, send friend change event
-      { 
+      {
         var batch =[
-            
+
         ]
         sparqlUpdater.insert_statement(
           [new tabulator.rdf.Statement(I, foaf('knows'),s, I)],
@@ -194,17 +194,17 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
               function(a,b,c){
                 Events.raiseEvent("evtStatusUpdate",[acc,statusMsg,person],this);
                 Events.raiseEvent("evtUpdateFriendState",[], that);
-                callback(a, b, c, batch);              
+                callback(a, b, c, batch);
             });
         });
       }
       function changeStatusList() //TODO update the status list in the ui
       {}
-      var changeFriendList = function() //TODO update user's friends in the ui 
+      var changeFriendList = function() //TODO update user's friends in the ui
       {}
       function updatePhotos(photo, comment, writableSpace){
         var photo = photo.replace(/^\s+|\s+$/g, '');
-        batch = [ 
+        batch = [
           new tabulator.rdf.Statement(I, foaf('made'), kb.sym(photo), I),
           new tabulator.rdf.Statement(kb.sym(photo), dc('description'),comment, I),
         ]
@@ -244,9 +244,9 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
         var req =tabulator.rdf.Util.XMLHTTPFactory();
         //req.open("POST","https://localhost/config/register.php",false);
         var nac =  doc.getElementById('newaccountform');
-        //req.send(null); 
-        //if(req.status == 200)  
-       //   nac.innerHTML=req.responseText; 
+        //req.send(null);
+        //if(req.status == 200)
+       //   nac.innerHTML=req.responseText;
         nac.className = (nac.className =="")? "active":"";
       }
       function statusUpdate(workspace, statusMsg, person, su, callback){ //post a new status update to the server
@@ -272,7 +272,7 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
         return [(tabulator.preferences.get('me') == p), tabulator.preferences.get('me')];
       }
 
-      Events.addEventListener("evtUpdateFriendList", changeFriendList); //update the friends list 
+      Events.addEventListener("evtUpdateFriendList", changeFriendList); //update the friends list
       Events.addEventListener("evtUpdateFriendState",changeFriendButton); //update the state of the add friend button
       //END LISTENERS-----------------------------------------
 
@@ -315,24 +315,24 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
                                    and projects and so on, without everyon having to join the same\
                                    social networking site. All you need is some place on the web\
                                    where you can save a file to."
-                                   
+
       ui.keygen= newElement ("p", ui.acc);
         ui.keygen.innerHTML = "<keygen keytype='RSA'id='keygen' name='keygen' challenge='antisocial' />";
       ui.makenewacc= newElement('input',ui.acc);
       ui.makenewacc.type='submit';
-      ui.newaccForm.addEventListener("change",function(){ 
+      ui.newaccForm.addEventListener("change",function(){
           ui.newaccForm.action=ui.accprovider.value;
 //          dump(ui.accprovider.value)
 //        var req =tabulator.rdf.Util.XMLHTTPFactory();
 //        req.open("POST",ui.accprovider.value,false);
-//        req.send({username:ui.accusername, keygen:keygen.getElementById('keygen').value}); 
+//        req.send({username:ui.accusername, keygen:keygen.getElementById('keygen').value});
 //        return false;
         },false);
       ui.makenewacc.value='Create my WebID';
-      
+
 
       newElement('h1').innerHTML = profile.name;
-       
+
       //CONTACT INFORMATION BOX ---------------------------------------
       ui.contact = newElement('div');
       ui.contact.id ="contact";
@@ -341,7 +341,7 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
         ui.profileimg.src = profile.picture.uri;
         ui.profileimg.id = "profile_img";
       }
-     
+
       ui.meform = newElement('form',ui.contact);
         ui.me = newElement('input',ui.meform);
         newElement('span',ui.meform).innerHTML ="This is me."
@@ -358,7 +358,7 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
               tabulator.preferences.set('me','');
             }
             this.I = (evt.target.checked)? s.uri: '';
-            this.myProfile = ( I == s.uri); 
+            this.myProfile = ( I == s.uri);
             Events.raiseEvent("evtUpdateFriendState",[],this);
         },false);
 
@@ -453,7 +453,7 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
         Events.raiseEvent("evtUpdateFriendState",[],this); //call it to put the interface in the proper initial state
 
 
-        //tabs 
+        //tabs
         ui.views = newElement('ol',ui.rp);
         ui.views.id="viewtabs";
         ui.statusView = newElement('li', ui.views);
@@ -493,9 +493,9 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
       for (var status in Iterator(profile['status'])){
         newElement('li', ui.statuses).innerHTML =getStatusUpdates(status[1],new Date);
       }
-      
+
       //PHOTOS
-      ui.photobox = newElement('div', ui.rp); //containers for the photos. 
+      ui.photobox = newElement('div', ui.rp); //containers for the photos.
         ui.photobox.id ='photos';
 
         if (myProfile){
@@ -515,7 +515,7 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
           newElement('p', ui.addnewphoto).innerHTML = "Comment:";
           ui.photocomment = newElement('textarea', ui.addnewphoto);
         }
-       
+
 
         // photoStore holds the images that are to be displayed in the photo view
         // on the interface.
@@ -561,7 +561,7 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
         ui.knowsof.friend.innerHTML = tabulator.Util.label(request[1]);
         ui.knowsof.friend.href= request[1].uri;
       }
-      //EDIT PROFILE 
+      //EDIT PROFILE
       ui.editprofilebox = newElement('div',ui.rp);
       ui.editprofilebox.id = "editprofile";
       ui.editprofilebox.innerHTML = '<form action="" method="POST">\
@@ -572,4 +572,3 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
       return socialpane;
     }
 }, true);
-

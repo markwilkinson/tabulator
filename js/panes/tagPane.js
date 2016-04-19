@@ -46,7 +46,7 @@
             var p = OWL("sameAs");
             var o = new tabulator.rdf.NamedNode(uri);
             var triple = new tabulator.rdf.Statement(s, p, o, stWhy);
-            var sparqlService = new tabulator.rdf.sparqlUpdate(kb);
+            var sparqlService = new tabulator.rdf.UpdateManager(kb);
             sparqlService.delete_statement(triple, function(uri,success,error){
                 if (!success) {
                     alert("Error.");
@@ -148,7 +148,7 @@
                 var p = OWL("sameAs");
                 var o = new tabulator.rdf.NamedNode(uri);
                 var triple = new tabulator.rdf.Statement(s, p, o, stWhy);
-                var sparqlService = new tabulator.rdf.sparqlUpdate(kb);
+                var sparqlService = new tabulator.rdf.UpdateManager(kb);
                 sparqlService.insert_statement(triple, function(uri,success,error){
                     if (!success) {
                         alert("Error.");
@@ -171,7 +171,7 @@
                 var p = OWL("sameAs");
                 var o = new tabulator.rdf.NamedNode(uri);
                 var triple = new tabulator.rdf.Statement(s, p, o, stWhy);
-                var sparqlService = new tabulator.rdf.sparqlUpdate(kb);
+                var sparqlService = new tabulator.rdf.UpdateManager(kb);
                 sparqlService.insert_statement(triple, function(uri,success,error){
                     if (!success) {
                         alert("Error.");

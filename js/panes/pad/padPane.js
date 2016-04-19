@@ -417,7 +417,7 @@ tabulator.panes.register( {
     var showResults = function(exists) {
         console.log("showResults()");
 
-        whoAmI(); // Set me  even if on a plane
+        whoAmI(); // Set 'me'  even if on a plane
 
         var title = kb.any(subject, ns.dc('title'))
         if (typeof window  !== 'undefined' && title) {
@@ -427,7 +427,7 @@ tabulator.panes.register( {
         padEle = (tabulator.panes.utils.notepad(dom, padDoc, subject, me, options));
         naviMain.appendChild(padEle);
 
-        var initiated = tabulator.sparql.setRefreshHandler(padDoc, padEle.reloadAndSync);
+        var initiated = tabulator.updater.setRefreshHandler(padDoc, tabulator.kb, padEle.reloadAndSync);
     };
 
     var showSignon = function showSignon() {
@@ -490,7 +490,7 @@ tabulator.panes.register( {
     var fetcher = tabulator.sf;
     var ns = tabulator.ns;
     var me;
-    var updater = new $rdf.sparqlUpdate(kb);
+    var updater = new $rdf.UpdateManager(kb);
     var waitingForLogin = false;
 
     var PAD = $rdf.Namespace('http://www.w3.org/ns/pim/pad#');

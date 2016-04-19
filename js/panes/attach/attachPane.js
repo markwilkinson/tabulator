@@ -11,22 +11,22 @@
 ** like "this" where th string is seen by the user and so I18n is an issue.
 */
 
-    
+
 // These used to be in js/init/icons.js but are better in the pane.
 tabulator.Icon.src.icon_paperclip = tabulator.iconPrefix + 'js/panes/attach/tbl-paperclip-22.png';
 tabulator.Icon.tooltips[tabulator.Icon.src.icon_bug] = 'Attachments'
 
-if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.sparqlUpdate(tabulator.kb);
+if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(tabulator.kb);
 
 tabulator.panes.register( {
 
     icon: tabulator.Icon.src.icon_paperclip,
-    
+
     name: 'attachments',
-    
+
     // Does the subject deserve an issue pane?
     //
-    //  In this case we will render any thing which is in any subclass of 
+    //  In this case we will render any thing which is in any subclass of
     //  certain classes, or also the certain classes themselves, as a
     //  triage tool for correlating many attachees with attachments.
     // We also offer the pane for anything of any class which just has an attachment already.
@@ -43,7 +43,7 @@ tabulator.panes.register( {
         //subject.uri == 'http://www.w3.org/2000/10/swap/pim/qif#Transaction' ||
         QU('Transaction') in kb.findSuperClassesNT(subject) ||
         kb.holds(subject, WF('attachment'))) return "attachments";
-        return null; 
+        return null;
     },
 
     render: function(subject, dom) {
@@ -55,10 +55,10 @@ tabulator.panes.register( {
         var DCT = $rdf.Namespace('http://purl.org/dc/terms/');
         var TRIP = $rdf.Namespace('http://www.w3.org/ns/pim/trip#');
         var QU = $rdf.Namespace('http://www.w3.org/2000/10/swap/pim/qif#');
-        
-        
-   //////////////////////////////////////////////////////////////////////////////     
-        
+
+
+   //////////////////////////////////////////////////////////////////////////////
+
         var setModifiedDate = function(subj, kb, doc) {
             var deletions = kb.statementsMatching(subject, DCT('modified'));
             var deletions = deletions.concat(kb.statementsMatching(subject, WF('modifiedBy')));
@@ -72,7 +72,7 @@ tabulator.panes.register( {
             pre.setAttribute('style', 'background-color: pink');
             div.appendChild(pre);
             pre.appendChild(dom.createTextNode(message));
-        } 
+        }
         var thisPane = this;
         var rerender = function(div) {
             var parent  = div.parentNode;
@@ -82,7 +82,7 @@ tabulator.panes.register( {
 
         // Where can we write about this thing?
         //
-        // Returns term for document or null 
+        // Returns term for document or null
         var findStore = function(kb, subject) {
             var docURI = tabulator.rdf.Util.uri.docpart(subject.uri);
             if (tabulator.sparql.editable(docURI, kb)) return kb.sym(docURI);
@@ -91,7 +91,7 @@ tabulator.panes.register( {
             return store;
         }
 
-        
+
         var div = dom.createElement("div");
         var esc = tabulator.Util.escapeForXML;
         div.setAttribute('class', 'attachPane');
@@ -101,7 +101,7 @@ tabulator.panes.register( {
 
         var predicate =  WF('attachment');
         var range = QU('SupportingDocument');
-        
+
         var subjects;
         var multi;
         var options = {};
@@ -109,12 +109,12 @@ tabulator.panes.register( {
         var currentSubject = null, currentObject = null;
         var currentSubjectItem = null, currentObjectItem = null;
         var objectType = QU('SupportingDocument');
-        
+
         // Find all members of the class which we know about
         // and sort them by an appropriate property.   @@ Move to library
         //
-        
-        var getSortKeySimple =  function(c) {         
+
+        var getSortKeySimple =  function(c) {
             var sortBy = kb.sym({
                 'http://www.w3.org/2005/01/wf/flow#Task' :
                     'http://purl.org/dc/elements/1.1/created',
@@ -124,13 +124,13 @@ tabulator.panes.register( {
                     'http://www.w3.org/2000/10/swap/pim/qif#date',
                 'http://www.w3.org/2000/10/swap/pim/qif#SupportingDocument':
                     'http://purl.org/dc/elements/1.1/date'} [subject.uri]);
-                    
+
             if (!sortBy) {
                 sortBy = kb.any(subject, tabulator.ns.ui('sortBy'));
             }
             return sortBy;
         }
-        
+
         var getSortKey = function(c) {
             var k = getSortKeySimple(c.uri);
             if (k) return k;
@@ -141,9 +141,9 @@ tabulator.panes.register( {
             }
             return undefined; // failure
         }
-        
+
         var getMembersAndSort = function(subject) {
-        
+
             var sortBy = getSortKey(subject);
             var u, x, key, uriHash = kb.findMemberURIs(subject);
             var pairs = [], subjects = [];
@@ -172,7 +172,7 @@ tabulator.panes.register( {
             }
             return subjects;
         };
-        
+
         // Set up a triage of many class members against documents or just one
         if (subject.uri ==  'http://www.w3.org/ns/pim/trip#Trip' ||
             QU('Transaction') in kb.findSuperClassesNT(subject)
@@ -193,7 +193,7 @@ tabulator.panes.register( {
         //var objects = kb.each(undefined, ns.rdf('type'), range);
         var objects = getMembersAndSort(range);
         if (!objects) complain("objects:"+objects.length);
-        
+
         var deselectObject = function() {
             currentObject = null;
             preview.innerHTML = '';
@@ -214,7 +214,7 @@ tabulator.panes.register( {
                 deselectObject();
             };
         };
-        
+
 
 
         var setAttachment = function(x, y, value, refresh) {
@@ -253,7 +253,7 @@ tabulator.panes.register( {
                     s = currentSubject;
                     o = x;
                 };
-            
+
             } else { // Subjectlist
                 if (!currentObject) {
                     complain("No object for the link has been selected");
@@ -265,7 +265,7 @@ tabulator.panes.register( {
             };
             setAttachment(s, o, !kb.holds(s, predicate, o), refresh); // @@ toggle
         };
-        
+
         // When you click on a subject, filter the objects connected to the subject in Mode 1
         var showSubject = function(x, event, selected) {
             if (selected) {
@@ -276,7 +276,7 @@ tabulator.panes.register( {
             } // If all are displayed, refresh would just annoy:
             if (currentMode !== 0) showFiltered(currentMode); // Refresh the objects
         }
-        
+
         if (multi) {
             var subjectList = tabulator.panes.utils.selectorPanel(dom, kb, subject,
                     predicate, false, subjects, options, showSubject, linkClicked);
@@ -297,7 +297,7 @@ tabulator.panes.register( {
 
 /*
                 var table = dom.createElement('table');
-                tabulator.outline.GotoSubject(x, true, undefined, false, undefined, table) 
+                tabulator.outline.GotoSubject(x, true, undefined, false, undefined, table)
 */
                 var dispalyable = function(kb, x) {
                     var cts = kb.fetcher.getHeader(x, 'content-type');
@@ -322,11 +322,11 @@ tabulator.panes.register( {
                     }
                     var display = tabulator.outline.propertyTable(x); //  ,table, pane
                     preview.innerHTML = '';
-                    preview.appendChild(display);                    
+                    preview.appendChild(display);
                 });
 
 
-/*                
+/*
                 if (dispalyable(kb, x) || x.uri.slice(-4) == ".pdf" || x.uri.slice(-4) == ".png" || x.uri.slice(-5) == ".html" ||
                         x.uri.slice(-5) == ".jpeg") { // @@@@@@ MAJOR KLUDGE! use metadata after HEAD
                     preview.innerHTML = '<iframe height="100%" width="100%"src="'
@@ -341,8 +341,8 @@ tabulator.panes.register( {
         }
 
         div.setAttribute('style', 'background-color: white; width:40cm; height:20cm;');
-        
-        
+
+
         var headerButtons = function(dom, labels, intial, callback) {
             var head = dom.createElement('table');
             var current = intial;
@@ -392,7 +392,7 @@ tabulator.panes.register( {
         objectList.setAttribute('style',
             'background-color: #ffe;  width: 30em; height: 100%; padding: 0em; overflow:scroll;'); //float:left
         wrapper.appendChild(objectList);
-        
+
         //objectList.insertBefore(head, objectList.firstChild);
 
         var preview = dom.createElement("div");
@@ -448,9 +448,9 @@ tabulator.panes.register( {
             };
         };
 
-         
-        
-        
+
+
+
         // if (!me) complain("(You do not have your Web Id set. Set your Web ID to make changes.)");
 
         return div;
@@ -458,5 +458,3 @@ tabulator.panes.register( {
 }, true);
 
 //ends
-
-

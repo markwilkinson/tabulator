@@ -250,8 +250,8 @@ tabulator.panes.utils.putACLbyCombo = function(kb, x, byCombo, aclDoc, callback)
     tabulator.panes.utils.makeACLGraphbyCombo(kb2, x, byCombo, aclDoc, true);
 
     //var str = tabulator.panes.utils.makeACLString = function(x, ac, aclDoc);
-    var updater =  new tabulator.rdf.sparqlUpdate(kb);
-    updater.put(aclDoc, kb2.statementsMatching(undefined, undefined, undefined, aclDoc),
+    tabulator.updater =  tabulator.updater || new tabulator.rdf.UpdateManager(kb);
+    tabulator.updater.put(aclDoc, kb2.statementsMatching(undefined, undefined, undefined, aclDoc),
         'text/turtle', function(uri, ok, message){
         if (!ok) {
             callback(ok, message);

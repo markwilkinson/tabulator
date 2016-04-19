@@ -85,7 +85,7 @@ tabulator.panes.register( {
 
 
 
-        var sparqlService = new tabulator.rdf.sparqlUpdate(kb);
+        var sparqlService = new tabulator.rdf.UpdateManager(kb);
 
 
         var plist = kb.statementsMatching(subject)

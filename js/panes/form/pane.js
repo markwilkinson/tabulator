@@ -56,7 +56,7 @@ tabulator.panes.register( {
             parent.replaceChild(box2, box);
         };
 
-        if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.sparqlUpdate(kb);
+        if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(kb);
 
         //kb.statementsMatching(undefined, undefined, subject);
 

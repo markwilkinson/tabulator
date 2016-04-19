@@ -261,7 +261,7 @@ tabulator.panes.register( {
 ///////////////////////////////////////////////////////////////////////////////
 
 
-        tabulator.updater = tabulator.updater || new tabulator.rdf.sparqlUpdate(kb);
+        tabulator.updater = tabulator.updater || new tabulator.rdf.UpdateManager(kb);
         var updater = tabulator.updater;
 
 

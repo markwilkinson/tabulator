@@ -64,7 +64,7 @@ tabulator.setup = function() {
     tabulator.sourceURI = "resource://tabulator/";
 
     // There must be only one of these as it coordinates upstream and downstream changes
-    tabulator.kb.updater = new tabulator.rdf.sparqlUpdate(tabulator.kb); // Main way to find
+    tabulator.kb.updater = new tabulator.rdf.UpdateManager(tabulator.kb); // Main way to find
     tabulator.updater = tabulator.kb.updater; // shortcuts
     tabulator.sparql = tabulator.kb.updater; // obsolete but still used
 

@@ -191,7 +191,7 @@
 
         photoImportPane.render.InsertTriples = function(triples, id) {
             //var st = new RDFStatement(PAC('PhotoAlbum'),PAC('Owner'),ME('me'));
-            var sparqlService = new tabulator.rdf.sparqlUpdate(kb);
+            var sparqlService = new tabulator.rdf.UpdateManager(kb);
             sparqlService.insert_statement(triples, function(uri,success,error){
                 if (!success) {
                     alert("Error.");

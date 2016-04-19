@@ -32,7 +32,13 @@ tabulator.loadScript = function(uri) {
 }
 
 //Before anything else, load up the logger so that errors can get logged.
+// dump('trying import services: \n')
+// Components.utils.import("resource://gre/modules/Services.jsm");
+// dump('trying require: \n')
+// var foo = require("../tab/log-ext.js");
+
 tabulator.loadScript("js/tab/log-ext.js");
+
 tabulator.log = new TabulatorLogger();
 dump("@@@ init.js Inital setting of tabulator.log\n");
 
@@ -97,7 +103,7 @@ try {
     tabulator.qs = new tabulator.rdf.QuerySource();
     // tabulator.sourceWidget = new SourceWidget();
     tabulator.sourceURI = "resource://tabulator/";
-    tabulator.sparql = new tabulator.rdf.sparqlUpdate(tabulator.kb);
+    tabulator.sparql = new tabulator.rdf.UpdateManager(tabulator.kb);
     // tabulator.rc = new RequestConnector();
     tabulator.requestCache = [];
     tabulator.cacheEntry = {};

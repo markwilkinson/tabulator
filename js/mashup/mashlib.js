@@ -1252,9 +1252,129 @@ tabulator.log.dumpHTML = function(){
 }());
 
 }).call(this,require('_process'))
-},{"_process":11}],2:[function(require,module,exports){
+},{"_process":24}],2:[function(require,module,exports){
+;(function (exports) {
+  'use strict'
+
+  var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+
+  var Arr = (typeof Uint8Array !== 'undefined')
+    ? Uint8Array
+    : Array
+
+  var PLUS = '+'.charCodeAt(0)
+  var SLASH = '/'.charCodeAt(0)
+  var NUMBER = '0'.charCodeAt(0)
+  var LOWER = 'a'.charCodeAt(0)
+  var UPPER = 'A'.charCodeAt(0)
+  var PLUS_URL_SAFE = '-'.charCodeAt(0)
+  var SLASH_URL_SAFE = '_'.charCodeAt(0)
+
+  function decode (elt) {
+    var code = elt.charCodeAt(0)
+    if (code === PLUS || code === PLUS_URL_SAFE) return 62 // '+'
+    if (code === SLASH || code === SLASH_URL_SAFE) return 63 // '/'
+    if (code < NUMBER) return -1 // no match
+    if (code < NUMBER + 10) return code - NUMBER + 26 + 26
+    if (code < UPPER + 26) return code - UPPER
+    if (code < LOWER + 26) return code - LOWER + 26
+  }
+
+  function b64ToByteArray (b64) {
+    var i, j, l, tmp, placeHolders, arr
+
+    if (b64.length % 4 > 0) {
+      throw new Error('Invalid string. Length must be a multiple of 4')
+    }
+
+    // the number of equal signs (place holders)
+    // if there are two placeholders, than the two characters before it
+    // represent one byte
+    // if there is only one, then the three characters before it represent 2 bytes
+    // this is just a cheap hack to not do indexOf twice
+    var len = b64.length
+    placeHolders = b64.charAt(len - 2) === '=' ? 2 : b64.charAt(len - 1) === '=' ? 1 : 0
+
+    // base64 is 4/3 + up to two characters of the original data
+    arr = new Arr(b64.length * 3 / 4 - placeHolders)
+
+    // if there are placeholders, only get up to the last complete 4 chars
+    l = placeHolders > 0 ? b64.length - 4 : b64.length
+
+    var L = 0
+
+    function push (v) {
+      arr[L++] = v
+    }
+
+    for (i = 0, j = 0; i < l; i += 4, j += 3) {
+      tmp = (decode(b64.charAt(i)) << 18) | (decode(b64.charAt(i + 1)) << 12) | (decode(b64.charAt(i + 2)) << 6) | decode(b64.charAt(i + 3))
+      push((tmp & 0xFF0000) >> 16)
+      push((tmp & 0xFF00) >> 8)
+      push(tmp & 0xFF)
+    }
+
+    if (placeHolders === 2) {
+      tmp = (decode(b64.charAt(i)) << 2) | (decode(b64.charAt(i + 1)) >> 4)
+      push(tmp & 0xFF)
+    } else if (placeHolders === 1) {
+      tmp = (decode(b64.charAt(i)) << 10) | (decode(b64.charAt(i + 1)) << 4) | (decode(b64.charAt(i + 2)) >> 2)
+      push((tmp >> 8) & 0xFF)
+      push(tmp & 0xFF)
+    }
+
+    return arr
+  }
+
+  function uint8ToBase64 (uint8) {
+    var i
+    var extraBytes = uint8.length % 3 // if we have 1 byte left, pad 2 bytes
+    var output = ''
+    var temp, length
+
+    function encode (num) {
+      return lookup.charAt(num)
+    }
+
+    function tripletToBase64 (num) {
+      return encode(num >> 18 & 0x3F) + encode(num >> 12 & 0x3F) + encode(num >> 6 & 0x3F) + encode(num & 0x3F)
+    }
+
+    // go through the array every three bytes, we'll deal with trailing stuff later
+    for (i = 0, length = uint8.length - extraBytes; i < length; i += 3) {
+      temp = (uint8[i] << 16) + (uint8[i + 1] << 8) + (uint8[i + 2])
+      output += tripletToBase64(temp)
+    }
+
+    // pad the end with zeros, but make sure to not forget the extra bytes
+    switch (extraBytes) {
+      case 1:
+        temp = uint8[uint8.length - 1]
+        output += encode(temp >> 2)
+        output += encode((temp << 4) & 0x3F)
+        output += '=='
+        break
+      case 2:
+        temp = (uint8[uint8.length - 2] << 8) + (uint8[uint8.length - 1])
+        output += encode(temp >> 10)
+        output += encode((temp >> 4) & 0x3F)
+        output += encode((temp << 2) & 0x3F)
+        output += '='
+        break
+      default:
+        break
+    }
+
+    return output
+  }
+
+  exports.toByteArray = b64ToByteArray
+  exports.fromByteArray = uint8ToBase64
+}(typeof exports === 'undefined' ? (this.base64js = {}) : exports))
 
 },{}],3:[function(require,module,exports){
+
+},{}],4:[function(require,module,exports){
 (function (global){
 /*!
  * The buffer module from node.js, for the browser.
@@ -2712,220 +2832,1088 @@ function blitBuffer (src, dst, offset, length) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"base64-js":4,"ieee754":5,"isarray":6}],4:[function(require,module,exports){
-;(function (exports) {
-  'use strict'
-
-  var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-
-  var Arr = (typeof Uint8Array !== 'undefined')
-    ? Uint8Array
-    : Array
-
-  var PLUS = '+'.charCodeAt(0)
-  var SLASH = '/'.charCodeAt(0)
-  var NUMBER = '0'.charCodeAt(0)
-  var LOWER = 'a'.charCodeAt(0)
-  var UPPER = 'A'.charCodeAt(0)
-  var PLUS_URL_SAFE = '-'.charCodeAt(0)
-  var SLASH_URL_SAFE = '_'.charCodeAt(0)
-
-  function decode (elt) {
-    var code = elt.charCodeAt(0)
-    if (code === PLUS || code === PLUS_URL_SAFE) return 62 // '+'
-    if (code === SLASH || code === SLASH_URL_SAFE) return 63 // '/'
-    if (code < NUMBER) return -1 // no match
-    if (code < NUMBER + 10) return code - NUMBER + 26 + 26
-    if (code < UPPER + 26) return code - UPPER
-    if (code < LOWER + 26) return code - LOWER + 26
-  }
-
-  function b64ToByteArray (b64) {
-    var i, j, l, tmp, placeHolders, arr
-
-    if (b64.length % 4 > 0) {
-      throw new Error('Invalid string. Length must be a multiple of 4')
-    }
-
-    // the number of equal signs (place holders)
-    // if there are two placeholders, than the two characters before it
-    // represent one byte
-    // if there is only one, then the three characters before it represent 2 bytes
-    // this is just a cheap hack to not do indexOf twice
-    var len = b64.length
-    placeHolders = b64.charAt(len - 2) === '=' ? 2 : b64.charAt(len - 1) === '=' ? 1 : 0
-
-    // base64 is 4/3 + up to two characters of the original data
-    arr = new Arr(b64.length * 3 / 4 - placeHolders)
-
-    // if there are placeholders, only get up to the last complete 4 chars
-    l = placeHolders > 0 ? b64.length - 4 : b64.length
-
-    var L = 0
-
-    function push (v) {
-      arr[L++] = v
-    }
-
-    for (i = 0, j = 0; i < l; i += 4, j += 3) {
-      tmp = (decode(b64.charAt(i)) << 18) | (decode(b64.charAt(i + 1)) << 12) | (decode(b64.charAt(i + 2)) << 6) | decode(b64.charAt(i + 3))
-      push((tmp & 0xFF0000) >> 16)
-      push((tmp & 0xFF00) >> 8)
-      push(tmp & 0xFF)
-    }
-
-    if (placeHolders === 2) {
-      tmp = (decode(b64.charAt(i)) << 2) | (decode(b64.charAt(i + 1)) >> 4)
-      push(tmp & 0xFF)
-    } else if (placeHolders === 1) {
-      tmp = (decode(b64.charAt(i)) << 10) | (decode(b64.charAt(i + 1)) << 4) | (decode(b64.charAt(i + 2)) >> 2)
-      push((tmp >> 8) & 0xFF)
-      push(tmp & 0xFF)
-    }
-
-    return arr
-  }
-
-  function uint8ToBase64 (uint8) {
-    var i
-    var extraBytes = uint8.length % 3 // if we have 1 byte left, pad 2 bytes
-    var output = ''
-    var temp, length
-
-    function encode (num) {
-      return lookup.charAt(num)
-    }
-
-    function tripletToBase64 (num) {
-      return encode(num >> 18 & 0x3F) + encode(num >> 12 & 0x3F) + encode(num >> 6 & 0x3F) + encode(num & 0x3F)
-    }
-
-    // go through the array every three bytes, we'll deal with trailing stuff later
-    for (i = 0, length = uint8.length - extraBytes; i < length; i += 3) {
-      temp = (uint8[i] << 16) + (uint8[i + 1] << 8) + (uint8[i + 2])
-      output += tripletToBase64(temp)
-    }
-
-    // pad the end with zeros, but make sure to not forget the extra bytes
-    switch (extraBytes) {
-      case 1:
-        temp = uint8[uint8.length - 1]
-        output += encode(temp >> 2)
-        output += encode((temp << 4) & 0x3F)
-        output += '=='
-        break
-      case 2:
-        temp = (uint8[uint8.length - 2] << 8) + (uint8[uint8.length - 1])
-        output += encode(temp >> 10)
-        output += encode((temp >> 4) & 0x3F)
-        output += encode((temp << 2) & 0x3F)
-        output += '='
-        break
-      default:
-        break
-    }
-
-    return output
-  }
-
-  exports.toByteArray = b64ToByteArray
-  exports.fromByteArray = uint8ToBase64
-}(typeof exports === 'undefined' ? (this.base64js = {}) : exports))
-
-},{}],5:[function(require,module,exports){
-exports.read = function (buffer, offset, isLE, mLen, nBytes) {
-  var e, m
-  var eLen = nBytes * 8 - mLen - 1
-  var eMax = (1 << eLen) - 1
-  var eBias = eMax >> 1
-  var nBits = -7
-  var i = isLE ? (nBytes - 1) : 0
-  var d = isLE ? -1 : 1
-  var s = buffer[offset + i]
-
-  i += d
-
-  e = s & ((1 << (-nBits)) - 1)
-  s >>= (-nBits)
-  nBits += eLen
-  for (; nBits > 0; e = e * 256 + buffer[offset + i], i += d, nBits -= 8) {}
-
-  m = e & ((1 << (-nBits)) - 1)
-  e >>= (-nBits)
-  nBits += mLen
-  for (; nBits > 0; m = m * 256 + buffer[offset + i], i += d, nBits -= 8) {}
-
-  if (e === 0) {
-    e = 1 - eBias
-  } else if (e === eMax) {
-    return m ? NaN : ((s ? -1 : 1) * Infinity)
-  } else {
-    m = m + Math.pow(2, mLen)
-    e = e - eBias
-  }
-  return (s ? -1 : 1) * m * Math.pow(2, e - mLen)
-}
-
-exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
-  var e, m, c
-  var eLen = nBytes * 8 - mLen - 1
-  var eMax = (1 << eLen) - 1
-  var eBias = eMax >> 1
-  var rt = (mLen === 23 ? Math.pow(2, -24) - Math.pow(2, -77) : 0)
-  var i = isLE ? 0 : (nBytes - 1)
-  var d = isLE ? 1 : -1
-  var s = value < 0 || (value === 0 && 1 / value < 0) ? 1 : 0
-
-  value = Math.abs(value)
-
-  if (isNaN(value) || value === Infinity) {
-    m = isNaN(value) ? 1 : 0
-    e = eMax
-  } else {
-    e = Math.floor(Math.log(value) / Math.LN2)
-    if (value * (c = Math.pow(2, -e)) < 1) {
-      e--
-      c *= 2
-    }
-    if (e + eBias >= 1) {
-      value += rt / c
-    } else {
-      value += rt * Math.pow(2, 1 - eBias)
-    }
-    if (value * c >= 2) {
-      e++
-      c /= 2
-    }
-
-    if (e + eBias >= eMax) {
-      m = 0
-      e = eMax
-    } else if (e + eBias >= 1) {
-      m = (value * c - 1) * Math.pow(2, mLen)
-      e = e + eBias
-    } else {
-      m = value * Math.pow(2, eBias - 1) * Math.pow(2, mLen)
-      e = 0
-    }
-  }
-
-  for (; mLen >= 8; buffer[offset + i] = m & 0xff, i += d, m /= 256, mLen -= 8) {}
-
-  e = (e << mLen) | m
-  eLen += mLen
-  for (; eLen > 0; buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8) {}
-
-  buffer[offset + i - d] |= s * 128
-}
-
-},{}],6:[function(require,module,exports){
+},{"base64-js":2,"ieee754":9,"isarray":5}],5:[function(require,module,exports){
 var toString = {}.toString;
 
 module.exports = Array.isArray || function (arr) {
   return toString.call(arr) == '[object Array]';
 };
 
-},{}],7:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
+(function (Buffer){
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+// NOTE: These type checking functions intentionally don't use `instanceof`
+// because it is fragile and can be easily faked with `Object.create()`.
+
+function isArray(arg) {
+  if (Array.isArray) {
+    return Array.isArray(arg);
+  }
+  return objectToString(arg) === '[object Array]';
+}
+exports.isArray = isArray;
+
+function isBoolean(arg) {
+  return typeof arg === 'boolean';
+}
+exports.isBoolean = isBoolean;
+
+function isNull(arg) {
+  return arg === null;
+}
+exports.isNull = isNull;
+
+function isNullOrUndefined(arg) {
+  return arg == null;
+}
+exports.isNullOrUndefined = isNullOrUndefined;
+
+function isNumber(arg) {
+  return typeof arg === 'number';
+}
+exports.isNumber = isNumber;
+
+function isString(arg) {
+  return typeof arg === 'string';
+}
+exports.isString = isString;
+
+function isSymbol(arg) {
+  return typeof arg === 'symbol';
+}
+exports.isSymbol = isSymbol;
+
+function isUndefined(arg) {
+  return arg === void 0;
+}
+exports.isUndefined = isUndefined;
+
+function isRegExp(re) {
+  return objectToString(re) === '[object RegExp]';
+}
+exports.isRegExp = isRegExp;
+
+function isObject(arg) {
+  return typeof arg === 'object' && arg !== null;
+}
+exports.isObject = isObject;
+
+function isDate(d) {
+  return objectToString(d) === '[object Date]';
+}
+exports.isDate = isDate;
+
+function isError(e) {
+  return (objectToString(e) === '[object Error]' || e instanceof Error);
+}
+exports.isError = isError;
+
+function isFunction(arg) {
+  return typeof arg === 'function';
+}
+exports.isFunction = isFunction;
+
+function isPrimitive(arg) {
+  return arg === null ||
+         typeof arg === 'boolean' ||
+         typeof arg === 'number' ||
+         typeof arg === 'string' ||
+         typeof arg === 'symbol' ||  // ES6 symbol
+         typeof arg === 'undefined';
+}
+exports.isPrimitive = isPrimitive;
+
+exports.isBuffer = Buffer.isBuffer;
+
+function objectToString(o) {
+  return Object.prototype.toString.call(o);
+}
+
+}).call(this,{"isBuffer":require("../../is-buffer/index.js")})
+},{"../../is-buffer/index.js":11}],7:[function(require,module,exports){
+(function (process,global){
+/*!
+ * @overview es6-promise - a tiny implementation of Promises/A+.
+ * @copyright Copyright (c) 2014 Yehuda Katz, Tom Dale, Stefan Penner and contributors (Conversion to ES6 API by Jake Archibald)
+ * @license   Licensed under MIT license
+ *            See https://raw.githubusercontent.com/jakearchibald/es6-promise/master/LICENSE
+ * @version   2.0.1
+ */
+
+(function() {
+    "use strict";
+
+    function $$utils$$objectOrFunction(x) {
+      return typeof x === 'function' || (typeof x === 'object' && x !== null);
+    }
+
+    function $$utils$$isFunction(x) {
+      return typeof x === 'function';
+    }
+
+    function $$utils$$isMaybeThenable(x) {
+      return typeof x === 'object' && x !== null;
+    }
+
+    var $$utils$$_isArray;
+
+    if (!Array.isArray) {
+      $$utils$$_isArray = function (x) {
+        return Object.prototype.toString.call(x) === '[object Array]';
+      };
+    } else {
+      $$utils$$_isArray = Array.isArray;
+    }
+
+    var $$utils$$isArray = $$utils$$_isArray;
+    var $$utils$$now = Date.now || function() { return new Date().getTime(); };
+    function $$utils$$F() { }
+
+    var $$utils$$o_create = (Object.create || function (o) {
+      if (arguments.length > 1) {
+        throw new Error('Second argument not supported');
+      }
+      if (typeof o !== 'object') {
+        throw new TypeError('Argument must be an object');
+      }
+      $$utils$$F.prototype = o;
+      return new $$utils$$F();
+    });
+
+    var $$asap$$len = 0;
+
+    var $$asap$$default = function asap(callback, arg) {
+      $$asap$$queue[$$asap$$len] = callback;
+      $$asap$$queue[$$asap$$len + 1] = arg;
+      $$asap$$len += 2;
+      if ($$asap$$len === 2) {
+        // If len is 1, that means that we need to schedule an async flush.
+        // If additional callbacks are queued before the queue is flushed, they
+        // will be processed by this flush that we are scheduling.
+        $$asap$$scheduleFlush();
+      }
+    };
+
+    var $$asap$$browserGlobal = (typeof window !== 'undefined') ? window : {};
+    var $$asap$$BrowserMutationObserver = $$asap$$browserGlobal.MutationObserver || $$asap$$browserGlobal.WebKitMutationObserver;
+
+    // test for web worker but not in IE10
+    var $$asap$$isWorker = typeof Uint8ClampedArray !== 'undefined' &&
+      typeof importScripts !== 'undefined' &&
+      typeof MessageChannel !== 'undefined';
+
+    // node
+    function $$asap$$useNextTick() {
+      return function() {
+        process.nextTick($$asap$$flush);
+      };
+    }
+
+    function $$asap$$useMutationObserver() {
+      var iterations = 0;
+      var observer = new $$asap$$BrowserMutationObserver($$asap$$flush);
+      var node = document.createTextNode('');
+      observer.observe(node, { characterData: true });
+
+      return function() {
+        node.data = (iterations = ++iterations % 2);
+      };
+    }
+
+    // web worker
+    function $$asap$$useMessageChannel() {
+      var channel = new MessageChannel();
+      channel.port1.onmessage = $$asap$$flush;
+      return function () {
+        channel.port2.postMessage(0);
+      };
+    }
+
+    function $$asap$$useSetTimeout() {
+      return function() {
+        setTimeout($$asap$$flush, 1);
+      };
+    }
+
+    var $$asap$$queue = new Array(1000);
+
+    function $$asap$$flush() {
+      for (var i = 0; i < $$asap$$len; i+=2) {
+        var callback = $$asap$$queue[i];
+        var arg = $$asap$$queue[i+1];
+
+        callback(arg);
+
+        $$asap$$queue[i] = undefined;
+        $$asap$$queue[i+1] = undefined;
+      }
+
+      $$asap$$len = 0;
+    }
+
+    var $$asap$$scheduleFlush;
+
+    // Decide what async method to use to triggering processing of queued callbacks:
+    if (typeof process !== 'undefined' && {}.toString.call(process) === '[object process]') {
+      $$asap$$scheduleFlush = $$asap$$useNextTick();
+    } else if ($$asap$$BrowserMutationObserver) {
+      $$asap$$scheduleFlush = $$asap$$useMutationObserver();
+    } else if ($$asap$$isWorker) {
+      $$asap$$scheduleFlush = $$asap$$useMessageChannel();
+    } else {
+      $$asap$$scheduleFlush = $$asap$$useSetTimeout();
+    }
+
+    function $$$internal$$noop() {}
+    var $$$internal$$PENDING   = void 0;
+    var $$$internal$$FULFILLED = 1;
+    var $$$internal$$REJECTED  = 2;
+    var $$$internal$$GET_THEN_ERROR = new $$$internal$$ErrorObject();
+
+    function $$$internal$$selfFullfillment() {
+      return new TypeError("You cannot resolve a promise with itself");
+    }
+
+    function $$$internal$$cannotReturnOwn() {
+      return new TypeError('A promises callback cannot return that same promise.')
+    }
+
+    function $$$internal$$getThen(promise) {
+      try {
+        return promise.then;
+      } catch(error) {
+        $$$internal$$GET_THEN_ERROR.error = error;
+        return $$$internal$$GET_THEN_ERROR;
+      }
+    }
+
+    function $$$internal$$tryThen(then, value, fulfillmentHandler, rejectionHandler) {
+      try {
+        then.call(value, fulfillmentHandler, rejectionHandler);
+      } catch(e) {
+        return e;
+      }
+    }
+
+    function $$$internal$$handleForeignThenable(promise, thenable, then) {
+       $$asap$$default(function(promise) {
+        var sealed = false;
+        var error = $$$internal$$tryThen(then, thenable, function(value) {
+          if (sealed) { return; }
+          sealed = true;
+          if (thenable !== value) {
+            $$$internal$$resolve(promise, value);
+          } else {
+            $$$internal$$fulfill(promise, value);
+          }
+        }, function(reason) {
+          if (sealed) { return; }
+          sealed = true;
+
+          $$$internal$$reject(promise, reason);
+        }, 'Settle: ' + (promise._label || ' unknown promise'));
+
+        if (!sealed && error) {
+          sealed = true;
+          $$$internal$$reject(promise, error);
+        }
+      }, promise);
+    }
+
+    function $$$internal$$handleOwnThenable(promise, thenable) {
+      if (thenable._state === $$$internal$$FULFILLED) {
+        $$$internal$$fulfill(promise, thenable._result);
+      } else if (promise._state === $$$internal$$REJECTED) {
+        $$$internal$$reject(promise, thenable._result);
+      } else {
+        $$$internal$$subscribe(thenable, undefined, function(value) {
+          $$$internal$$resolve(promise, value);
+        }, function(reason) {
+          $$$internal$$reject(promise, reason);
+        });
+      }
+    }
+
+    function $$$internal$$handleMaybeThenable(promise, maybeThenable) {
+      if (maybeThenable.constructor === promise.constructor) {
+        $$$internal$$handleOwnThenable(promise, maybeThenable);
+      } else {
+        var then = $$$internal$$getThen(maybeThenable);
+
+        if (then === $$$internal$$GET_THEN_ERROR) {
+          $$$internal$$reject(promise, $$$internal$$GET_THEN_ERROR.error);
+        } else if (then === undefined) {
+          $$$internal$$fulfill(promise, maybeThenable);
+        } else if ($$utils$$isFunction(then)) {
+          $$$internal$$handleForeignThenable(promise, maybeThenable, then);
+        } else {
+          $$$internal$$fulfill(promise, maybeThenable);
+        }
+      }
+    }
+
+    function $$$internal$$resolve(promise, value) {
+      if (promise === value) {
+        $$$internal$$reject(promise, $$$internal$$selfFullfillment());
+      } else if ($$utils$$objectOrFunction(value)) {
+        $$$internal$$handleMaybeThenable(promise, value);
+      } else {
+        $$$internal$$fulfill(promise, value);
+      }
+    }
+
+    function $$$internal$$publishRejection(promise) {
+      if (promise._onerror) {
+        promise._onerror(promise._result);
+      }
+
+      $$$internal$$publish(promise);
+    }
+
+    function $$$internal$$fulfill(promise, value) {
+      if (promise._state !== $$$internal$$PENDING) { return; }
+
+      promise._result = value;
+      promise._state = $$$internal$$FULFILLED;
+
+      if (promise._subscribers.length === 0) {
+      } else {
+        $$asap$$default($$$internal$$publish, promise);
+      }
+    }
+
+    function $$$internal$$reject(promise, reason) {
+      if (promise._state !== $$$internal$$PENDING) { return; }
+      promise._state = $$$internal$$REJECTED;
+      promise._result = reason;
+
+      $$asap$$default($$$internal$$publishRejection, promise);
+    }
+
+    function $$$internal$$subscribe(parent, child, onFulfillment, onRejection) {
+      var subscribers = parent._subscribers;
+      var length = subscribers.length;
+
+      parent._onerror = null;
+
+      subscribers[length] = child;
+      subscribers[length + $$$internal$$FULFILLED] = onFulfillment;
+      subscribers[length + $$$internal$$REJECTED]  = onRejection;
+
+      if (length === 0 && parent._state) {
+        $$asap$$default($$$internal$$publish, parent);
+      }
+    }
+
+    function $$$internal$$publish(promise) {
+      var subscribers = promise._subscribers;
+      var settled = promise._state;
+
+      if (subscribers.length === 0) { return; }
+
+      var child, callback, detail = promise._result;
+
+      for (var i = 0; i < subscribers.length; i += 3) {
+        child = subscribers[i];
+        callback = subscribers[i + settled];
+
+        if (child) {
+          $$$internal$$invokeCallback(settled, child, callback, detail);
+        } else {
+          callback(detail);
+        }
+      }
+
+      promise._subscribers.length = 0;
+    }
+
+    function $$$internal$$ErrorObject() {
+      this.error = null;
+    }
+
+    var $$$internal$$TRY_CATCH_ERROR = new $$$internal$$ErrorObject();
+
+    function $$$internal$$tryCatch(callback, detail) {
+      try {
+        return callback(detail);
+      } catch(e) {
+        $$$internal$$TRY_CATCH_ERROR.error = e;
+        return $$$internal$$TRY_CATCH_ERROR;
+      }
+    }
+
+    function $$$internal$$invokeCallback(settled, promise, callback, detail) {
+      var hasCallback = $$utils$$isFunction(callback),
+          value, error, succeeded, failed;
+
+      if (hasCallback) {
+        value = $$$internal$$tryCatch(callback, detail);
+
+        if (value === $$$internal$$TRY_CATCH_ERROR) {
+          failed = true;
+          error = value.error;
+          value = null;
+        } else {
+          succeeded = true;
+        }
+
+        if (promise === value) {
+          $$$internal$$reject(promise, $$$internal$$cannotReturnOwn());
+          return;
+        }
+
+      } else {
+        value = detail;
+        succeeded = true;
+      }
+
+      if (promise._state !== $$$internal$$PENDING) {
+        // noop
+      } else if (hasCallback && succeeded) {
+        $$$internal$$resolve(promise, value);
+      } else if (failed) {
+        $$$internal$$reject(promise, error);
+      } else if (settled === $$$internal$$FULFILLED) {
+        $$$internal$$fulfill(promise, value);
+      } else if (settled === $$$internal$$REJECTED) {
+        $$$internal$$reject(promise, value);
+      }
+    }
+
+    function $$$internal$$initializePromise(promise, resolver) {
+      try {
+        resolver(function resolvePromise(value){
+          $$$internal$$resolve(promise, value);
+        }, function rejectPromise(reason) {
+          $$$internal$$reject(promise, reason);
+        });
+      } catch(e) {
+        $$$internal$$reject(promise, e);
+      }
+    }
+
+    function $$$enumerator$$makeSettledResult(state, position, value) {
+      if (state === $$$internal$$FULFILLED) {
+        return {
+          state: 'fulfilled',
+          value: value
+        };
+      } else {
+        return {
+          state: 'rejected',
+          reason: value
+        };
+      }
+    }
+
+    function $$$enumerator$$Enumerator(Constructor, input, abortOnReject, label) {
+      this._instanceConstructor = Constructor;
+      this.promise = new Constructor($$$internal$$noop, label);
+      this._abortOnReject = abortOnReject;
+
+      if (this._validateInput(input)) {
+        this._input     = input;
+        this.length     = input.length;
+        this._remaining = input.length;
+
+        this._init();
+
+        if (this.length === 0) {
+          $$$internal$$fulfill(this.promise, this._result);
+        } else {
+          this.length = this.length || 0;
+          this._enumerate();
+          if (this._remaining === 0) {
+            $$$internal$$fulfill(this.promise, this._result);
+          }
+        }
+      } else {
+        $$$internal$$reject(this.promise, this._validationError());
+      }
+    }
+
+    $$$enumerator$$Enumerator.prototype._validateInput = function(input) {
+      return $$utils$$isArray(input);
+    };
+
+    $$$enumerator$$Enumerator.prototype._validationError = function() {
+      return new Error('Array Methods must be provided an Array');
+    };
+
+    $$$enumerator$$Enumerator.prototype._init = function() {
+      this._result = new Array(this.length);
+    };
+
+    var $$$enumerator$$default = $$$enumerator$$Enumerator;
+
+    $$$enumerator$$Enumerator.prototype._enumerate = function() {
+      var length  = this.length;
+      var promise = this.promise;
+      var input   = this._input;
+
+      for (var i = 0; promise._state === $$$internal$$PENDING && i < length; i++) {
+        this._eachEntry(input[i], i);
+      }
+    };
+
+    $$$enumerator$$Enumerator.prototype._eachEntry = function(entry, i) {
+      var c = this._instanceConstructor;
+      if ($$utils$$isMaybeThenable(entry)) {
+        if (entry.constructor === c && entry._state !== $$$internal$$PENDING) {
+          entry._onerror = null;
+          this._settledAt(entry._state, i, entry._result);
+        } else {
+          this._willSettleAt(c.resolve(entry), i);
+        }
+      } else {
+        this._remaining--;
+        this._result[i] = this._makeResult($$$internal$$FULFILLED, i, entry);
+      }
+    };
+
+    $$$enumerator$$Enumerator.prototype._settledAt = function(state, i, value) {
+      var promise = this.promise;
+
+      if (promise._state === $$$internal$$PENDING) {
+        this._remaining--;
+
+        if (this._abortOnReject && state === $$$internal$$REJECTED) {
+          $$$internal$$reject(promise, value);
+        } else {
+          this._result[i] = this._makeResult(state, i, value);
+        }
+      }
+
+      if (this._remaining === 0) {
+        $$$internal$$fulfill(promise, this._result);
+      }
+    };
+
+    $$$enumerator$$Enumerator.prototype._makeResult = function(state, i, value) {
+      return value;
+    };
+
+    $$$enumerator$$Enumerator.prototype._willSettleAt = function(promise, i) {
+      var enumerator = this;
+
+      $$$internal$$subscribe(promise, undefined, function(value) {
+        enumerator._settledAt($$$internal$$FULFILLED, i, value);
+      }, function(reason) {
+        enumerator._settledAt($$$internal$$REJECTED, i, reason);
+      });
+    };
+
+    var $$promise$all$$default = function all(entries, label) {
+      return new $$$enumerator$$default(this, entries, true /* abort on reject */, label).promise;
+    };
+
+    var $$promise$race$$default = function race(entries, label) {
+      /*jshint validthis:true */
+      var Constructor = this;
+
+      var promise = new Constructor($$$internal$$noop, label);
+
+      if (!$$utils$$isArray(entries)) {
+        $$$internal$$reject(promise, new TypeError('You must pass an array to race.'));
+        return promise;
+      }
+
+      var length = entries.length;
+
+      function onFulfillment(value) {
+        $$$internal$$resolve(promise, value);
+      }
+
+      function onRejection(reason) {
+        $$$internal$$reject(promise, reason);
+      }
+
+      for (var i = 0; promise._state === $$$internal$$PENDING && i < length; i++) {
+        $$$internal$$subscribe(Constructor.resolve(entries[i]), undefined, onFulfillment, onRejection);
+      }
+
+      return promise;
+    };
+
+    var $$promise$resolve$$default = function resolve(object, label) {
+      /*jshint validthis:true */
+      var Constructor = this;
+
+      if (object && typeof object === 'object' && object.constructor === Constructor) {
+        return object;
+      }
+
+      var promise = new Constructor($$$internal$$noop, label);
+      $$$internal$$resolve(promise, object);
+      return promise;
+    };
+
+    var $$promise$reject$$default = function reject(reason, label) {
+      /*jshint validthis:true */
+      var Constructor = this;
+      var promise = new Constructor($$$internal$$noop, label);
+      $$$internal$$reject(promise, reason);
+      return promise;
+    };
+
+    var $$es6$promise$promise$$counter = 0;
+
+    function $$es6$promise$promise$$needsResolver() {
+      throw new TypeError('You must pass a resolver function as the first argument to the promise constructor');
+    }
+
+    function $$es6$promise$promise$$needsNew() {
+      throw new TypeError("Failed to construct 'Promise': Please use the 'new' operator, this object constructor cannot be called as a function.");
+    }
+
+    var $$es6$promise$promise$$default = $$es6$promise$promise$$Promise;
+
+    /**
+      Promise objects represent the eventual result of an asynchronous operation. The
+      primary way of interacting with a promise is through its `then` method, which
+      registers callbacks to receive either a promise’s eventual value or the reason
+      why the promise cannot be fulfilled.
+
+      Terminology
+      -----------
+
+      - `promise` is an object or function with a `then` method whose behavior conforms to this specification.
+      - `thenable` is an object or function that defines a `then` method.
+      - `value` is any legal JavaScript value (including undefined, a thenable, or a promise).
+      - `exception` is a value that is thrown using the throw statement.
+      - `reason` is a value that indicates why a promise was rejected.
+      - `settled` the final resting state of a promise, fulfilled or rejected.
+
+      A promise can be in one of three states: pending, fulfilled, or rejected.
+
+      Promises that are fulfilled have a fulfillment value and are in the fulfilled
+      state.  Promises that are rejected have a rejection reason and are in the
+      rejected state.  A fulfillment value is never a thenable.
+
+      Promises can also be said to *resolve* a value.  If this value is also a
+      promise, then the original promise's settled state will match the value's
+      settled state.  So a promise that *resolves* a promise that rejects will
+      itself reject, and a promise that *resolves* a promise that fulfills will
+      itself fulfill.
+
+
+      Basic Usage:
+      ------------
+
+      ```js
+      var promise = new Promise(function(resolve, reject) {
+        // on success
+        resolve(value);
+
+        // on failure
+        reject(reason);
+      });
+
+      promise.then(function(value) {
+        // on fulfillment
+      }, function(reason) {
+        // on rejection
+      });
+      ```
+
+      Advanced Usage:
+      ---------------
+
+      Promises shine when abstracting away asynchronous interactions such as
+      `XMLHttpRequest`s.
+
+      ```js
+      function getJSON(url) {
+        return new Promise(function(resolve, reject){
+          var xhr = new XMLHttpRequest();
+
+          xhr.open('GET', url);
+          xhr.onreadystatechange = handler;
+          xhr.responseType = 'json';
+          xhr.setRequestHeader('Accept', 'application/json');
+          xhr.send();
+
+          function handler() {
+            if (this.readyState === this.DONE) {
+              if (this.status === 200) {
+                resolve(this.response);
+              } else {
+                reject(new Error('getJSON: `' + url + '` failed with status: [' + this.status + ']'));
+              }
+            }
+          };
+        });
+      }
+
+      getJSON('/posts.json').then(function(json) {
+        // on fulfillment
+      }, function(reason) {
+        // on rejection
+      });
+      ```
+
+      Unlike callbacks, promises are great composable primitives.
+
+      ```js
+      Promise.all([
+        getJSON('/posts'),
+        getJSON('/comments')
+      ]).then(function(values){
+        values[0] // => postsJSON
+        values[1] // => commentsJSON
+
+        return values;
+      });
+      ```
+
+      @class Promise
+      @param {function} resolver
+      Useful for tooling.
+      @constructor
+    */
+    function $$es6$promise$promise$$Promise(resolver) {
+      this._id = $$es6$promise$promise$$counter++;
+      this._state = undefined;
+      this._result = undefined;
+      this._subscribers = [];
+
+      if ($$$internal$$noop !== resolver) {
+        if (!$$utils$$isFunction(resolver)) {
+          $$es6$promise$promise$$needsResolver();
+        }
+
+        if (!(this instanceof $$es6$promise$promise$$Promise)) {
+          $$es6$promise$promise$$needsNew();
+        }
+
+        $$$internal$$initializePromise(this, resolver);
+      }
+    }
+
+    $$es6$promise$promise$$Promise.all = $$promise$all$$default;
+    $$es6$promise$promise$$Promise.race = $$promise$race$$default;
+    $$es6$promise$promise$$Promise.resolve = $$promise$resolve$$default;
+    $$es6$promise$promise$$Promise.reject = $$promise$reject$$default;
+
+    $$es6$promise$promise$$Promise.prototype = {
+      constructor: $$es6$promise$promise$$Promise,
+
+    /**
+      The primary way of interacting with a promise is through its `then` method,
+      which registers callbacks to receive either a promise's eventual value or the
+      reason why the promise cannot be fulfilled.
+
+      ```js
+      findUser().then(function(user){
+        // user is available
+      }, function(reason){
+        // user is unavailable, and you are given the reason why
+      });
+      ```
+
+      Chaining
+      --------
+
+      The return value of `then` is itself a promise.  This second, 'downstream'
+      promise is resolved with the return value of the first promise's fulfillment
+      or rejection handler, or rejected if the handler throws an exception.
+
+      ```js
+      findUser().then(function (user) {
+        return user.name;
+      }, function (reason) {
+        return 'default name';
+      }).then(function (userName) {
+        // If `findUser` fulfilled, `userName` will be the user's name, otherwise it
+        // will be `'default name'`
+      });
+
+      findUser().then(function (user) {
+        throw new Error('Found user, but still unhappy');
+      }, function (reason) {
+        throw new Error('`findUser` rejected and we're unhappy');
+      }).then(function (value) {
+        // never reached
+      }, function (reason) {
+        // if `findUser` fulfilled, `reason` will be 'Found user, but still unhappy'.
+        // If `findUser` rejected, `reason` will be '`findUser` rejected and we're unhappy'.
+      });
+      ```
+      If the downstream promise does not specify a rejection handler, rejection reasons will be propagated further downstream.
+
+      ```js
+      findUser().then(function (user) {
+        throw new PedagogicalException('Upstream error');
+      }).then(function (value) {
+        // never reached
+      }).then(function (value) {
+        // never reached
+      }, function (reason) {
+        // The `PedgagocialException` is propagated all the way down to here
+      });
+      ```
+
+      Assimilation
+      ------------
+
+      Sometimes the value you want to propagate to a downstream promise can only be
+      retrieved asynchronously. This can be achieved by returning a promise in the
+      fulfillment or rejection handler. The downstream promise will then be pending
+      until the returned promise is settled. This is called *assimilation*.
+
+      ```js
+      findUser().then(function (user) {
+        return findCommentsByAuthor(user);
+      }).then(function (comments) {
+        // The user's comments are now available
+      });
+      ```
+
+      If the assimliated promise rejects, then the downstream promise will also reject.
+
+      ```js
+      findUser().then(function (user) {
+        return findCommentsByAuthor(user);
+      }).then(function (comments) {
+        // If `findCommentsByAuthor` fulfills, we'll have the value here
+      }, function (reason) {
+        // If `findCommentsByAuthor` rejects, we'll have the reason here
+      });
+      ```
+
+      Simple Example
+      --------------
+
+      Synchronous Example
+
+      ```javascript
+      var result;
+
+      try {
+        result = findResult();
+        // success
+      } catch(reason) {
+        // failure
+      }
+      ```
+
+      Errback Example
+
+      ```js
+      findResult(function(result, err){
+        if (err) {
+          // failure
+        } else {
+          // success
+        }
+      });
+      ```
+
+      Promise Example;
+
+      ```javascript
+      findResult().then(function(result){
+        // success
+      }, function(reason){
+        // failure
+      });
+      ```
+
+      Advanced Example
+      --------------
+
+      Synchronous Example
+
+      ```javascript
+      var author, books;
+
+      try {
+        author = findAuthor();
+        books  = findBooksByAuthor(author);
+        // success
+      } catch(reason) {
+        // failure
+      }
+      ```
+
+      Errback Example
+
+      ```js
+
+      function foundBooks(books) {
+
+      }
+
+      function failure(reason) {
+
+      }
+
+      findAuthor(function(author, err){
+        if (err) {
+          failure(err);
+          // failure
+        } else {
+          try {
+            findBoooksByAuthor(author, function(books, err) {
+              if (err) {
+                failure(err);
+              } else {
+                try {
+                  foundBooks(books);
+                } catch(reason) {
+                  failure(reason);
+                }
+              }
+            });
+          } catch(error) {
+            failure(err);
+          }
+          // success
+        }
+      });
+      ```
+
+      Promise Example;
+
+      ```javascript
+      findAuthor().
+        then(findBooksByAuthor).
+        then(function(books){
+          // found books
+      }).catch(function(reason){
+        // something went wrong
+      });
+      ```
+
+      @method then
+      @param {Function} onFulfilled
+      @param {Function} onRejected
+      Useful for tooling.
+      @return {Promise}
+    */
+      then: function(onFulfillment, onRejection) {
+        var parent = this;
+        var state = parent._state;
+
+        if (state === $$$internal$$FULFILLED && !onFulfillment || state === $$$internal$$REJECTED && !onRejection) {
+          return this;
+        }
+
+        var child = new this.constructor($$$internal$$noop);
+        var result = parent._result;
+
+        if (state) {
+          var callback = arguments[state - 1];
+          $$asap$$default(function(){
+            $$$internal$$invokeCallback(state, child, callback, result);
+          });
+        } else {
+          $$$internal$$subscribe(parent, child, onFulfillment, onRejection);
+        }
+
+        return child;
+      },
+
+    /**
+      `catch` is simply sugar for `then(undefined, onRejection)` which makes it the same
+      as the catch block of a try/catch statement.
+
+      ```js
+      function findAuthor(){
+        throw new Error('couldn't find that author');
+      }
+
+      // synchronous
+      try {
+        findAuthor();
+      } catch(reason) {
+        // something went wrong
+      }
+
+      // async with promises
+      findAuthor().catch(function(reason){
+        // something went wrong
+      });
+      ```
+
+      @method catch
+      @param {Function} onRejection
+      Useful for tooling.
+      @return {Promise}
+    */
+      'catch': function(onRejection) {
+        return this.then(null, onRejection);
+      }
+    };
+
+    var $$es6$promise$polyfill$$default = function polyfill() {
+      var local;
+
+      if (typeof global !== 'undefined') {
+        local = global;
+      } else if (typeof window !== 'undefined' && window.document) {
+        local = window;
+      } else {
+        local = self;
+      }
+
+      var es6PromiseSupport =
+        "Promise" in local &&
+        // Some of these methods are missing from
+        // Firefox/Chrome experimental implementations
+        "resolve" in local.Promise &&
+        "reject" in local.Promise &&
+        "all" in local.Promise &&
+        "race" in local.Promise &&
+        // Older version of the spec had a resolver object
+        // as the arg rather than a function
+        (function() {
+          var resolve;
+          new local.Promise(function(r) { resolve = r; });
+          return $$utils$$isFunction(resolve);
+        }());
+
+      if (!es6PromiseSupport) {
+        local.Promise = $$es6$promise$promise$$default;
+      }
+    };
+
+    var es6$promise$umd$$ES6Promise = {
+      'Promise': $$es6$promise$promise$$default,
+      'polyfill': $$es6$promise$polyfill$$default
+    };
+
+    /* global define:true module:true window: true */
+    if (typeof define === 'function' && define['amd']) {
+      define(function() { return es6$promise$umd$$ES6Promise; });
+    } else if (typeof module !== 'undefined' && module['exports']) {
+      module['exports'] = es6$promise$umd$$ES6Promise;
+    } else if (typeof this !== 'undefined') {
+      this['ES6Promise'] = es6$promise$umd$$ES6Promise;
+    }
+}).call(this);
+}).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"_process":24}],8:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -3225,7 +4213,93 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
+exports.read = function (buffer, offset, isLE, mLen, nBytes) {
+  var e, m
+  var eLen = nBytes * 8 - mLen - 1
+  var eMax = (1 << eLen) - 1
+  var eBias = eMax >> 1
+  var nBits = -7
+  var i = isLE ? (nBytes - 1) : 0
+  var d = isLE ? -1 : 1
+  var s = buffer[offset + i]
+
+  i += d
+
+  e = s & ((1 << (-nBits)) - 1)
+  s >>= (-nBits)
+  nBits += eLen
+  for (; nBits > 0; e = e * 256 + buffer[offset + i], i += d, nBits -= 8) {}
+
+  m = e & ((1 << (-nBits)) - 1)
+  e >>= (-nBits)
+  nBits += mLen
+  for (; nBits > 0; m = m * 256 + buffer[offset + i], i += d, nBits -= 8) {}
+
+  if (e === 0) {
+    e = 1 - eBias
+  } else if (e === eMax) {
+    return m ? NaN : ((s ? -1 : 1) * Infinity)
+  } else {
+    m = m + Math.pow(2, mLen)
+    e = e - eBias
+  }
+  return (s ? -1 : 1) * m * Math.pow(2, e - mLen)
+}
+
+exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
+  var e, m, c
+  var eLen = nBytes * 8 - mLen - 1
+  var eMax = (1 << eLen) - 1
+  var eBias = eMax >> 1
+  var rt = (mLen === 23 ? Math.pow(2, -24) - Math.pow(2, -77) : 0)
+  var i = isLE ? 0 : (nBytes - 1)
+  var d = isLE ? 1 : -1
+  var s = value < 0 || (value === 0 && 1 / value < 0) ? 1 : 0
+
+  value = Math.abs(value)
+
+  if (isNaN(value) || value === Infinity) {
+    m = isNaN(value) ? 1 : 0
+    e = eMax
+  } else {
+    e = Math.floor(Math.log(value) / Math.LN2)
+    if (value * (c = Math.pow(2, -e)) < 1) {
+      e--
+      c *= 2
+    }
+    if (e + eBias >= 1) {
+      value += rt / c
+    } else {
+      value += rt * Math.pow(2, 1 - eBias)
+    }
+    if (value * c >= 2) {
+      e++
+      c /= 2
+    }
+
+    if (e + eBias >= eMax) {
+      m = 0
+      e = eMax
+    } else if (e + eBias >= 1) {
+      m = (value * c - 1) * Math.pow(2, mLen)
+      e = e + eBias
+    } else {
+      m = value * Math.pow(2, eBias - 1) * Math.pow(2, mLen)
+      e = 0
+    }
+  }
+
+  for (; mLen >= 8; buffer[offset + i] = m & 0xff, i += d, m /= 256, mLen -= 8) {}
+
+  e = (e << mLen) | m
+  eLen += mLen
+  for (; eLen > 0; buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8) {}
+
+  buffer[offset + i - d] |= s * 128
+}
+
+},{}],10:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -3250,7 +4324,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],9:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 /**
  * Determine if an object is Buffer
  *
@@ -3269,3110 +4343,14 @@ module.exports = function (obj) {
     ))
 }
 
-},{}],10:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 module.exports = Array.isArray || function (arr) {
   return Object.prototype.toString.call(arr) == '[object Array]';
 };
 
-},{}],11:[function(require,module,exports){
-// shim for using process in browser
-
-var process = module.exports = {};
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = setTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            if (currentQueue) {
-                currentQueue[queueIndex].run();
-            }
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    clearTimeout(timeout);
-}
-
-process.nextTick = function (fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        setTimeout(drainQueue, 0);
-    }
-};
-
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-process.title = 'browser';
-process.browser = true;
-process.env = {};
-process.argv = [];
-process.version = ''; // empty string to avoid regexp issues
-process.versions = {};
-
-function noop() {}
-
-process.on = noop;
-process.addListener = noop;
-process.once = noop;
-process.off = noop;
-process.removeListener = noop;
-process.removeAllListeners = noop;
-process.emit = noop;
-
-process.binding = function (name) {
-    throw new Error('process.binding is not supported');
-};
-
-process.cwd = function () { return '/' };
-process.chdir = function (dir) {
-    throw new Error('process.chdir is not supported');
-};
-process.umask = function() { return 0; };
-
-},{}],12:[function(require,module,exports){
-module.exports = require("./lib/_stream_duplex.js")
-
-},{"./lib/_stream_duplex.js":13}],13:[function(require,module,exports){
-// a duplex stream is just a stream that is both readable and writable.
-// Since JS doesn't have multiple prototypal inheritance, this class
-// prototypally inherits from Readable, and then parasitically from
-// Writable.
-
-'use strict';
-
-/*<replacement>*/
-var objectKeys = Object.keys || function (obj) {
-  var keys = [];
-  for (var key in obj) keys.push(key);
-  return keys;
-}
-/*</replacement>*/
-
-
-module.exports = Duplex;
-
-/*<replacement>*/
-var processNextTick = require('process-nextick-args');
-/*</replacement>*/
-
-
-
-/*<replacement>*/
-var util = require('core-util-is');
-util.inherits = require('inherits');
-/*</replacement>*/
-
-var Readable = require('./_stream_readable');
-var Writable = require('./_stream_writable');
-
-util.inherits(Duplex, Readable);
-
-var keys = objectKeys(Writable.prototype);
-for (var v = 0; v < keys.length; v++) {
-  var method = keys[v];
-  if (!Duplex.prototype[method])
-    Duplex.prototype[method] = Writable.prototype[method];
-}
-
-function Duplex(options) {
-  if (!(this instanceof Duplex))
-    return new Duplex(options);
-
-  Readable.call(this, options);
-  Writable.call(this, options);
-
-  if (options && options.readable === false)
-    this.readable = false;
-
-  if (options && options.writable === false)
-    this.writable = false;
-
-  this.allowHalfOpen = true;
-  if (options && options.allowHalfOpen === false)
-    this.allowHalfOpen = false;
-
-  this.once('end', onend);
-}
-
-// the no-half-open enforcer
-function onend() {
-  // if we allow half-open state, or if the writable side ended,
-  // then we're ok.
-  if (this.allowHalfOpen || this._writableState.ended)
-    return;
-
-  // no more data can be written.
-  // But allow more writes to happen in this tick.
-  processNextTick(onEndNT, this);
-}
-
-function onEndNT(self) {
-  self.end();
-}
-
-function forEach (xs, f) {
-  for (var i = 0, l = xs.length; i < l; i++) {
-    f(xs[i], i);
-  }
-}
-
-},{"./_stream_readable":15,"./_stream_writable":17,"core-util-is":18,"inherits":8,"process-nextick-args":19}],14:[function(require,module,exports){
-// a passthrough stream.
-// basically just the most minimal sort of Transform stream.
-// Every written chunk gets output as-is.
-
-'use strict';
-
-module.exports = PassThrough;
-
-var Transform = require('./_stream_transform');
-
-/*<replacement>*/
-var util = require('core-util-is');
-util.inherits = require('inherits');
-/*</replacement>*/
-
-util.inherits(PassThrough, Transform);
-
-function PassThrough(options) {
-  if (!(this instanceof PassThrough))
-    return new PassThrough(options);
-
-  Transform.call(this, options);
-}
-
-PassThrough.prototype._transform = function(chunk, encoding, cb) {
-  cb(null, chunk);
-};
-
-},{"./_stream_transform":16,"core-util-is":18,"inherits":8}],15:[function(require,module,exports){
-(function (process){
-'use strict';
-
-module.exports = Readable;
-
-/*<replacement>*/
-var processNextTick = require('process-nextick-args');
-/*</replacement>*/
-
-
-/*<replacement>*/
-var isArray = require('isarray');
-/*</replacement>*/
-
-
-/*<replacement>*/
-var Buffer = require('buffer').Buffer;
-/*</replacement>*/
-
-Readable.ReadableState = ReadableState;
-
-var EE = require('events');
-
-/*<replacement>*/
-var EElistenerCount = function(emitter, type) {
-  return emitter.listeners(type).length;
-};
-/*</replacement>*/
-
-
-
-/*<replacement>*/
-var Stream;
-(function (){try{
-  Stream = require('st' + 'ream');
-}catch(_){}finally{
-  if (!Stream)
-    Stream = require('events').EventEmitter;
-}}())
-/*</replacement>*/
-
-var Buffer = require('buffer').Buffer;
-
-/*<replacement>*/
-var util = require('core-util-is');
-util.inherits = require('inherits');
-/*</replacement>*/
-
-
-
-/*<replacement>*/
-var debugUtil = require('util');
-var debug;
-if (debugUtil && debugUtil.debuglog) {
-  debug = debugUtil.debuglog('stream');
-} else {
-  debug = function () {};
-}
-/*</replacement>*/
-
-var StringDecoder;
-
-util.inherits(Readable, Stream);
-
-var Duplex;
-function ReadableState(options, stream) {
-  Duplex = Duplex || require('./_stream_duplex');
-
-  options = options || {};
-
-  // object stream flag. Used to make read(n) ignore n and to
-  // make all the buffer merging and length checks go away
-  this.objectMode = !!options.objectMode;
-
-  if (stream instanceof Duplex)
-    this.objectMode = this.objectMode || !!options.readableObjectMode;
-
-  // the point at which it stops calling _read() to fill the buffer
-  // Note: 0 is a valid value, means "don't call _read preemptively ever"
-  var hwm = options.highWaterMark;
-  var defaultHwm = this.objectMode ? 16 : 16 * 1024;
-  this.highWaterMark = (hwm || hwm === 0) ? hwm : defaultHwm;
-
-  // cast to ints.
-  this.highWaterMark = ~~this.highWaterMark;
-
-  this.buffer = [];
-  this.length = 0;
-  this.pipes = null;
-  this.pipesCount = 0;
-  this.flowing = null;
-  this.ended = false;
-  this.endEmitted = false;
-  this.reading = false;
-
-  // a flag to be able to tell if the onwrite cb is called immediately,
-  // or on a later tick.  We set this to true at first, because any
-  // actions that shouldn't happen until "later" should generally also
-  // not happen before the first write call.
-  this.sync = true;
-
-  // whenever we return null, then we set a flag to say
-  // that we're awaiting a 'readable' event emission.
-  this.needReadable = false;
-  this.emittedReadable = false;
-  this.readableListening = false;
-
-  // Crypto is kind of old and crusty.  Historically, its default string
-  // encoding is 'binary' so we have to make this configurable.
-  // Everything else in the universe uses 'utf8', though.
-  this.defaultEncoding = options.defaultEncoding || 'utf8';
-
-  // when piping, we only care about 'readable' events that happen
-  // after read()ing all the bytes and not getting any pushback.
-  this.ranOut = false;
-
-  // the number of writers that are awaiting a drain event in .pipe()s
-  this.awaitDrain = 0;
-
-  // if true, a maybeReadMore has been scheduled
-  this.readingMore = false;
-
-  this.decoder = null;
-  this.encoding = null;
-  if (options.encoding) {
-    if (!StringDecoder)
-      StringDecoder = require('string_decoder/').StringDecoder;
-    this.decoder = new StringDecoder(options.encoding);
-    this.encoding = options.encoding;
-  }
-}
-
-var Duplex;
-function Readable(options) {
-  Duplex = Duplex || require('./_stream_duplex');
-
-  if (!(this instanceof Readable))
-    return new Readable(options);
-
-  this._readableState = new ReadableState(options, this);
-
-  // legacy
-  this.readable = true;
-
-  if (options && typeof options.read === 'function')
-    this._read = options.read;
-
-  Stream.call(this);
-}
-
-// Manually shove something into the read() buffer.
-// This returns true if the highWaterMark has not been hit yet,
-// similar to how Writable.write() returns true if you should
-// write() some more.
-Readable.prototype.push = function(chunk, encoding) {
-  var state = this._readableState;
-
-  if (!state.objectMode && typeof chunk === 'string') {
-    encoding = encoding || state.defaultEncoding;
-    if (encoding !== state.encoding) {
-      chunk = new Buffer(chunk, encoding);
-      encoding = '';
-    }
-  }
-
-  return readableAddChunk(this, state, chunk, encoding, false);
-};
-
-// Unshift should *always* be something directly out of read()
-Readable.prototype.unshift = function(chunk) {
-  var state = this._readableState;
-  return readableAddChunk(this, state, chunk, '', true);
-};
-
-Readable.prototype.isPaused = function() {
-  return this._readableState.flowing === false;
-};
-
-function readableAddChunk(stream, state, chunk, encoding, addToFront) {
-  var er = chunkInvalid(state, chunk);
-  if (er) {
-    stream.emit('error', er);
-  } else if (chunk === null) {
-    state.reading = false;
-    onEofChunk(stream, state);
-  } else if (state.objectMode || chunk && chunk.length > 0) {
-    if (state.ended && !addToFront) {
-      var e = new Error('stream.push() after EOF');
-      stream.emit('error', e);
-    } else if (state.endEmitted && addToFront) {
-      var e = new Error('stream.unshift() after end event');
-      stream.emit('error', e);
-    } else {
-      if (state.decoder && !addToFront && !encoding)
-        chunk = state.decoder.write(chunk);
-
-      if (!addToFront)
-        state.reading = false;
-
-      // if we want the data now, just emit it.
-      if (state.flowing && state.length === 0 && !state.sync) {
-        stream.emit('data', chunk);
-        stream.read(0);
-      } else {
-        // update the buffer info.
-        state.length += state.objectMode ? 1 : chunk.length;
-        if (addToFront)
-          state.buffer.unshift(chunk);
-        else
-          state.buffer.push(chunk);
-
-        if (state.needReadable)
-          emitReadable(stream);
-      }
-
-      maybeReadMore(stream, state);
-    }
-  } else if (!addToFront) {
-    state.reading = false;
-  }
-
-  return needMoreData(state);
-}
-
-
-// if it's past the high water mark, we can push in some more.
-// Also, if we have no data yet, we can stand some
-// more bytes.  This is to work around cases where hwm=0,
-// such as the repl.  Also, if the push() triggered a
-// readable event, and the user called read(largeNumber) such that
-// needReadable was set, then we ought to push more, so that another
-// 'readable' event will be triggered.
-function needMoreData(state) {
-  return !state.ended &&
-         (state.needReadable ||
-          state.length < state.highWaterMark ||
-          state.length === 0);
-}
-
-// backwards compatibility.
-Readable.prototype.setEncoding = function(enc) {
-  if (!StringDecoder)
-    StringDecoder = require('string_decoder/').StringDecoder;
-  this._readableState.decoder = new StringDecoder(enc);
-  this._readableState.encoding = enc;
-  return this;
-};
-
-// Don't raise the hwm > 8MB
-var MAX_HWM = 0x800000;
-function computeNewHighWaterMark(n) {
-  if (n >= MAX_HWM) {
-    n = MAX_HWM;
-  } else {
-    // Get the next highest power of 2
-    n--;
-    n |= n >>> 1;
-    n |= n >>> 2;
-    n |= n >>> 4;
-    n |= n >>> 8;
-    n |= n >>> 16;
-    n++;
-  }
-  return n;
-}
-
-function howMuchToRead(n, state) {
-  if (state.length === 0 && state.ended)
-    return 0;
-
-  if (state.objectMode)
-    return n === 0 ? 0 : 1;
-
-  if (n === null || isNaN(n)) {
-    // only flow one buffer at a time
-    if (state.flowing && state.buffer.length)
-      return state.buffer[0].length;
-    else
-      return state.length;
-  }
-
-  if (n <= 0)
-    return 0;
-
-  // If we're asking for more than the target buffer level,
-  // then raise the water mark.  Bump up to the next highest
-  // power of 2, to prevent increasing it excessively in tiny
-  // amounts.
-  if (n > state.highWaterMark)
-    state.highWaterMark = computeNewHighWaterMark(n);
-
-  // don't have that much.  return null, unless we've ended.
-  if (n > state.length) {
-    if (!state.ended) {
-      state.needReadable = true;
-      return 0;
-    } else {
-      return state.length;
-    }
-  }
-
-  return n;
-}
-
-// you can override either this method, or the async _read(n) below.
-Readable.prototype.read = function(n) {
-  debug('read', n);
-  var state = this._readableState;
-  var nOrig = n;
-
-  if (typeof n !== 'number' || n > 0)
-    state.emittedReadable = false;
-
-  // if we're doing read(0) to trigger a readable event, but we
-  // already have a bunch of data in the buffer, then just trigger
-  // the 'readable' event and move on.
-  if (n === 0 &&
-      state.needReadable &&
-      (state.length >= state.highWaterMark || state.ended)) {
-    debug('read: emitReadable', state.length, state.ended);
-    if (state.length === 0 && state.ended)
-      endReadable(this);
-    else
-      emitReadable(this);
-    return null;
-  }
-
-  n = howMuchToRead(n, state);
-
-  // if we've ended, and we're now clear, then finish it up.
-  if (n === 0 && state.ended) {
-    if (state.length === 0)
-      endReadable(this);
-    return null;
-  }
-
-  // All the actual chunk generation logic needs to be
-  // *below* the call to _read.  The reason is that in certain
-  // synthetic stream cases, such as passthrough streams, _read
-  // may be a completely synchronous operation which may change
-  // the state of the read buffer, providing enough data when
-  // before there was *not* enough.
-  //
-  // So, the steps are:
-  // 1. Figure out what the state of things will be after we do
-  // a read from the buffer.
-  //
-  // 2. If that resulting state will trigger a _read, then call _read.
-  // Note that this may be asynchronous, or synchronous.  Yes, it is
-  // deeply ugly to write APIs this way, but that still doesn't mean
-  // that the Readable class should behave improperly, as streams are
-  // designed to be sync/async agnostic.
-  // Take note if the _read call is sync or async (ie, if the read call
-  // has returned yet), so that we know whether or not it's safe to emit
-  // 'readable' etc.
-  //
-  // 3. Actually pull the requested chunks out of the buffer and return.
-
-  // if we need a readable event, then we need to do some reading.
-  var doRead = state.needReadable;
-  debug('need readable', doRead);
-
-  // if we currently have less than the highWaterMark, then also read some
-  if (state.length === 0 || state.length - n < state.highWaterMark) {
-    doRead = true;
-    debug('length less than watermark', doRead);
-  }
-
-  // however, if we've ended, then there's no point, and if we're already
-  // reading, then it's unnecessary.
-  if (state.ended || state.reading) {
-    doRead = false;
-    debug('reading or ended', doRead);
-  }
-
-  if (doRead) {
-    debug('do read');
-    state.reading = true;
-    state.sync = true;
-    // if the length is currently zero, then we *need* a readable event.
-    if (state.length === 0)
-      state.needReadable = true;
-    // call internal read method
-    this._read(state.highWaterMark);
-    state.sync = false;
-  }
-
-  // If _read pushed data synchronously, then `reading` will be false,
-  // and we need to re-evaluate how much data we can return to the user.
-  if (doRead && !state.reading)
-    n = howMuchToRead(nOrig, state);
-
-  var ret;
-  if (n > 0)
-    ret = fromList(n, state);
-  else
-    ret = null;
-
-  if (ret === null) {
-    state.needReadable = true;
-    n = 0;
-  }
-
-  state.length -= n;
-
-  // If we have nothing in the buffer, then we want to know
-  // as soon as we *do* get something into the buffer.
-  if (state.length === 0 && !state.ended)
-    state.needReadable = true;
-
-  // If we tried to read() past the EOF, then emit end on the next tick.
-  if (nOrig !== n && state.ended && state.length === 0)
-    endReadable(this);
-
-  if (ret !== null)
-    this.emit('data', ret);
-
-  return ret;
-};
-
-function chunkInvalid(state, chunk) {
-  var er = null;
-  if (!(Buffer.isBuffer(chunk)) &&
-      typeof chunk !== 'string' &&
-      chunk !== null &&
-      chunk !== undefined &&
-      !state.objectMode) {
-    er = new TypeError('Invalid non-string/buffer chunk');
-  }
-  return er;
-}
-
-
-function onEofChunk(stream, state) {
-  if (state.ended) return;
-  if (state.decoder) {
-    var chunk = state.decoder.end();
-    if (chunk && chunk.length) {
-      state.buffer.push(chunk);
-      state.length += state.objectMode ? 1 : chunk.length;
-    }
-  }
-  state.ended = true;
-
-  // emit 'readable' now to make sure it gets picked up.
-  emitReadable(stream);
-}
-
-// Don't emit readable right away in sync mode, because this can trigger
-// another read() call => stack overflow.  This way, it might trigger
-// a nextTick recursion warning, but that's not so bad.
-function emitReadable(stream) {
-  var state = stream._readableState;
-  state.needReadable = false;
-  if (!state.emittedReadable) {
-    debug('emitReadable', state.flowing);
-    state.emittedReadable = true;
-    if (state.sync)
-      processNextTick(emitReadable_, stream);
-    else
-      emitReadable_(stream);
-  }
-}
-
-function emitReadable_(stream) {
-  debug('emit readable');
-  stream.emit('readable');
-  flow(stream);
-}
-
-
-// at this point, the user has presumably seen the 'readable' event,
-// and called read() to consume some data.  that may have triggered
-// in turn another _read(n) call, in which case reading = true if
-// it's in progress.
-// However, if we're not ended, or reading, and the length < hwm,
-// then go ahead and try to read some more preemptively.
-function maybeReadMore(stream, state) {
-  if (!state.readingMore) {
-    state.readingMore = true;
-    processNextTick(maybeReadMore_, stream, state);
-  }
-}
-
-function maybeReadMore_(stream, state) {
-  var len = state.length;
-  while (!state.reading && !state.flowing && !state.ended &&
-         state.length < state.highWaterMark) {
-    debug('maybeReadMore read 0');
-    stream.read(0);
-    if (len === state.length)
-      // didn't get any data, stop spinning.
-      break;
-    else
-      len = state.length;
-  }
-  state.readingMore = false;
-}
-
-// abstract method.  to be overridden in specific implementation classes.
-// call cb(er, data) where data is <= n in length.
-// for virtual (non-string, non-buffer) streams, "length" is somewhat
-// arbitrary, and perhaps not very meaningful.
-Readable.prototype._read = function(n) {
-  this.emit('error', new Error('not implemented'));
-};
-
-Readable.prototype.pipe = function(dest, pipeOpts) {
-  var src = this;
-  var state = this._readableState;
-
-  switch (state.pipesCount) {
-    case 0:
-      state.pipes = dest;
-      break;
-    case 1:
-      state.pipes = [state.pipes, dest];
-      break;
-    default:
-      state.pipes.push(dest);
-      break;
-  }
-  state.pipesCount += 1;
-  debug('pipe count=%d opts=%j', state.pipesCount, pipeOpts);
-
-  var doEnd = (!pipeOpts || pipeOpts.end !== false) &&
-              dest !== process.stdout &&
-              dest !== process.stderr;
-
-  var endFn = doEnd ? onend : cleanup;
-  if (state.endEmitted)
-    processNextTick(endFn);
-  else
-    src.once('end', endFn);
-
-  dest.on('unpipe', onunpipe);
-  function onunpipe(readable) {
-    debug('onunpipe');
-    if (readable === src) {
-      cleanup();
-    }
-  }
-
-  function onend() {
-    debug('onend');
-    dest.end();
-  }
-
-  // when the dest drains, it reduces the awaitDrain counter
-  // on the source.  This would be more elegant with a .once()
-  // handler in flow(), but adding and removing repeatedly is
-  // too slow.
-  var ondrain = pipeOnDrain(src);
-  dest.on('drain', ondrain);
-
-  var cleanedUp = false;
-  function cleanup() {
-    debug('cleanup');
-    // cleanup event handlers once the pipe is broken
-    dest.removeListener('close', onclose);
-    dest.removeListener('finish', onfinish);
-    dest.removeListener('drain', ondrain);
-    dest.removeListener('error', onerror);
-    dest.removeListener('unpipe', onunpipe);
-    src.removeListener('end', onend);
-    src.removeListener('end', cleanup);
-    src.removeListener('data', ondata);
-
-    cleanedUp = true;
-
-    // if the reader is waiting for a drain event from this
-    // specific writer, then it would cause it to never start
-    // flowing again.
-    // So, if this is awaiting a drain, then we just call it now.
-    // If we don't know, then assume that we are waiting for one.
-    if (state.awaitDrain &&
-        (!dest._writableState || dest._writableState.needDrain))
-      ondrain();
-  }
-
-  src.on('data', ondata);
-  function ondata(chunk) {
-    debug('ondata');
-    var ret = dest.write(chunk);
-    if (false === ret) {
-      // If the user unpiped during `dest.write()`, it is possible
-      // to get stuck in a permanently paused state if that write
-      // also returned false.
-      if (state.pipesCount === 1 &&
-          state.pipes[0] === dest &&
-          src.listenerCount('data') === 1 &&
-          !cleanedUp) {
-        debug('false write response, pause', src._readableState.awaitDrain);
-        src._readableState.awaitDrain++;
-      }
-      src.pause();
-    }
-  }
-
-  // if the dest has an error, then stop piping into it.
-  // however, don't suppress the throwing behavior for this.
-  function onerror(er) {
-    debug('onerror', er);
-    unpipe();
-    dest.removeListener('error', onerror);
-    if (EElistenerCount(dest, 'error') === 0)
-      dest.emit('error', er);
-  }
-  // This is a brutally ugly hack to make sure that our error handler
-  // is attached before any userland ones.  NEVER DO THIS.
-  if (!dest._events || !dest._events.error)
-    dest.on('error', onerror);
-  else if (isArray(dest._events.error))
-    dest._events.error.unshift(onerror);
-  else
-    dest._events.error = [onerror, dest._events.error];
-
-
-  // Both close and finish should trigger unpipe, but only once.
-  function onclose() {
-    dest.removeListener('finish', onfinish);
-    unpipe();
-  }
-  dest.once('close', onclose);
-  function onfinish() {
-    debug('onfinish');
-    dest.removeListener('close', onclose);
-    unpipe();
-  }
-  dest.once('finish', onfinish);
-
-  function unpipe() {
-    debug('unpipe');
-    src.unpipe(dest);
-  }
-
-  // tell the dest that it's being piped to
-  dest.emit('pipe', src);
-
-  // start the flow if it hasn't been started already.
-  if (!state.flowing) {
-    debug('pipe resume');
-    src.resume();
-  }
-
-  return dest;
-};
-
-function pipeOnDrain(src) {
-  return function() {
-    var state = src._readableState;
-    debug('pipeOnDrain', state.awaitDrain);
-    if (state.awaitDrain)
-      state.awaitDrain--;
-    if (state.awaitDrain === 0 && EElistenerCount(src, 'data')) {
-      state.flowing = true;
-      flow(src);
-    }
-  };
-}
-
-
-Readable.prototype.unpipe = function(dest) {
-  var state = this._readableState;
-
-  // if we're not piping anywhere, then do nothing.
-  if (state.pipesCount === 0)
-    return this;
-
-  // just one destination.  most common case.
-  if (state.pipesCount === 1) {
-    // passed in one, but it's not the right one.
-    if (dest && dest !== state.pipes)
-      return this;
-
-    if (!dest)
-      dest = state.pipes;
-
-    // got a match.
-    state.pipes = null;
-    state.pipesCount = 0;
-    state.flowing = false;
-    if (dest)
-      dest.emit('unpipe', this);
-    return this;
-  }
-
-  // slow case. multiple pipe destinations.
-
-  if (!dest) {
-    // remove all.
-    var dests = state.pipes;
-    var len = state.pipesCount;
-    state.pipes = null;
-    state.pipesCount = 0;
-    state.flowing = false;
-
-    for (var i = 0; i < len; i++)
-      dests[i].emit('unpipe', this);
-    return this;
-  }
-
-  // try to find the right one.
-  var i = indexOf(state.pipes, dest);
-  if (i === -1)
-    return this;
-
-  state.pipes.splice(i, 1);
-  state.pipesCount -= 1;
-  if (state.pipesCount === 1)
-    state.pipes = state.pipes[0];
-
-  dest.emit('unpipe', this);
-
-  return this;
-};
-
-// set up data events if they are asked for
-// Ensure readable listeners eventually get something
-Readable.prototype.on = function(ev, fn) {
-  var res = Stream.prototype.on.call(this, ev, fn);
-
-  // If listening to data, and it has not explicitly been paused,
-  // then call resume to start the flow of data on the next tick.
-  if (ev === 'data' && false !== this._readableState.flowing) {
-    this.resume();
-  }
-
-  if (ev === 'readable' && this.readable) {
-    var state = this._readableState;
-    if (!state.readableListening) {
-      state.readableListening = true;
-      state.emittedReadable = false;
-      state.needReadable = true;
-      if (!state.reading) {
-        processNextTick(nReadingNextTick, this);
-      } else if (state.length) {
-        emitReadable(this, state);
-      }
-    }
-  }
-
-  return res;
-};
-Readable.prototype.addListener = Readable.prototype.on;
-
-function nReadingNextTick(self) {
-  debug('readable nexttick read 0');
-  self.read(0);
-}
-
-// pause() and resume() are remnants of the legacy readable stream API
-// If the user uses them, then switch into old mode.
-Readable.prototype.resume = function() {
-  var state = this._readableState;
-  if (!state.flowing) {
-    debug('resume');
-    state.flowing = true;
-    resume(this, state);
-  }
-  return this;
-};
-
-function resume(stream, state) {
-  if (!state.resumeScheduled) {
-    state.resumeScheduled = true;
-    processNextTick(resume_, stream, state);
-  }
-}
-
-function resume_(stream, state) {
-  if (!state.reading) {
-    debug('resume read 0');
-    stream.read(0);
-  }
-
-  state.resumeScheduled = false;
-  stream.emit('resume');
-  flow(stream);
-  if (state.flowing && !state.reading)
-    stream.read(0);
-}
-
-Readable.prototype.pause = function() {
-  debug('call pause flowing=%j', this._readableState.flowing);
-  if (false !== this._readableState.flowing) {
-    debug('pause');
-    this._readableState.flowing = false;
-    this.emit('pause');
-  }
-  return this;
-};
-
-function flow(stream) {
-  var state = stream._readableState;
-  debug('flow', state.flowing);
-  if (state.flowing) {
-    do {
-      var chunk = stream.read();
-    } while (null !== chunk && state.flowing);
-  }
-}
-
-// wrap an old-style stream as the async data source.
-// This is *not* part of the readable stream interface.
-// It is an ugly unfortunate mess of history.
-Readable.prototype.wrap = function(stream) {
-  var state = this._readableState;
-  var paused = false;
-
-  var self = this;
-  stream.on('end', function() {
-    debug('wrapped end');
-    if (state.decoder && !state.ended) {
-      var chunk = state.decoder.end();
-      if (chunk && chunk.length)
-        self.push(chunk);
-    }
-
-    self.push(null);
-  });
-
-  stream.on('data', function(chunk) {
-    debug('wrapped data');
-    if (state.decoder)
-      chunk = state.decoder.write(chunk);
-
-    // don't skip over falsy values in objectMode
-    if (state.objectMode && (chunk === null || chunk === undefined))
-      return;
-    else if (!state.objectMode && (!chunk || !chunk.length))
-      return;
-
-    var ret = self.push(chunk);
-    if (!ret) {
-      paused = true;
-      stream.pause();
-    }
-  });
-
-  // proxy all the other methods.
-  // important when wrapping filters and duplexes.
-  for (var i in stream) {
-    if (this[i] === undefined && typeof stream[i] === 'function') {
-      this[i] = function(method) { return function() {
-        return stream[method].apply(stream, arguments);
-      }; }(i);
-    }
-  }
-
-  // proxy certain important events.
-  var events = ['error', 'close', 'destroy', 'pause', 'resume'];
-  forEach(events, function(ev) {
-    stream.on(ev, self.emit.bind(self, ev));
-  });
-
-  // when we try to consume some more bytes, simply unpause the
-  // underlying stream.
-  self._read = function(n) {
-    debug('wrapped _read', n);
-    if (paused) {
-      paused = false;
-      stream.resume();
-    }
-  };
-
-  return self;
-};
-
-
-// exposed for testing purposes only.
-Readable._fromList = fromList;
-
-// Pluck off n bytes from an array of buffers.
-// Length is the combined lengths of all the buffers in the list.
-function fromList(n, state) {
-  var list = state.buffer;
-  var length = state.length;
-  var stringMode = !!state.decoder;
-  var objectMode = !!state.objectMode;
-  var ret;
-
-  // nothing in the list, definitely empty.
-  if (list.length === 0)
-    return null;
-
-  if (length === 0)
-    ret = null;
-  else if (objectMode)
-    ret = list.shift();
-  else if (!n || n >= length) {
-    // read it all, truncate the array.
-    if (stringMode)
-      ret = list.join('');
-    else if (list.length === 1)
-      ret = list[0];
-    else
-      ret = Buffer.concat(list, length);
-    list.length = 0;
-  } else {
-    // read just some of it.
-    if (n < list[0].length) {
-      // just take a part of the first list item.
-      // slice is the same for buffers and strings.
-      var buf = list[0];
-      ret = buf.slice(0, n);
-      list[0] = buf.slice(n);
-    } else if (n === list[0].length) {
-      // first list is a perfect match
-      ret = list.shift();
-    } else {
-      // complex case.
-      // we have enough to cover it, but it spans past the first buffer.
-      if (stringMode)
-        ret = '';
-      else
-        ret = new Buffer(n);
-
-      var c = 0;
-      for (var i = 0, l = list.length; i < l && c < n; i++) {
-        var buf = list[0];
-        var cpy = Math.min(n - c, buf.length);
-
-        if (stringMode)
-          ret += buf.slice(0, cpy);
-        else
-          buf.copy(ret, c, 0, cpy);
-
-        if (cpy < buf.length)
-          list[0] = buf.slice(cpy);
-        else
-          list.shift();
-
-        c += cpy;
-      }
-    }
-  }
-
-  return ret;
-}
-
-function endReadable(stream) {
-  var state = stream._readableState;
-
-  // If we get here before consuming all the bytes, then that is a
-  // bug in node.  Should never happen.
-  if (state.length > 0)
-    throw new Error('endReadable called on non-empty stream');
-
-  if (!state.endEmitted) {
-    state.ended = true;
-    processNextTick(endReadableNT, state, stream);
-  }
-}
-
-function endReadableNT(state, stream) {
-  // Check that we didn't get one last unshift.
-  if (!state.endEmitted && state.length === 0) {
-    state.endEmitted = true;
-    stream.readable = false;
-    stream.emit('end');
-  }
-}
-
-function forEach (xs, f) {
-  for (var i = 0, l = xs.length; i < l; i++) {
-    f(xs[i], i);
-  }
-}
-
-function indexOf (xs, x) {
-  for (var i = 0, l = xs.length; i < l; i++) {
-    if (xs[i] === x) return i;
-  }
-  return -1;
-}
-
-}).call(this,require('_process'))
-},{"./_stream_duplex":13,"_process":11,"buffer":3,"core-util-is":18,"events":7,"inherits":8,"isarray":10,"process-nextick-args":19,"string_decoder/":26,"util":2}],16:[function(require,module,exports){
-// a transform stream is a readable/writable stream where you do
-// something with the data.  Sometimes it's called a "filter",
-// but that's not a great name for it, since that implies a thing where
-// some bits pass through, and others are simply ignored.  (That would
-// be a valid example of a transform, of course.)
-//
-// While the output is causally related to the input, it's not a
-// necessarily symmetric or synchronous transformation.  For example,
-// a zlib stream might take multiple plain-text writes(), and then
-// emit a single compressed chunk some time in the future.
-//
-// Here's how this works:
-//
-// The Transform stream has all the aspects of the readable and writable
-// stream classes.  When you write(chunk), that calls _write(chunk,cb)
-// internally, and returns false if there's a lot of pending writes
-// buffered up.  When you call read(), that calls _read(n) until
-// there's enough pending readable data buffered up.
-//
-// In a transform stream, the written data is placed in a buffer.  When
-// _read(n) is called, it transforms the queued up data, calling the
-// buffered _write cb's as it consumes chunks.  If consuming a single
-// written chunk would result in multiple output chunks, then the first
-// outputted bit calls the readcb, and subsequent chunks just go into
-// the read buffer, and will cause it to emit 'readable' if necessary.
-//
-// This way, back-pressure is actually determined by the reading side,
-// since _read has to be called to start processing a new chunk.  However,
-// a pathological inflate type of transform can cause excessive buffering
-// here.  For example, imagine a stream where every byte of input is
-// interpreted as an integer from 0-255, and then results in that many
-// bytes of output.  Writing the 4 bytes {ff,ff,ff,ff} would result in
-// 1kb of data being output.  In this case, you could write a very small
-// amount of input, and end up with a very large amount of output.  In
-// such a pathological inflating mechanism, there'd be no way to tell
-// the system to stop doing the transform.  A single 4MB write could
-// cause the system to run out of memory.
-//
-// However, even in such a pathological case, only a single written chunk
-// would be consumed, and then the rest would wait (un-transformed) until
-// the results of the previous transformed chunk were consumed.
-
-'use strict';
-
-module.exports = Transform;
-
-var Duplex = require('./_stream_duplex');
-
-/*<replacement>*/
-var util = require('core-util-is');
-util.inherits = require('inherits');
-/*</replacement>*/
-
-util.inherits(Transform, Duplex);
-
-
-function TransformState(stream) {
-  this.afterTransform = function(er, data) {
-    return afterTransform(stream, er, data);
-  };
-
-  this.needTransform = false;
-  this.transforming = false;
-  this.writecb = null;
-  this.writechunk = null;
-}
-
-function afterTransform(stream, er, data) {
-  var ts = stream._transformState;
-  ts.transforming = false;
-
-  var cb = ts.writecb;
-
-  if (!cb)
-    return stream.emit('error', new Error('no writecb in Transform class'));
-
-  ts.writechunk = null;
-  ts.writecb = null;
-
-  if (data !== null && data !== undefined)
-    stream.push(data);
-
-  if (cb)
-    cb(er);
-
-  var rs = stream._readableState;
-  rs.reading = false;
-  if (rs.needReadable || rs.length < rs.highWaterMark) {
-    stream._read(rs.highWaterMark);
-  }
-}
-
-
-function Transform(options) {
-  if (!(this instanceof Transform))
-    return new Transform(options);
-
-  Duplex.call(this, options);
-
-  this._transformState = new TransformState(this);
-
-  // when the writable side finishes, then flush out anything remaining.
-  var stream = this;
-
-  // start out asking for a readable event once data is transformed.
-  this._readableState.needReadable = true;
-
-  // we have implemented the _read method, and done the other things
-  // that Readable wants before the first _read call, so unset the
-  // sync guard flag.
-  this._readableState.sync = false;
-
-  if (options) {
-    if (typeof options.transform === 'function')
-      this._transform = options.transform;
-
-    if (typeof options.flush === 'function')
-      this._flush = options.flush;
-  }
-
-  this.once('prefinish', function() {
-    if (typeof this._flush === 'function')
-      this._flush(function(er) {
-        done(stream, er);
-      });
-    else
-      done(stream);
-  });
-}
-
-Transform.prototype.push = function(chunk, encoding) {
-  this._transformState.needTransform = false;
-  return Duplex.prototype.push.call(this, chunk, encoding);
-};
-
-// This is the part where you do stuff!
-// override this function in implementation classes.
-// 'chunk' is an input chunk.
-//
-// Call `push(newChunk)` to pass along transformed output
-// to the readable side.  You may call 'push' zero or more times.
-//
-// Call `cb(err)` when you are done with this chunk.  If you pass
-// an error, then that'll put the hurt on the whole operation.  If you
-// never call cb(), then you'll never get another chunk.
-Transform.prototype._transform = function(chunk, encoding, cb) {
-  throw new Error('not implemented');
-};
-
-Transform.prototype._write = function(chunk, encoding, cb) {
-  var ts = this._transformState;
-  ts.writecb = cb;
-  ts.writechunk = chunk;
-  ts.writeencoding = encoding;
-  if (!ts.transforming) {
-    var rs = this._readableState;
-    if (ts.needTransform ||
-        rs.needReadable ||
-        rs.length < rs.highWaterMark)
-      this._read(rs.highWaterMark);
-  }
-};
-
-// Doesn't matter what the args are here.
-// _transform does all the work.
-// That we got here means that the readable side wants more data.
-Transform.prototype._read = function(n) {
-  var ts = this._transformState;
-
-  if (ts.writechunk !== null && ts.writecb && !ts.transforming) {
-    ts.transforming = true;
-    this._transform(ts.writechunk, ts.writeencoding, ts.afterTransform);
-  } else {
-    // mark that we need a transform, so that any data that comes in
-    // will get processed, now that we've asked for it.
-    ts.needTransform = true;
-  }
-};
-
-
-function done(stream, er) {
-  if (er)
-    return stream.emit('error', er);
-
-  // if there's nothing in the write buffer, then that means
-  // that nothing more will ever be provided
-  var ws = stream._writableState;
-  var ts = stream._transformState;
-
-  if (ws.length)
-    throw new Error('calling transform done when ws.length != 0');
-
-  if (ts.transforming)
-    throw new Error('calling transform done when still transforming');
-
-  return stream.push(null);
-}
-
-},{"./_stream_duplex":13,"core-util-is":18,"inherits":8}],17:[function(require,module,exports){
-// A bit simpler than readable streams.
-// Implement an async ._write(chunk, encoding, cb), and it'll handle all
-// the drain event emission and buffering.
-
-'use strict';
-
-module.exports = Writable;
-
-/*<replacement>*/
-var processNextTick = require('process-nextick-args');
-/*</replacement>*/
-
-
-/*<replacement>*/
-var Buffer = require('buffer').Buffer;
-/*</replacement>*/
-
-Writable.WritableState = WritableState;
-
-
-/*<replacement>*/
-var util = require('core-util-is');
-util.inherits = require('inherits');
-/*</replacement>*/
-
-
-/*<replacement>*/
-var internalUtil = {
-  deprecate: require('util-deprecate')
-};
-/*</replacement>*/
-
-
-
-/*<replacement>*/
-var Stream;
-(function (){try{
-  Stream = require('st' + 'ream');
-}catch(_){}finally{
-  if (!Stream)
-    Stream = require('events').EventEmitter;
-}}())
-/*</replacement>*/
-
-var Buffer = require('buffer').Buffer;
-
-util.inherits(Writable, Stream);
-
-function nop() {}
-
-function WriteReq(chunk, encoding, cb) {
-  this.chunk = chunk;
-  this.encoding = encoding;
-  this.callback = cb;
-  this.next = null;
-}
-
-var Duplex;
-function WritableState(options, stream) {
-  Duplex = Duplex || require('./_stream_duplex');
-
-  options = options || {};
-
-  // object stream flag to indicate whether or not this stream
-  // contains buffers or objects.
-  this.objectMode = !!options.objectMode;
-
-  if (stream instanceof Duplex)
-    this.objectMode = this.objectMode || !!options.writableObjectMode;
-
-  // the point at which write() starts returning false
-  // Note: 0 is a valid value, means that we always return false if
-  // the entire buffer is not flushed immediately on write()
-  var hwm = options.highWaterMark;
-  var defaultHwm = this.objectMode ? 16 : 16 * 1024;
-  this.highWaterMark = (hwm || hwm === 0) ? hwm : defaultHwm;
-
-  // cast to ints.
-  this.highWaterMark = ~~this.highWaterMark;
-
-  this.needDrain = false;
-  // at the start of calling end()
-  this.ending = false;
-  // when end() has been called, and returned
-  this.ended = false;
-  // when 'finish' is emitted
-  this.finished = false;
-
-  // should we decode strings into buffers before passing to _write?
-  // this is here so that some node-core streams can optimize string
-  // handling at a lower level.
-  var noDecode = options.decodeStrings === false;
-  this.decodeStrings = !noDecode;
-
-  // Crypto is kind of old and crusty.  Historically, its default string
-  // encoding is 'binary' so we have to make this configurable.
-  // Everything else in the universe uses 'utf8', though.
-  this.defaultEncoding = options.defaultEncoding || 'utf8';
-
-  // not an actual buffer we keep track of, but a measurement
-  // of how much we're waiting to get pushed to some underlying
-  // socket or file.
-  this.length = 0;
-
-  // a flag to see when we're in the middle of a write.
-  this.writing = false;
-
-  // when true all writes will be buffered until .uncork() call
-  this.corked = 0;
-
-  // a flag to be able to tell if the onwrite cb is called immediately,
-  // or on a later tick.  We set this to true at first, because any
-  // actions that shouldn't happen until "later" should generally also
-  // not happen before the first write call.
-  this.sync = true;
-
-  // a flag to know if we're processing previously buffered items, which
-  // may call the _write() callback in the same tick, so that we don't
-  // end up in an overlapped onwrite situation.
-  this.bufferProcessing = false;
-
-  // the callback that's passed to _write(chunk,cb)
-  this.onwrite = function(er) {
-    onwrite(stream, er);
-  };
-
-  // the callback that the user supplies to write(chunk,encoding,cb)
-  this.writecb = null;
-
-  // the amount that is being written when _write is called.
-  this.writelen = 0;
-
-  this.bufferedRequest = null;
-  this.lastBufferedRequest = null;
-
-  // number of pending user-supplied write callbacks
-  // this must be 0 before 'finish' can be emitted
-  this.pendingcb = 0;
-
-  // emit prefinish if the only thing we're waiting for is _write cbs
-  // This is relevant for synchronous Transform streams
-  this.prefinished = false;
-
-  // True if the error was already emitted and should not be thrown again
-  this.errorEmitted = false;
-}
-
-WritableState.prototype.getBuffer = function writableStateGetBuffer() {
-  var current = this.bufferedRequest;
-  var out = [];
-  while (current) {
-    out.push(current);
-    current = current.next;
-  }
-  return out;
-};
-
-(function (){try {
-Object.defineProperty(WritableState.prototype, 'buffer', {
-  get: internalUtil.deprecate(function() {
-    return this.getBuffer();
-  }, '_writableState.buffer is deprecated. Use _writableState.getBuffer ' +
-     'instead.')
-});
-}catch(_){}}());
-
-
-var Duplex;
-function Writable(options) {
-  Duplex = Duplex || require('./_stream_duplex');
-
-  // Writable ctor is applied to Duplexes, though they're not
-  // instanceof Writable, they're instanceof Readable.
-  if (!(this instanceof Writable) && !(this instanceof Duplex))
-    return new Writable(options);
-
-  this._writableState = new WritableState(options, this);
-
-  // legacy.
-  this.writable = true;
-
-  if (options) {
-    if (typeof options.write === 'function')
-      this._write = options.write;
-
-    if (typeof options.writev === 'function')
-      this._writev = options.writev;
-  }
-
-  Stream.call(this);
-}
-
-// Otherwise people can pipe Writable streams, which is just wrong.
-Writable.prototype.pipe = function() {
-  this.emit('error', new Error('Cannot pipe. Not readable.'));
-};
-
-
-function writeAfterEnd(stream, cb) {
-  var er = new Error('write after end');
-  // TODO: defer error events consistently everywhere, not just the cb
-  stream.emit('error', er);
-  processNextTick(cb, er);
-}
-
-// If we get something that is not a buffer, string, null, or undefined,
-// and we're not in objectMode, then that's an error.
-// Otherwise stream chunks are all considered to be of length=1, and the
-// watermarks determine how many objects to keep in the buffer, rather than
-// how many bytes or characters.
-function validChunk(stream, state, chunk, cb) {
-  var valid = true;
-
-  if (!(Buffer.isBuffer(chunk)) &&
-      typeof chunk !== 'string' &&
-      chunk !== null &&
-      chunk !== undefined &&
-      !state.objectMode) {
-    var er = new TypeError('Invalid non-string/buffer chunk');
-    stream.emit('error', er);
-    processNextTick(cb, er);
-    valid = false;
-  }
-  return valid;
-}
-
-Writable.prototype.write = function(chunk, encoding, cb) {
-  var state = this._writableState;
-  var ret = false;
-
-  if (typeof encoding === 'function') {
-    cb = encoding;
-    encoding = null;
-  }
-
-  if (Buffer.isBuffer(chunk))
-    encoding = 'buffer';
-  else if (!encoding)
-    encoding = state.defaultEncoding;
-
-  if (typeof cb !== 'function')
-    cb = nop;
-
-  if (state.ended)
-    writeAfterEnd(this, cb);
-  else if (validChunk(this, state, chunk, cb)) {
-    state.pendingcb++;
-    ret = writeOrBuffer(this, state, chunk, encoding, cb);
-  }
-
-  return ret;
-};
-
-Writable.prototype.cork = function() {
-  var state = this._writableState;
-
-  state.corked++;
-};
-
-Writable.prototype.uncork = function() {
-  var state = this._writableState;
-
-  if (state.corked) {
-    state.corked--;
-
-    if (!state.writing &&
-        !state.corked &&
-        !state.finished &&
-        !state.bufferProcessing &&
-        state.bufferedRequest)
-      clearBuffer(this, state);
-  }
-};
-
-Writable.prototype.setDefaultEncoding = function setDefaultEncoding(encoding) {
-  // node::ParseEncoding() requires lower case.
-  if (typeof encoding === 'string')
-    encoding = encoding.toLowerCase();
-  if (!(['hex', 'utf8', 'utf-8', 'ascii', 'binary', 'base64',
-'ucs2', 'ucs-2','utf16le', 'utf-16le', 'raw']
-.indexOf((encoding + '').toLowerCase()) > -1))
-    throw new TypeError('Unknown encoding: ' + encoding);
-  this._writableState.defaultEncoding = encoding;
-};
-
-function decodeChunk(state, chunk, encoding) {
-  if (!state.objectMode &&
-      state.decodeStrings !== false &&
-      typeof chunk === 'string') {
-    chunk = new Buffer(chunk, encoding);
-  }
-  return chunk;
-}
-
-// if we're already writing something, then just put this
-// in the queue, and wait our turn.  Otherwise, call _write
-// If we return false, then we need a drain event, so set that flag.
-function writeOrBuffer(stream, state, chunk, encoding, cb) {
-  chunk = decodeChunk(state, chunk, encoding);
-
-  if (Buffer.isBuffer(chunk))
-    encoding = 'buffer';
-  var len = state.objectMode ? 1 : chunk.length;
-
-  state.length += len;
-
-  var ret = state.length < state.highWaterMark;
-  // we must ensure that previous needDrain will not be reset to false.
-  if (!ret)
-    state.needDrain = true;
-
-  if (state.writing || state.corked) {
-    var last = state.lastBufferedRequest;
-    state.lastBufferedRequest = new WriteReq(chunk, encoding, cb);
-    if (last) {
-      last.next = state.lastBufferedRequest;
-    } else {
-      state.bufferedRequest = state.lastBufferedRequest;
-    }
-  } else {
-    doWrite(stream, state, false, len, chunk, encoding, cb);
-  }
-
-  return ret;
-}
-
-function doWrite(stream, state, writev, len, chunk, encoding, cb) {
-  state.writelen = len;
-  state.writecb = cb;
-  state.writing = true;
-  state.sync = true;
-  if (writev)
-    stream._writev(chunk, state.onwrite);
-  else
-    stream._write(chunk, encoding, state.onwrite);
-  state.sync = false;
-}
-
-function onwriteError(stream, state, sync, er, cb) {
-  --state.pendingcb;
-  if (sync)
-    processNextTick(cb, er);
-  else
-    cb(er);
-
-  stream._writableState.errorEmitted = true;
-  stream.emit('error', er);
-}
-
-function onwriteStateUpdate(state) {
-  state.writing = false;
-  state.writecb = null;
-  state.length -= state.writelen;
-  state.writelen = 0;
-}
-
-function onwrite(stream, er) {
-  var state = stream._writableState;
-  var sync = state.sync;
-  var cb = state.writecb;
-
-  onwriteStateUpdate(state);
-
-  if (er)
-    onwriteError(stream, state, sync, er, cb);
-  else {
-    // Check if we're actually ready to finish, but don't emit yet
-    var finished = needFinish(state);
-
-    if (!finished &&
-        !state.corked &&
-        !state.bufferProcessing &&
-        state.bufferedRequest) {
-      clearBuffer(stream, state);
-    }
-
-    if (sync) {
-      processNextTick(afterWrite, stream, state, finished, cb);
-    } else {
-      afterWrite(stream, state, finished, cb);
-    }
-  }
-}
-
-function afterWrite(stream, state, finished, cb) {
-  if (!finished)
-    onwriteDrain(stream, state);
-  state.pendingcb--;
-  cb();
-  finishMaybe(stream, state);
-}
-
-// Must force callback to be called on nextTick, so that we don't
-// emit 'drain' before the write() consumer gets the 'false' return
-// value, and has a chance to attach a 'drain' listener.
-function onwriteDrain(stream, state) {
-  if (state.length === 0 && state.needDrain) {
-    state.needDrain = false;
-    stream.emit('drain');
-  }
-}
-
-
-// if there's something in the buffer waiting, then process it
-function clearBuffer(stream, state) {
-  state.bufferProcessing = true;
-  var entry = state.bufferedRequest;
-
-  if (stream._writev && entry && entry.next) {
-    // Fast case, write everything using _writev()
-    var buffer = [];
-    var cbs = [];
-    while (entry) {
-      cbs.push(entry.callback);
-      buffer.push(entry);
-      entry = entry.next;
-    }
-
-    // count the one we are adding, as well.
-    // TODO(isaacs) clean this up
-    state.pendingcb++;
-    state.lastBufferedRequest = null;
-    doWrite(stream, state, true, state.length, buffer, '', function(err) {
-      for (var i = 0; i < cbs.length; i++) {
-        state.pendingcb--;
-        cbs[i](err);
-      }
-    });
-
-    // Clear buffer
-  } else {
-    // Slow case, write chunks one-by-one
-    while (entry) {
-      var chunk = entry.chunk;
-      var encoding = entry.encoding;
-      var cb = entry.callback;
-      var len = state.objectMode ? 1 : chunk.length;
-
-      doWrite(stream, state, false, len, chunk, encoding, cb);
-      entry = entry.next;
-      // if we didn't call the onwrite immediately, then
-      // it means that we need to wait until it does.
-      // also, that means that the chunk and cb are currently
-      // being processed, so move the buffer counter past them.
-      if (state.writing) {
-        break;
-      }
-    }
-
-    if (entry === null)
-      state.lastBufferedRequest = null;
-  }
-  state.bufferedRequest = entry;
-  state.bufferProcessing = false;
-}
-
-Writable.prototype._write = function(chunk, encoding, cb) {
-  cb(new Error('not implemented'));
-};
-
-Writable.prototype._writev = null;
-
-Writable.prototype.end = function(chunk, encoding, cb) {
-  var state = this._writableState;
-
-  if (typeof chunk === 'function') {
-    cb = chunk;
-    chunk = null;
-    encoding = null;
-  } else if (typeof encoding === 'function') {
-    cb = encoding;
-    encoding = null;
-  }
-
-  if (chunk !== null && chunk !== undefined)
-    this.write(chunk, encoding);
-
-  // .end() fully uncorks
-  if (state.corked) {
-    state.corked = 1;
-    this.uncork();
-  }
-
-  // ignore unnecessary end() calls.
-  if (!state.ending && !state.finished)
-    endWritable(this, state, cb);
-};
-
-
-function needFinish(state) {
-  return (state.ending &&
-          state.length === 0 &&
-          state.bufferedRequest === null &&
-          !state.finished &&
-          !state.writing);
-}
-
-function prefinish(stream, state) {
-  if (!state.prefinished) {
-    state.prefinished = true;
-    stream.emit('prefinish');
-  }
-}
-
-function finishMaybe(stream, state) {
-  var need = needFinish(state);
-  if (need) {
-    if (state.pendingcb === 0) {
-      prefinish(stream, state);
-      state.finished = true;
-      stream.emit('finish');
-    } else {
-      prefinish(stream, state);
-    }
-  }
-  return need;
-}
-
-function endWritable(stream, state, cb) {
-  state.ending = true;
-  finishMaybe(stream, state);
-  if (cb) {
-    if (state.finished)
-      processNextTick(cb);
-    else
-      stream.once('finish', cb);
-  }
-  state.ended = true;
-}
-
-},{"./_stream_duplex":13,"buffer":3,"core-util-is":18,"events":7,"inherits":8,"process-nextick-args":19,"util-deprecate":20}],18:[function(require,module,exports){
-(function (Buffer){
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-// NOTE: These type checking functions intentionally don't use `instanceof`
-// because it is fragile and can be easily faked with `Object.create()`.
-
-function isArray(arg) {
-  if (Array.isArray) {
-    return Array.isArray(arg);
-  }
-  return objectToString(arg) === '[object Array]';
-}
-exports.isArray = isArray;
-
-function isBoolean(arg) {
-  return typeof arg === 'boolean';
-}
-exports.isBoolean = isBoolean;
-
-function isNull(arg) {
-  return arg === null;
-}
-exports.isNull = isNull;
-
-function isNullOrUndefined(arg) {
-  return arg == null;
-}
-exports.isNullOrUndefined = isNullOrUndefined;
-
-function isNumber(arg) {
-  return typeof arg === 'number';
-}
-exports.isNumber = isNumber;
-
-function isString(arg) {
-  return typeof arg === 'string';
-}
-exports.isString = isString;
-
-function isSymbol(arg) {
-  return typeof arg === 'symbol';
-}
-exports.isSymbol = isSymbol;
-
-function isUndefined(arg) {
-  return arg === void 0;
-}
-exports.isUndefined = isUndefined;
-
-function isRegExp(re) {
-  return objectToString(re) === '[object RegExp]';
-}
-exports.isRegExp = isRegExp;
-
-function isObject(arg) {
-  return typeof arg === 'object' && arg !== null;
-}
-exports.isObject = isObject;
-
-function isDate(d) {
-  return objectToString(d) === '[object Date]';
-}
-exports.isDate = isDate;
-
-function isError(e) {
-  return (objectToString(e) === '[object Error]' || e instanceof Error);
-}
-exports.isError = isError;
-
-function isFunction(arg) {
-  return typeof arg === 'function';
-}
-exports.isFunction = isFunction;
-
-function isPrimitive(arg) {
-  return arg === null ||
-         typeof arg === 'boolean' ||
-         typeof arg === 'number' ||
-         typeof arg === 'string' ||
-         typeof arg === 'symbol' ||  // ES6 symbol
-         typeof arg === 'undefined';
-}
-exports.isPrimitive = isPrimitive;
-
-exports.isBuffer = Buffer.isBuffer;
-
-function objectToString(o) {
-  return Object.prototype.toString.call(o);
-}
-
-}).call(this,{"isBuffer":require("../../../../insert-module-globals/node_modules/is-buffer/index.js")})
-},{"../../../../insert-module-globals/node_modules/is-buffer/index.js":9}],19:[function(require,module,exports){
-(function (process){
-'use strict';
-
-if (!process.version ||
-    process.version.indexOf('v0.') === 0 ||
-    process.version.indexOf('v1.') === 0 && process.version.indexOf('v1.8.') !== 0) {
-  module.exports = nextTick;
-} else {
-  module.exports = process.nextTick;
-}
-
-function nextTick(fn) {
-  var args = new Array(arguments.length - 1);
-  var i = 0;
-  while (i < args.length) {
-    args[i++] = arguments[i];
-  }
-  process.nextTick(function afterTick() {
-    fn.apply(null, args);
-  });
-}
-
-}).call(this,require('_process'))
-},{"_process":11}],20:[function(require,module,exports){
-(function (global){
-
-/**
- * Module exports.
- */
-
-module.exports = deprecate;
-
-/**
- * Mark that a method should not be used.
- * Returns a modified function which warns once by default.
- *
- * If `localStorage.noDeprecation = true` is set, then it is a no-op.
- *
- * If `localStorage.throwDeprecation = true` is set, then deprecated functions
- * will throw an Error when invoked.
- *
- * If `localStorage.traceDeprecation = true` is set, then deprecated functions
- * will invoke `console.trace()` instead of `console.error()`.
- *
- * @param {Function} fn - the function to deprecate
- * @param {String} msg - the string to print to the console when `fn` is invoked
- * @returns {Function} a new "deprecated" version of `fn`
- * @api public
- */
-
-function deprecate (fn, msg) {
-  if (config('noDeprecation')) {
-    return fn;
-  }
-
-  var warned = false;
-  function deprecated() {
-    if (!warned) {
-      if (config('throwDeprecation')) {
-        throw new Error(msg);
-      } else if (config('traceDeprecation')) {
-        console.trace(msg);
-      } else {
-        console.warn(msg);
-      }
-      warned = true;
-    }
-    return fn.apply(this, arguments);
-  }
-
-  return deprecated;
-}
-
-/**
- * Checks `localStorage` for boolean values for the given `name`.
- *
- * @param {String} name
- * @returns {Boolean}
- * @api private
- */
-
-function config (name) {
-  // accessing global.localStorage can trigger a DOMException in sandboxed iframes
-  try {
-    if (!global.localStorage) return false;
-  } catch (_) {
-    return false;
-  }
-  var val = global.localStorage[name];
-  if (null == val) return false;
-  return String(val).toLowerCase() === 'true';
-}
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],21:[function(require,module,exports){
-module.exports = require("./lib/_stream_passthrough.js")
-
-},{"./lib/_stream_passthrough.js":14}],22:[function(require,module,exports){
-var Stream = (function (){
-  try {
-    return require('st' + 'ream'); // hack to fix a circular dependency issue when used with browserify
-  } catch(_){}
-}());
-exports = module.exports = require('./lib/_stream_readable.js');
-exports.Stream = Stream || exports;
-exports.Readable = exports;
-exports.Writable = require('./lib/_stream_writable.js');
-exports.Duplex = require('./lib/_stream_duplex.js');
-exports.Transform = require('./lib/_stream_transform.js');
-exports.PassThrough = require('./lib/_stream_passthrough.js');
-
-},{"./lib/_stream_duplex.js":13,"./lib/_stream_passthrough.js":14,"./lib/_stream_readable.js":15,"./lib/_stream_transform.js":16,"./lib/_stream_writable.js":17}],23:[function(require,module,exports){
-module.exports = require("./lib/_stream_transform.js")
-
-},{"./lib/_stream_transform.js":16}],24:[function(require,module,exports){
-module.exports = require("./lib/_stream_writable.js")
-
-},{"./lib/_stream_writable.js":17}],25:[function(require,module,exports){
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-module.exports = Stream;
-
-var EE = require('events').EventEmitter;
-var inherits = require('inherits');
-
-inherits(Stream, EE);
-Stream.Readable = require('readable-stream/readable.js');
-Stream.Writable = require('readable-stream/writable.js');
-Stream.Duplex = require('readable-stream/duplex.js');
-Stream.Transform = require('readable-stream/transform.js');
-Stream.PassThrough = require('readable-stream/passthrough.js');
-
-// Backwards-compat with node 0.4.x
-Stream.Stream = Stream;
-
-
-
-// old-style streams.  Note that the pipe method (the only relevant
-// part of this class) is overridden in the Readable class.
-
-function Stream() {
-  EE.call(this);
-}
-
-Stream.prototype.pipe = function(dest, options) {
-  var source = this;
-
-  function ondata(chunk) {
-    if (dest.writable) {
-      if (false === dest.write(chunk) && source.pause) {
-        source.pause();
-      }
-    }
-  }
-
-  source.on('data', ondata);
-
-  function ondrain() {
-    if (source.readable && source.resume) {
-      source.resume();
-    }
-  }
-
-  dest.on('drain', ondrain);
-
-  // If the 'end' option is not supplied, dest.end() will be called when
-  // source gets the 'end' or 'close' events.  Only dest.end() once.
-  if (!dest._isStdio && (!options || options.end !== false)) {
-    source.on('end', onend);
-    source.on('close', onclose);
-  }
-
-  var didOnEnd = false;
-  function onend() {
-    if (didOnEnd) return;
-    didOnEnd = true;
-
-    dest.end();
-  }
-
-
-  function onclose() {
-    if (didOnEnd) return;
-    didOnEnd = true;
-
-    if (typeof dest.destroy === 'function') dest.destroy();
-  }
-
-  // don't leave dangling pipes when there are errors.
-  function onerror(er) {
-    cleanup();
-    if (EE.listenerCount(this, 'error') === 0) {
-      throw er; // Unhandled stream error in pipe.
-    }
-  }
-
-  source.on('error', onerror);
-  dest.on('error', onerror);
-
-  // remove all the event listeners that were added.
-  function cleanup() {
-    source.removeListener('data', ondata);
-    dest.removeListener('drain', ondrain);
-
-    source.removeListener('end', onend);
-    source.removeListener('close', onclose);
-
-    source.removeListener('error', onerror);
-    dest.removeListener('error', onerror);
-
-    source.removeListener('end', cleanup);
-    source.removeListener('close', cleanup);
-
-    dest.removeListener('close', cleanup);
-  }
-
-  source.on('end', cleanup);
-  source.on('close', cleanup);
-
-  dest.on('close', cleanup);
-
-  dest.emit('pipe', source);
-
-  // Allow for unix-like usage: A.pipe(B).pipe(C)
-  return dest;
-};
-
-},{"events":7,"inherits":8,"readable-stream/duplex.js":12,"readable-stream/passthrough.js":21,"readable-stream/readable.js":22,"readable-stream/transform.js":23,"readable-stream/writable.js":24}],26:[function(require,module,exports){
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-var Buffer = require('buffer').Buffer;
-
-var isBufferEncoding = Buffer.isEncoding
-  || function(encoding) {
-       switch (encoding && encoding.toLowerCase()) {
-         case 'hex': case 'utf8': case 'utf-8': case 'ascii': case 'binary': case 'base64': case 'ucs2': case 'ucs-2': case 'utf16le': case 'utf-16le': case 'raw': return true;
-         default: return false;
-       }
-     }
-
-
-function assertEncoding(encoding) {
-  if (encoding && !isBufferEncoding(encoding)) {
-    throw new Error('Unknown encoding: ' + encoding);
-  }
-}
-
-// StringDecoder provides an interface for efficiently splitting a series of
-// buffers into a series of JS strings without breaking apart multi-byte
-// characters. CESU-8 is handled as part of the UTF-8 encoding.
-//
-// @TODO Handling all encodings inside a single object makes it very difficult
-// to reason about this code, so it should be split up in the future.
-// @TODO There should be a utf8-strict encoding that rejects invalid UTF-8 code
-// points as used by CESU-8.
-var StringDecoder = exports.StringDecoder = function(encoding) {
-  this.encoding = (encoding || 'utf8').toLowerCase().replace(/[-_]/, '');
-  assertEncoding(encoding);
-  switch (this.encoding) {
-    case 'utf8':
-      // CESU-8 represents each of Surrogate Pair by 3-bytes
-      this.surrogateSize = 3;
-      break;
-    case 'ucs2':
-    case 'utf16le':
-      // UTF-16 represents each of Surrogate Pair by 2-bytes
-      this.surrogateSize = 2;
-      this.detectIncompleteChar = utf16DetectIncompleteChar;
-      break;
-    case 'base64':
-      // Base-64 stores 3 bytes in 4 chars, and pads the remainder.
-      this.surrogateSize = 3;
-      this.detectIncompleteChar = base64DetectIncompleteChar;
-      break;
-    default:
-      this.write = passThroughWrite;
-      return;
-  }
-
-  // Enough space to store all bytes of a single character. UTF-8 needs 4
-  // bytes, but CESU-8 may require up to 6 (3 bytes per surrogate).
-  this.charBuffer = new Buffer(6);
-  // Number of bytes received for the current incomplete multi-byte character.
-  this.charReceived = 0;
-  // Number of bytes expected for the current incomplete multi-byte character.
-  this.charLength = 0;
-};
-
-
-// write decodes the given buffer and returns it as JS string that is
-// guaranteed to not contain any partial multi-byte characters. Any partial
-// character found at the end of the buffer is buffered up, and will be
-// returned when calling write again with the remaining bytes.
-//
-// Note: Converting a Buffer containing an orphan surrogate to a String
-// currently works, but converting a String to a Buffer (via `new Buffer`, or
-// Buffer#write) will replace incomplete surrogates with the unicode
-// replacement character. See https://codereview.chromium.org/121173009/ .
-StringDecoder.prototype.write = function(buffer) {
-  var charStr = '';
-  // if our last write ended with an incomplete multibyte character
-  while (this.charLength) {
-    // determine how many remaining bytes this buffer has to offer for this char
-    var available = (buffer.length >= this.charLength - this.charReceived) ?
-        this.charLength - this.charReceived :
-        buffer.length;
-
-    // add the new bytes to the char buffer
-    buffer.copy(this.charBuffer, this.charReceived, 0, available);
-    this.charReceived += available;
-
-    if (this.charReceived < this.charLength) {
-      // still not enough chars in this buffer? wait for more ...
-      return '';
-    }
-
-    // remove bytes belonging to the current character from the buffer
-    buffer = buffer.slice(available, buffer.length);
-
-    // get the character that was split
-    charStr = this.charBuffer.slice(0, this.charLength).toString(this.encoding);
-
-    // CESU-8: lead surrogate (D800-DBFF) is also the incomplete character
-    var charCode = charStr.charCodeAt(charStr.length - 1);
-    if (charCode >= 0xD800 && charCode <= 0xDBFF) {
-      this.charLength += this.surrogateSize;
-      charStr = '';
-      continue;
-    }
-    this.charReceived = this.charLength = 0;
-
-    // if there are no more bytes in this buffer, just emit our char
-    if (buffer.length === 0) {
-      return charStr;
-    }
-    break;
-  }
-
-  // determine and set charLength / charReceived
-  this.detectIncompleteChar(buffer);
-
-  var end = buffer.length;
-  if (this.charLength) {
-    // buffer the incomplete character bytes we got
-    buffer.copy(this.charBuffer, 0, buffer.length - this.charReceived, end);
-    end -= this.charReceived;
-  }
-
-  charStr += buffer.toString(this.encoding, 0, end);
-
-  var end = charStr.length - 1;
-  var charCode = charStr.charCodeAt(end);
-  // CESU-8: lead surrogate (D800-DBFF) is also the incomplete character
-  if (charCode >= 0xD800 && charCode <= 0xDBFF) {
-    var size = this.surrogateSize;
-    this.charLength += size;
-    this.charReceived += size;
-    this.charBuffer.copy(this.charBuffer, size, 0, size);
-    buffer.copy(this.charBuffer, 0, 0, size);
-    return charStr.substring(0, end);
-  }
-
-  // or just emit the charStr
-  return charStr;
-};
-
-// detectIncompleteChar determines if there is an incomplete UTF-8 character at
-// the end of the given buffer. If so, it sets this.charLength to the byte
-// length that character, and sets this.charReceived to the number of bytes
-// that are available for this character.
-StringDecoder.prototype.detectIncompleteChar = function(buffer) {
-  // determine how many bytes we have to check at the end of this buffer
-  var i = (buffer.length >= 3) ? 3 : buffer.length;
-
-  // Figure out if one of the last i bytes of our buffer announces an
-  // incomplete char.
-  for (; i > 0; i--) {
-    var c = buffer[buffer.length - i];
-
-    // See http://en.wikipedia.org/wiki/UTF-8#Description
-
-    // 110XXXXX
-    if (i == 1 && c >> 5 == 0x06) {
-      this.charLength = 2;
-      break;
-    }
-
-    // 1110XXXX
-    if (i <= 2 && c >> 4 == 0x0E) {
-      this.charLength = 3;
-      break;
-    }
-
-    // 11110XXX
-    if (i <= 3 && c >> 3 == 0x1E) {
-      this.charLength = 4;
-      break;
-    }
-  }
-  this.charReceived = i;
-};
-
-StringDecoder.prototype.end = function(buffer) {
-  var res = '';
-  if (buffer && buffer.length)
-    res = this.write(buffer);
-
-  if (this.charReceived) {
-    var cr = this.charReceived;
-    var buf = this.charBuffer;
-    var enc = this.encoding;
-    res += buf.slice(0, cr).toString(enc);
-  }
-
-  return res;
-};
-
-function passThroughWrite(buffer) {
-  return buffer.toString(this.encoding);
-}
-
-function utf16DetectIncompleteChar(buffer) {
-  this.charReceived = buffer.length % 2;
-  this.charLength = this.charReceived ? 2 : 0;
-}
-
-function base64DetectIncompleteChar(buffer) {
-  this.charReceived = buffer.length % 3;
-  this.charLength = this.charReceived ? 3 : 0;
-}
-
-},{"buffer":3}],27:[function(require,module,exports){
-module.exports = function isBuffer(arg) {
-  return arg && typeof arg === 'object'
-    && typeof arg.copy === 'function'
-    && typeof arg.fill === 'function'
-    && typeof arg.readUInt8 === 'function';
-}
-},{}],28:[function(require,module,exports){
-(function (process,global){
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-var formatRegExp = /%[sdj%]/g;
-exports.format = function(f) {
-  if (!isString(f)) {
-    var objects = [];
-    for (var i = 0; i < arguments.length; i++) {
-      objects.push(inspect(arguments[i]));
-    }
-    return objects.join(' ');
-  }
-
-  var i = 1;
-  var args = arguments;
-  var len = args.length;
-  var str = String(f).replace(formatRegExp, function(x) {
-    if (x === '%%') return '%';
-    if (i >= len) return x;
-    switch (x) {
-      case '%s': return String(args[i++]);
-      case '%d': return Number(args[i++]);
-      case '%j':
-        try {
-          return JSON.stringify(args[i++]);
-        } catch (_) {
-          return '[Circular]';
-        }
-      default:
-        return x;
-    }
-  });
-  for (var x = args[i]; i < len; x = args[++i]) {
-    if (isNull(x) || !isObject(x)) {
-      str += ' ' + x;
-    } else {
-      str += ' ' + inspect(x);
-    }
-  }
-  return str;
-};
-
-
-// Mark that a method should not be used.
-// Returns a modified function which warns once by default.
-// If --no-deprecation is set, then it is a no-op.
-exports.deprecate = function(fn, msg) {
-  // Allow for deprecating things in the process of starting up.
-  if (isUndefined(global.process)) {
-    return function() {
-      return exports.deprecate(fn, msg).apply(this, arguments);
-    };
-  }
-
-  if (process.noDeprecation === true) {
-    return fn;
-  }
-
-  var warned = false;
-  function deprecated() {
-    if (!warned) {
-      if (process.throwDeprecation) {
-        throw new Error(msg);
-      } else if (process.traceDeprecation) {
-        console.trace(msg);
-      } else {
-        console.error(msg);
-      }
-      warned = true;
-    }
-    return fn.apply(this, arguments);
-  }
-
-  return deprecated;
-};
-
-
-var debugs = {};
-var debugEnviron;
-exports.debuglog = function(set) {
-  if (isUndefined(debugEnviron))
-    debugEnviron = process.env.NODE_DEBUG || '';
-  set = set.toUpperCase();
-  if (!debugs[set]) {
-    if (new RegExp('\\b' + set + '\\b', 'i').test(debugEnviron)) {
-      var pid = process.pid;
-      debugs[set] = function() {
-        var msg = exports.format.apply(exports, arguments);
-        console.error('%s %d: %s', set, pid, msg);
-      };
-    } else {
-      debugs[set] = function() {};
-    }
-  }
-  return debugs[set];
-};
-
-
-/**
- * Echos the value of a value. Trys to print the value out
- * in the best way possible given the different types.
- *
- * @param {Object} obj The object to print out.
- * @param {Object} opts Optional options object that alters the output.
- */
-/* legacy: obj, showHidden, depth, colors*/
-function inspect(obj, opts) {
-  // default options
-  var ctx = {
-    seen: [],
-    stylize: stylizeNoColor
-  };
-  // legacy...
-  if (arguments.length >= 3) ctx.depth = arguments[2];
-  if (arguments.length >= 4) ctx.colors = arguments[3];
-  if (isBoolean(opts)) {
-    // legacy...
-    ctx.showHidden = opts;
-  } else if (opts) {
-    // got an "options" object
-    exports._extend(ctx, opts);
-  }
-  // set default options
-  if (isUndefined(ctx.showHidden)) ctx.showHidden = false;
-  if (isUndefined(ctx.depth)) ctx.depth = 2;
-  if (isUndefined(ctx.colors)) ctx.colors = false;
-  if (isUndefined(ctx.customInspect)) ctx.customInspect = true;
-  if (ctx.colors) ctx.stylize = stylizeWithColor;
-  return formatValue(ctx, obj, ctx.depth);
-}
-exports.inspect = inspect;
-
-
-// http://en.wikipedia.org/wiki/ANSI_escape_code#graphics
-inspect.colors = {
-  'bold' : [1, 22],
-  'italic' : [3, 23],
-  'underline' : [4, 24],
-  'inverse' : [7, 27],
-  'white' : [37, 39],
-  'grey' : [90, 39],
-  'black' : [30, 39],
-  'blue' : [34, 39],
-  'cyan' : [36, 39],
-  'green' : [32, 39],
-  'magenta' : [35, 39],
-  'red' : [31, 39],
-  'yellow' : [33, 39]
-};
-
-// Don't use 'blue' not visible on cmd.exe
-inspect.styles = {
-  'special': 'cyan',
-  'number': 'yellow',
-  'boolean': 'yellow',
-  'undefined': 'grey',
-  'null': 'bold',
-  'string': 'green',
-  'date': 'magenta',
-  // "name": intentionally not styling
-  'regexp': 'red'
-};
-
-
-function stylizeWithColor(str, styleType) {
-  var style = inspect.styles[styleType];
-
-  if (style) {
-    return '\u001b[' + inspect.colors[style][0] + 'm' + str +
-           '\u001b[' + inspect.colors[style][1] + 'm';
-  } else {
-    return str;
-  }
-}
-
-
-function stylizeNoColor(str, styleType) {
-  return str;
-}
-
-
-function arrayToHash(array) {
-  var hash = {};
-
-  array.forEach(function(val, idx) {
-    hash[val] = true;
-  });
-
-  return hash;
-}
-
-
-function formatValue(ctx, value, recurseTimes) {
-  // Provide a hook for user-specified inspect functions.
-  // Check that value is an object with an inspect function on it
-  if (ctx.customInspect &&
-      value &&
-      isFunction(value.inspect) &&
-      // Filter out the util module, it's inspect function is special
-      value.inspect !== exports.inspect &&
-      // Also filter out any prototype objects using the circular check.
-      !(value.constructor && value.constructor.prototype === value)) {
-    var ret = value.inspect(recurseTimes, ctx);
-    if (!isString(ret)) {
-      ret = formatValue(ctx, ret, recurseTimes);
-    }
-    return ret;
-  }
-
-  // Primitive types cannot have properties
-  var primitive = formatPrimitive(ctx, value);
-  if (primitive) {
-    return primitive;
-  }
-
-  // Look up the keys of the object.
-  var keys = Object.keys(value);
-  var visibleKeys = arrayToHash(keys);
-
-  if (ctx.showHidden) {
-    keys = Object.getOwnPropertyNames(value);
-  }
-
-  // IE doesn't make error fields non-enumerable
-  // http://msdn.microsoft.com/en-us/library/ie/dww52sbt(v=vs.94).aspx
-  if (isError(value)
-      && (keys.indexOf('message') >= 0 || keys.indexOf('description') >= 0)) {
-    return formatError(value);
-  }
-
-  // Some type of object without properties can be shortcutted.
-  if (keys.length === 0) {
-    if (isFunction(value)) {
-      var name = value.name ? ': ' + value.name : '';
-      return ctx.stylize('[Function' + name + ']', 'special');
-    }
-    if (isRegExp(value)) {
-      return ctx.stylize(RegExp.prototype.toString.call(value), 'regexp');
-    }
-    if (isDate(value)) {
-      return ctx.stylize(Date.prototype.toString.call(value), 'date');
-    }
-    if (isError(value)) {
-      return formatError(value);
-    }
-  }
-
-  var base = '', array = false, braces = ['{', '}'];
-
-  // Make Array say that they are Array
-  if (isArray(value)) {
-    array = true;
-    braces = ['[', ']'];
-  }
-
-  // Make functions say that they are functions
-  if (isFunction(value)) {
-    var n = value.name ? ': ' + value.name : '';
-    base = ' [Function' + n + ']';
-  }
-
-  // Make RegExps say that they are RegExps
-  if (isRegExp(value)) {
-    base = ' ' + RegExp.prototype.toString.call(value);
-  }
-
-  // Make dates with properties first say the date
-  if (isDate(value)) {
-    base = ' ' + Date.prototype.toUTCString.call(value);
-  }
-
-  // Make error with message first say the error
-  if (isError(value)) {
-    base = ' ' + formatError(value);
-  }
-
-  if (keys.length === 0 && (!array || value.length == 0)) {
-    return braces[0] + base + braces[1];
-  }
-
-  if (recurseTimes < 0) {
-    if (isRegExp(value)) {
-      return ctx.stylize(RegExp.prototype.toString.call(value), 'regexp');
-    } else {
-      return ctx.stylize('[Object]', 'special');
-    }
-  }
-
-  ctx.seen.push(value);
-
-  var output;
-  if (array) {
-    output = formatArray(ctx, value, recurseTimes, visibleKeys, keys);
-  } else {
-    output = keys.map(function(key) {
-      return formatProperty(ctx, value, recurseTimes, visibleKeys, key, array);
-    });
-  }
-
-  ctx.seen.pop();
-
-  return reduceToSingleString(output, base, braces);
-}
-
-
-function formatPrimitive(ctx, value) {
-  if (isUndefined(value))
-    return ctx.stylize('undefined', 'undefined');
-  if (isString(value)) {
-    var simple = '\'' + JSON.stringify(value).replace(/^"|"$/g, '')
-                                             .replace(/'/g, "\\'")
-                                             .replace(/\\"/g, '"') + '\'';
-    return ctx.stylize(simple, 'string');
-  }
-  if (isNumber(value))
-    return ctx.stylize('' + value, 'number');
-  if (isBoolean(value))
-    return ctx.stylize('' + value, 'boolean');
-  // For some reason typeof null is "object", so special case here.
-  if (isNull(value))
-    return ctx.stylize('null', 'null');
-}
-
-
-function formatError(value) {
-  return '[' + Error.prototype.toString.call(value) + ']';
-}
-
-
-function formatArray(ctx, value, recurseTimes, visibleKeys, keys) {
-  var output = [];
-  for (var i = 0, l = value.length; i < l; ++i) {
-    if (hasOwnProperty(value, String(i))) {
-      output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
-          String(i), true));
-    } else {
-      output.push('');
-    }
-  }
-  keys.forEach(function(key) {
-    if (!key.match(/^\d+$/)) {
-      output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
-          key, true));
-    }
-  });
-  return output;
-}
-
-
-function formatProperty(ctx, value, recurseTimes, visibleKeys, key, array) {
-  var name, str, desc;
-  desc = Object.getOwnPropertyDescriptor(value, key) || { value: value[key] };
-  if (desc.get) {
-    if (desc.set) {
-      str = ctx.stylize('[Getter/Setter]', 'special');
-    } else {
-      str = ctx.stylize('[Getter]', 'special');
-    }
-  } else {
-    if (desc.set) {
-      str = ctx.stylize('[Setter]', 'special');
-    }
-  }
-  if (!hasOwnProperty(visibleKeys, key)) {
-    name = '[' + key + ']';
-  }
-  if (!str) {
-    if (ctx.seen.indexOf(desc.value) < 0) {
-      if (isNull(recurseTimes)) {
-        str = formatValue(ctx, desc.value, null);
-      } else {
-        str = formatValue(ctx, desc.value, recurseTimes - 1);
-      }
-      if (str.indexOf('\n') > -1) {
-        if (array) {
-          str = str.split('\n').map(function(line) {
-            return '  ' + line;
-          }).join('\n').substr(2);
-        } else {
-          str = '\n' + str.split('\n').map(function(line) {
-            return '   ' + line;
-          }).join('\n');
-        }
-      }
-    } else {
-      str = ctx.stylize('[Circular]', 'special');
-    }
-  }
-  if (isUndefined(name)) {
-    if (array && key.match(/^\d+$/)) {
-      return str;
-    }
-    name = JSON.stringify('' + key);
-    if (name.match(/^"([a-zA-Z_][a-zA-Z_0-9]*)"$/)) {
-      name = name.substr(1, name.length - 2);
-      name = ctx.stylize(name, 'name');
-    } else {
-      name = name.replace(/'/g, "\\'")
-                 .replace(/\\"/g, '"')
-                 .replace(/(^"|"$)/g, "'");
-      name = ctx.stylize(name, 'string');
-    }
-  }
-
-  return name + ': ' + str;
-}
-
-
-function reduceToSingleString(output, base, braces) {
-  var numLinesEst = 0;
-  var length = output.reduce(function(prev, cur) {
-    numLinesEst++;
-    if (cur.indexOf('\n') >= 0) numLinesEst++;
-    return prev + cur.replace(/\u001b\[\d\d?m/g, '').length + 1;
-  }, 0);
-
-  if (length > 60) {
-    return braces[0] +
-           (base === '' ? '' : base + '\n ') +
-           ' ' +
-           output.join(',\n  ') +
-           ' ' +
-           braces[1];
-  }
-
-  return braces[0] + base + ' ' + output.join(', ') + ' ' + braces[1];
-}
-
-
-// NOTE: These type checking functions intentionally don't use `instanceof`
-// because it is fragile and can be easily faked with `Object.create()`.
-function isArray(ar) {
-  return Array.isArray(ar);
-}
-exports.isArray = isArray;
-
-function isBoolean(arg) {
-  return typeof arg === 'boolean';
-}
-exports.isBoolean = isBoolean;
-
-function isNull(arg) {
-  return arg === null;
-}
-exports.isNull = isNull;
-
-function isNullOrUndefined(arg) {
-  return arg == null;
-}
-exports.isNullOrUndefined = isNullOrUndefined;
-
-function isNumber(arg) {
-  return typeof arg === 'number';
-}
-exports.isNumber = isNumber;
-
-function isString(arg) {
-  return typeof arg === 'string';
-}
-exports.isString = isString;
-
-function isSymbol(arg) {
-  return typeof arg === 'symbol';
-}
-exports.isSymbol = isSymbol;
-
-function isUndefined(arg) {
-  return arg === void 0;
-}
-exports.isUndefined = isUndefined;
-
-function isRegExp(re) {
-  return isObject(re) && objectToString(re) === '[object RegExp]';
-}
-exports.isRegExp = isRegExp;
-
-function isObject(arg) {
-  return typeof arg === 'object' && arg !== null;
-}
-exports.isObject = isObject;
-
-function isDate(d) {
-  return isObject(d) && objectToString(d) === '[object Date]';
-}
-exports.isDate = isDate;
-
-function isError(e) {
-  return isObject(e) &&
-      (objectToString(e) === '[object Error]' || e instanceof Error);
-}
-exports.isError = isError;
-
-function isFunction(arg) {
-  return typeof arg === 'function';
-}
-exports.isFunction = isFunction;
-
-function isPrimitive(arg) {
-  return arg === null ||
-         typeof arg === 'boolean' ||
-         typeof arg === 'number' ||
-         typeof arg === 'string' ||
-         typeof arg === 'symbol' ||  // ES6 symbol
-         typeof arg === 'undefined';
-}
-exports.isPrimitive = isPrimitive;
-
-exports.isBuffer = require('./support/isBuffer');
-
-function objectToString(o) {
-  return Object.prototype.toString.call(o);
-}
-
-
-function pad(n) {
-  return n < 10 ? '0' + n.toString(10) : n.toString(10);
-}
-
-
-var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
-              'Oct', 'Nov', 'Dec'];
-
-// 26 Feb 16:19:34
-function timestamp() {
-  var d = new Date();
-  var time = [pad(d.getHours()),
-              pad(d.getMinutes()),
-              pad(d.getSeconds())].join(':');
-  return [d.getDate(), months[d.getMonth()], time].join(' ');
-}
-
-
-// log is just a thin wrapper to console.log that prepends a timestamp
-exports.log = function() {
-  console.log('%s - %s', timestamp(), exports.format.apply(exports, arguments));
-};
-
-
-/**
- * Inherit the prototype methods from one constructor into another.
- *
- * The Function.prototype.inherits from lang.js rewritten as a standalone
- * function (not on Function.prototype). NOTE: If this file is to be loaded
- * during bootstrapping this function needs to be rewritten using some native
- * functions as prototype setup using normal JavaScript does not work as
- * expected during bootstrapping (see mirror.js in r114903).
- *
- * @param {function} ctor Constructor function which needs to inherit the
- *     prototype.
- * @param {function} superCtor Constructor function to inherit prototype from.
- */
-exports.inherits = require('inherits');
-
-exports._extend = function(origin, add) {
-  // Don't do anything if add isn't an object
-  if (!add || !isObject(add)) return origin;
-
-  var keys = Object.keys(add);
-  var i = keys.length;
-  while (i--) {
-    origin[keys[i]] = add[keys[i]];
-  }
-  return origin;
-};
-
-function hasOwnProperty(obj, prop) {
-  return Object.prototype.hasOwnProperty.call(obj, prop);
-}
-
-}).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":27,"_process":11,"inherits":8}],29:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 // Ignore module for browserify (see package.json)
-},{}],30:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 (function (process,global,__dirname){
 /**
  * A JavaScript implementation of the JSON-LD API.
@@ -14471,970 +12449,7 @@ return factory;
 })();
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},"/node_modules/jsonld/js")
-},{"_process":11,"crypto":29,"es6-promise":31,"http":29,"jsonld-request":29,"pkginfo":29,"request":29,"util":29,"xmldom":29}],31:[function(require,module,exports){
-(function (process,global){
-/*!
- * @overview es6-promise - a tiny implementation of Promises/A+.
- * @copyright Copyright (c) 2014 Yehuda Katz, Tom Dale, Stefan Penner and contributors (Conversion to ES6 API by Jake Archibald)
- * @license   Licensed under MIT license
- *            See https://raw.githubusercontent.com/jakearchibald/es6-promise/master/LICENSE
- * @version   2.0.1
- */
-
-(function() {
-    "use strict";
-
-    function $$utils$$objectOrFunction(x) {
-      return typeof x === 'function' || (typeof x === 'object' && x !== null);
-    }
-
-    function $$utils$$isFunction(x) {
-      return typeof x === 'function';
-    }
-
-    function $$utils$$isMaybeThenable(x) {
-      return typeof x === 'object' && x !== null;
-    }
-
-    var $$utils$$_isArray;
-
-    if (!Array.isArray) {
-      $$utils$$_isArray = function (x) {
-        return Object.prototype.toString.call(x) === '[object Array]';
-      };
-    } else {
-      $$utils$$_isArray = Array.isArray;
-    }
-
-    var $$utils$$isArray = $$utils$$_isArray;
-    var $$utils$$now = Date.now || function() { return new Date().getTime(); };
-    function $$utils$$F() { }
-
-    var $$utils$$o_create = (Object.create || function (o) {
-      if (arguments.length > 1) {
-        throw new Error('Second argument not supported');
-      }
-      if (typeof o !== 'object') {
-        throw new TypeError('Argument must be an object');
-      }
-      $$utils$$F.prototype = o;
-      return new $$utils$$F();
-    });
-
-    var $$asap$$len = 0;
-
-    var $$asap$$default = function asap(callback, arg) {
-      $$asap$$queue[$$asap$$len] = callback;
-      $$asap$$queue[$$asap$$len + 1] = arg;
-      $$asap$$len += 2;
-      if ($$asap$$len === 2) {
-        // If len is 1, that means that we need to schedule an async flush.
-        // If additional callbacks are queued before the queue is flushed, they
-        // will be processed by this flush that we are scheduling.
-        $$asap$$scheduleFlush();
-      }
-    };
-
-    var $$asap$$browserGlobal = (typeof window !== 'undefined') ? window : {};
-    var $$asap$$BrowserMutationObserver = $$asap$$browserGlobal.MutationObserver || $$asap$$browserGlobal.WebKitMutationObserver;
-
-    // test for web worker but not in IE10
-    var $$asap$$isWorker = typeof Uint8ClampedArray !== 'undefined' &&
-      typeof importScripts !== 'undefined' &&
-      typeof MessageChannel !== 'undefined';
-
-    // node
-    function $$asap$$useNextTick() {
-      return function() {
-        process.nextTick($$asap$$flush);
-      };
-    }
-
-    function $$asap$$useMutationObserver() {
-      var iterations = 0;
-      var observer = new $$asap$$BrowserMutationObserver($$asap$$flush);
-      var node = document.createTextNode('');
-      observer.observe(node, { characterData: true });
-
-      return function() {
-        node.data = (iterations = ++iterations % 2);
-      };
-    }
-
-    // web worker
-    function $$asap$$useMessageChannel() {
-      var channel = new MessageChannel();
-      channel.port1.onmessage = $$asap$$flush;
-      return function () {
-        channel.port2.postMessage(0);
-      };
-    }
-
-    function $$asap$$useSetTimeout() {
-      return function() {
-        setTimeout($$asap$$flush, 1);
-      };
-    }
-
-    var $$asap$$queue = new Array(1000);
-
-    function $$asap$$flush() {
-      for (var i = 0; i < $$asap$$len; i+=2) {
-        var callback = $$asap$$queue[i];
-        var arg = $$asap$$queue[i+1];
-
-        callback(arg);
-
-        $$asap$$queue[i] = undefined;
-        $$asap$$queue[i+1] = undefined;
-      }
-
-      $$asap$$len = 0;
-    }
-
-    var $$asap$$scheduleFlush;
-
-    // Decide what async method to use to triggering processing of queued callbacks:
-    if (typeof process !== 'undefined' && {}.toString.call(process) === '[object process]') {
-      $$asap$$scheduleFlush = $$asap$$useNextTick();
-    } else if ($$asap$$BrowserMutationObserver) {
-      $$asap$$scheduleFlush = $$asap$$useMutationObserver();
-    } else if ($$asap$$isWorker) {
-      $$asap$$scheduleFlush = $$asap$$useMessageChannel();
-    } else {
-      $$asap$$scheduleFlush = $$asap$$useSetTimeout();
-    }
-
-    function $$$internal$$noop() {}
-    var $$$internal$$PENDING   = void 0;
-    var $$$internal$$FULFILLED = 1;
-    var $$$internal$$REJECTED  = 2;
-    var $$$internal$$GET_THEN_ERROR = new $$$internal$$ErrorObject();
-
-    function $$$internal$$selfFullfillment() {
-      return new TypeError("You cannot resolve a promise with itself");
-    }
-
-    function $$$internal$$cannotReturnOwn() {
-      return new TypeError('A promises callback cannot return that same promise.')
-    }
-
-    function $$$internal$$getThen(promise) {
-      try {
-        return promise.then;
-      } catch(error) {
-        $$$internal$$GET_THEN_ERROR.error = error;
-        return $$$internal$$GET_THEN_ERROR;
-      }
-    }
-
-    function $$$internal$$tryThen(then, value, fulfillmentHandler, rejectionHandler) {
-      try {
-        then.call(value, fulfillmentHandler, rejectionHandler);
-      } catch(e) {
-        return e;
-      }
-    }
-
-    function $$$internal$$handleForeignThenable(promise, thenable, then) {
-       $$asap$$default(function(promise) {
-        var sealed = false;
-        var error = $$$internal$$tryThen(then, thenable, function(value) {
-          if (sealed) { return; }
-          sealed = true;
-          if (thenable !== value) {
-            $$$internal$$resolve(promise, value);
-          } else {
-            $$$internal$$fulfill(promise, value);
-          }
-        }, function(reason) {
-          if (sealed) { return; }
-          sealed = true;
-
-          $$$internal$$reject(promise, reason);
-        }, 'Settle: ' + (promise._label || ' unknown promise'));
-
-        if (!sealed && error) {
-          sealed = true;
-          $$$internal$$reject(promise, error);
-        }
-      }, promise);
-    }
-
-    function $$$internal$$handleOwnThenable(promise, thenable) {
-      if (thenable._state === $$$internal$$FULFILLED) {
-        $$$internal$$fulfill(promise, thenable._result);
-      } else if (promise._state === $$$internal$$REJECTED) {
-        $$$internal$$reject(promise, thenable._result);
-      } else {
-        $$$internal$$subscribe(thenable, undefined, function(value) {
-          $$$internal$$resolve(promise, value);
-        }, function(reason) {
-          $$$internal$$reject(promise, reason);
-        });
-      }
-    }
-
-    function $$$internal$$handleMaybeThenable(promise, maybeThenable) {
-      if (maybeThenable.constructor === promise.constructor) {
-        $$$internal$$handleOwnThenable(promise, maybeThenable);
-      } else {
-        var then = $$$internal$$getThen(maybeThenable);
-
-        if (then === $$$internal$$GET_THEN_ERROR) {
-          $$$internal$$reject(promise, $$$internal$$GET_THEN_ERROR.error);
-        } else if (then === undefined) {
-          $$$internal$$fulfill(promise, maybeThenable);
-        } else if ($$utils$$isFunction(then)) {
-          $$$internal$$handleForeignThenable(promise, maybeThenable, then);
-        } else {
-          $$$internal$$fulfill(promise, maybeThenable);
-        }
-      }
-    }
-
-    function $$$internal$$resolve(promise, value) {
-      if (promise === value) {
-        $$$internal$$reject(promise, $$$internal$$selfFullfillment());
-      } else if ($$utils$$objectOrFunction(value)) {
-        $$$internal$$handleMaybeThenable(promise, value);
-      } else {
-        $$$internal$$fulfill(promise, value);
-      }
-    }
-
-    function $$$internal$$publishRejection(promise) {
-      if (promise._onerror) {
-        promise._onerror(promise._result);
-      }
-
-      $$$internal$$publish(promise);
-    }
-
-    function $$$internal$$fulfill(promise, value) {
-      if (promise._state !== $$$internal$$PENDING) { return; }
-
-      promise._result = value;
-      promise._state = $$$internal$$FULFILLED;
-
-      if (promise._subscribers.length === 0) {
-      } else {
-        $$asap$$default($$$internal$$publish, promise);
-      }
-    }
-
-    function $$$internal$$reject(promise, reason) {
-      if (promise._state !== $$$internal$$PENDING) { return; }
-      promise._state = $$$internal$$REJECTED;
-      promise._result = reason;
-
-      $$asap$$default($$$internal$$publishRejection, promise);
-    }
-
-    function $$$internal$$subscribe(parent, child, onFulfillment, onRejection) {
-      var subscribers = parent._subscribers;
-      var length = subscribers.length;
-
-      parent._onerror = null;
-
-      subscribers[length] = child;
-      subscribers[length + $$$internal$$FULFILLED] = onFulfillment;
-      subscribers[length + $$$internal$$REJECTED]  = onRejection;
-
-      if (length === 0 && parent._state) {
-        $$asap$$default($$$internal$$publish, parent);
-      }
-    }
-
-    function $$$internal$$publish(promise) {
-      var subscribers = promise._subscribers;
-      var settled = promise._state;
-
-      if (subscribers.length === 0) { return; }
-
-      var child, callback, detail = promise._result;
-
-      for (var i = 0; i < subscribers.length; i += 3) {
-        child = subscribers[i];
-        callback = subscribers[i + settled];
-
-        if (child) {
-          $$$internal$$invokeCallback(settled, child, callback, detail);
-        } else {
-          callback(detail);
-        }
-      }
-
-      promise._subscribers.length = 0;
-    }
-
-    function $$$internal$$ErrorObject() {
-      this.error = null;
-    }
-
-    var $$$internal$$TRY_CATCH_ERROR = new $$$internal$$ErrorObject();
-
-    function $$$internal$$tryCatch(callback, detail) {
-      try {
-        return callback(detail);
-      } catch(e) {
-        $$$internal$$TRY_CATCH_ERROR.error = e;
-        return $$$internal$$TRY_CATCH_ERROR;
-      }
-    }
-
-    function $$$internal$$invokeCallback(settled, promise, callback, detail) {
-      var hasCallback = $$utils$$isFunction(callback),
-          value, error, succeeded, failed;
-
-      if (hasCallback) {
-        value = $$$internal$$tryCatch(callback, detail);
-
-        if (value === $$$internal$$TRY_CATCH_ERROR) {
-          failed = true;
-          error = value.error;
-          value = null;
-        } else {
-          succeeded = true;
-        }
-
-        if (promise === value) {
-          $$$internal$$reject(promise, $$$internal$$cannotReturnOwn());
-          return;
-        }
-
-      } else {
-        value = detail;
-        succeeded = true;
-      }
-
-      if (promise._state !== $$$internal$$PENDING) {
-        // noop
-      } else if (hasCallback && succeeded) {
-        $$$internal$$resolve(promise, value);
-      } else if (failed) {
-        $$$internal$$reject(promise, error);
-      } else if (settled === $$$internal$$FULFILLED) {
-        $$$internal$$fulfill(promise, value);
-      } else if (settled === $$$internal$$REJECTED) {
-        $$$internal$$reject(promise, value);
-      }
-    }
-
-    function $$$internal$$initializePromise(promise, resolver) {
-      try {
-        resolver(function resolvePromise(value){
-          $$$internal$$resolve(promise, value);
-        }, function rejectPromise(reason) {
-          $$$internal$$reject(promise, reason);
-        });
-      } catch(e) {
-        $$$internal$$reject(promise, e);
-      }
-    }
-
-    function $$$enumerator$$makeSettledResult(state, position, value) {
-      if (state === $$$internal$$FULFILLED) {
-        return {
-          state: 'fulfilled',
-          value: value
-        };
-      } else {
-        return {
-          state: 'rejected',
-          reason: value
-        };
-      }
-    }
-
-    function $$$enumerator$$Enumerator(Constructor, input, abortOnReject, label) {
-      this._instanceConstructor = Constructor;
-      this.promise = new Constructor($$$internal$$noop, label);
-      this._abortOnReject = abortOnReject;
-
-      if (this._validateInput(input)) {
-        this._input     = input;
-        this.length     = input.length;
-        this._remaining = input.length;
-
-        this._init();
-
-        if (this.length === 0) {
-          $$$internal$$fulfill(this.promise, this._result);
-        } else {
-          this.length = this.length || 0;
-          this._enumerate();
-          if (this._remaining === 0) {
-            $$$internal$$fulfill(this.promise, this._result);
-          }
-        }
-      } else {
-        $$$internal$$reject(this.promise, this._validationError());
-      }
-    }
-
-    $$$enumerator$$Enumerator.prototype._validateInput = function(input) {
-      return $$utils$$isArray(input);
-    };
-
-    $$$enumerator$$Enumerator.prototype._validationError = function() {
-      return new Error('Array Methods must be provided an Array');
-    };
-
-    $$$enumerator$$Enumerator.prototype._init = function() {
-      this._result = new Array(this.length);
-    };
-
-    var $$$enumerator$$default = $$$enumerator$$Enumerator;
-
-    $$$enumerator$$Enumerator.prototype._enumerate = function() {
-      var length  = this.length;
-      var promise = this.promise;
-      var input   = this._input;
-
-      for (var i = 0; promise._state === $$$internal$$PENDING && i < length; i++) {
-        this._eachEntry(input[i], i);
-      }
-    };
-
-    $$$enumerator$$Enumerator.prototype._eachEntry = function(entry, i) {
-      var c = this._instanceConstructor;
-      if ($$utils$$isMaybeThenable(entry)) {
-        if (entry.constructor === c && entry._state !== $$$internal$$PENDING) {
-          entry._onerror = null;
-          this._settledAt(entry._state, i, entry._result);
-        } else {
-          this._willSettleAt(c.resolve(entry), i);
-        }
-      } else {
-        this._remaining--;
-        this._result[i] = this._makeResult($$$internal$$FULFILLED, i, entry);
-      }
-    };
-
-    $$$enumerator$$Enumerator.prototype._settledAt = function(state, i, value) {
-      var promise = this.promise;
-
-      if (promise._state === $$$internal$$PENDING) {
-        this._remaining--;
-
-        if (this._abortOnReject && state === $$$internal$$REJECTED) {
-          $$$internal$$reject(promise, value);
-        } else {
-          this._result[i] = this._makeResult(state, i, value);
-        }
-      }
-
-      if (this._remaining === 0) {
-        $$$internal$$fulfill(promise, this._result);
-      }
-    };
-
-    $$$enumerator$$Enumerator.prototype._makeResult = function(state, i, value) {
-      return value;
-    };
-
-    $$$enumerator$$Enumerator.prototype._willSettleAt = function(promise, i) {
-      var enumerator = this;
-
-      $$$internal$$subscribe(promise, undefined, function(value) {
-        enumerator._settledAt($$$internal$$FULFILLED, i, value);
-      }, function(reason) {
-        enumerator._settledAt($$$internal$$REJECTED, i, reason);
-      });
-    };
-
-    var $$promise$all$$default = function all(entries, label) {
-      return new $$$enumerator$$default(this, entries, true /* abort on reject */, label).promise;
-    };
-
-    var $$promise$race$$default = function race(entries, label) {
-      /*jshint validthis:true */
-      var Constructor = this;
-
-      var promise = new Constructor($$$internal$$noop, label);
-
-      if (!$$utils$$isArray(entries)) {
-        $$$internal$$reject(promise, new TypeError('You must pass an array to race.'));
-        return promise;
-      }
-
-      var length = entries.length;
-
-      function onFulfillment(value) {
-        $$$internal$$resolve(promise, value);
-      }
-
-      function onRejection(reason) {
-        $$$internal$$reject(promise, reason);
-      }
-
-      for (var i = 0; promise._state === $$$internal$$PENDING && i < length; i++) {
-        $$$internal$$subscribe(Constructor.resolve(entries[i]), undefined, onFulfillment, onRejection);
-      }
-
-      return promise;
-    };
-
-    var $$promise$resolve$$default = function resolve(object, label) {
-      /*jshint validthis:true */
-      var Constructor = this;
-
-      if (object && typeof object === 'object' && object.constructor === Constructor) {
-        return object;
-      }
-
-      var promise = new Constructor($$$internal$$noop, label);
-      $$$internal$$resolve(promise, object);
-      return promise;
-    };
-
-    var $$promise$reject$$default = function reject(reason, label) {
-      /*jshint validthis:true */
-      var Constructor = this;
-      var promise = new Constructor($$$internal$$noop, label);
-      $$$internal$$reject(promise, reason);
-      return promise;
-    };
-
-    var $$es6$promise$promise$$counter = 0;
-
-    function $$es6$promise$promise$$needsResolver() {
-      throw new TypeError('You must pass a resolver function as the first argument to the promise constructor');
-    }
-
-    function $$es6$promise$promise$$needsNew() {
-      throw new TypeError("Failed to construct 'Promise': Please use the 'new' operator, this object constructor cannot be called as a function.");
-    }
-
-    var $$es6$promise$promise$$default = $$es6$promise$promise$$Promise;
-
-    /**
-      Promise objects represent the eventual result of an asynchronous operation. The
-      primary way of interacting with a promise is through its `then` method, which
-      registers callbacks to receive either a promise’s eventual value or the reason
-      why the promise cannot be fulfilled.
-
-      Terminology
-      -----------
-
-      - `promise` is an object or function with a `then` method whose behavior conforms to this specification.
-      - `thenable` is an object or function that defines a `then` method.
-      - `value` is any legal JavaScript value (including undefined, a thenable, or a promise).
-      - `exception` is a value that is thrown using the throw statement.
-      - `reason` is a value that indicates why a promise was rejected.
-      - `settled` the final resting state of a promise, fulfilled or rejected.
-
-      A promise can be in one of three states: pending, fulfilled, or rejected.
-
-      Promises that are fulfilled have a fulfillment value and are in the fulfilled
-      state.  Promises that are rejected have a rejection reason and are in the
-      rejected state.  A fulfillment value is never a thenable.
-
-      Promises can also be said to *resolve* a value.  If this value is also a
-      promise, then the original promise's settled state will match the value's
-      settled state.  So a promise that *resolves* a promise that rejects will
-      itself reject, and a promise that *resolves* a promise that fulfills will
-      itself fulfill.
-
-
-      Basic Usage:
-      ------------
-
-      ```js
-      var promise = new Promise(function(resolve, reject) {
-        // on success
-        resolve(value);
-
-        // on failure
-        reject(reason);
-      });
-
-      promise.then(function(value) {
-        // on fulfillment
-      }, function(reason) {
-        // on rejection
-      });
-      ```
-
-      Advanced Usage:
-      ---------------
-
-      Promises shine when abstracting away asynchronous interactions such as
-      `XMLHttpRequest`s.
-
-      ```js
-      function getJSON(url) {
-        return new Promise(function(resolve, reject){
-          var xhr = new XMLHttpRequest();
-
-          xhr.open('GET', url);
-          xhr.onreadystatechange = handler;
-          xhr.responseType = 'json';
-          xhr.setRequestHeader('Accept', 'application/json');
-          xhr.send();
-
-          function handler() {
-            if (this.readyState === this.DONE) {
-              if (this.status === 200) {
-                resolve(this.response);
-              } else {
-                reject(new Error('getJSON: `' + url + '` failed with status: [' + this.status + ']'));
-              }
-            }
-          };
-        });
-      }
-
-      getJSON('/posts.json').then(function(json) {
-        // on fulfillment
-      }, function(reason) {
-        // on rejection
-      });
-      ```
-
-      Unlike callbacks, promises are great composable primitives.
-
-      ```js
-      Promise.all([
-        getJSON('/posts'),
-        getJSON('/comments')
-      ]).then(function(values){
-        values[0] // => postsJSON
-        values[1] // => commentsJSON
-
-        return values;
-      });
-      ```
-
-      @class Promise
-      @param {function} resolver
-      Useful for tooling.
-      @constructor
-    */
-    function $$es6$promise$promise$$Promise(resolver) {
-      this._id = $$es6$promise$promise$$counter++;
-      this._state = undefined;
-      this._result = undefined;
-      this._subscribers = [];
-
-      if ($$$internal$$noop !== resolver) {
-        if (!$$utils$$isFunction(resolver)) {
-          $$es6$promise$promise$$needsResolver();
-        }
-
-        if (!(this instanceof $$es6$promise$promise$$Promise)) {
-          $$es6$promise$promise$$needsNew();
-        }
-
-        $$$internal$$initializePromise(this, resolver);
-      }
-    }
-
-    $$es6$promise$promise$$Promise.all = $$promise$all$$default;
-    $$es6$promise$promise$$Promise.race = $$promise$race$$default;
-    $$es6$promise$promise$$Promise.resolve = $$promise$resolve$$default;
-    $$es6$promise$promise$$Promise.reject = $$promise$reject$$default;
-
-    $$es6$promise$promise$$Promise.prototype = {
-      constructor: $$es6$promise$promise$$Promise,
-
-    /**
-      The primary way of interacting with a promise is through its `then` method,
-      which registers callbacks to receive either a promise's eventual value or the
-      reason why the promise cannot be fulfilled.
-
-      ```js
-      findUser().then(function(user){
-        // user is available
-      }, function(reason){
-        // user is unavailable, and you are given the reason why
-      });
-      ```
-
-      Chaining
-      --------
-
-      The return value of `then` is itself a promise.  This second, 'downstream'
-      promise is resolved with the return value of the first promise's fulfillment
-      or rejection handler, or rejected if the handler throws an exception.
-
-      ```js
-      findUser().then(function (user) {
-        return user.name;
-      }, function (reason) {
-        return 'default name';
-      }).then(function (userName) {
-        // If `findUser` fulfilled, `userName` will be the user's name, otherwise it
-        // will be `'default name'`
-      });
-
-      findUser().then(function (user) {
-        throw new Error('Found user, but still unhappy');
-      }, function (reason) {
-        throw new Error('`findUser` rejected and we're unhappy');
-      }).then(function (value) {
-        // never reached
-      }, function (reason) {
-        // if `findUser` fulfilled, `reason` will be 'Found user, but still unhappy'.
-        // If `findUser` rejected, `reason` will be '`findUser` rejected and we're unhappy'.
-      });
-      ```
-      If the downstream promise does not specify a rejection handler, rejection reasons will be propagated further downstream.
-
-      ```js
-      findUser().then(function (user) {
-        throw new PedagogicalException('Upstream error');
-      }).then(function (value) {
-        // never reached
-      }).then(function (value) {
-        // never reached
-      }, function (reason) {
-        // The `PedgagocialException` is propagated all the way down to here
-      });
-      ```
-
-      Assimilation
-      ------------
-
-      Sometimes the value you want to propagate to a downstream promise can only be
-      retrieved asynchronously. This can be achieved by returning a promise in the
-      fulfillment or rejection handler. The downstream promise will then be pending
-      until the returned promise is settled. This is called *assimilation*.
-
-      ```js
-      findUser().then(function (user) {
-        return findCommentsByAuthor(user);
-      }).then(function (comments) {
-        // The user's comments are now available
-      });
-      ```
-
-      If the assimliated promise rejects, then the downstream promise will also reject.
-
-      ```js
-      findUser().then(function (user) {
-        return findCommentsByAuthor(user);
-      }).then(function (comments) {
-        // If `findCommentsByAuthor` fulfills, we'll have the value here
-      }, function (reason) {
-        // If `findCommentsByAuthor` rejects, we'll have the reason here
-      });
-      ```
-
-      Simple Example
-      --------------
-
-      Synchronous Example
-
-      ```javascript
-      var result;
-
-      try {
-        result = findResult();
-        // success
-      } catch(reason) {
-        // failure
-      }
-      ```
-
-      Errback Example
-
-      ```js
-      findResult(function(result, err){
-        if (err) {
-          // failure
-        } else {
-          // success
-        }
-      });
-      ```
-
-      Promise Example;
-
-      ```javascript
-      findResult().then(function(result){
-        // success
-      }, function(reason){
-        // failure
-      });
-      ```
-
-      Advanced Example
-      --------------
-
-      Synchronous Example
-
-      ```javascript
-      var author, books;
-
-      try {
-        author = findAuthor();
-        books  = findBooksByAuthor(author);
-        // success
-      } catch(reason) {
-        // failure
-      }
-      ```
-
-      Errback Example
-
-      ```js
-
-      function foundBooks(books) {
-
-      }
-
-      function failure(reason) {
-
-      }
-
-      findAuthor(function(author, err){
-        if (err) {
-          failure(err);
-          // failure
-        } else {
-          try {
-            findBoooksByAuthor(author, function(books, err) {
-              if (err) {
-                failure(err);
-              } else {
-                try {
-                  foundBooks(books);
-                } catch(reason) {
-                  failure(reason);
-                }
-              }
-            });
-          } catch(error) {
-            failure(err);
-          }
-          // success
-        }
-      });
-      ```
-
-      Promise Example;
-
-      ```javascript
-      findAuthor().
-        then(findBooksByAuthor).
-        then(function(books){
-          // found books
-      }).catch(function(reason){
-        // something went wrong
-      });
-      ```
-
-      @method then
-      @param {Function} onFulfilled
-      @param {Function} onRejected
-      Useful for tooling.
-      @return {Promise}
-    */
-      then: function(onFulfillment, onRejection) {
-        var parent = this;
-        var state = parent._state;
-
-        if (state === $$$internal$$FULFILLED && !onFulfillment || state === $$$internal$$REJECTED && !onRejection) {
-          return this;
-        }
-
-        var child = new this.constructor($$$internal$$noop);
-        var result = parent._result;
-
-        if (state) {
-          var callback = arguments[state - 1];
-          $$asap$$default(function(){
-            $$$internal$$invokeCallback(state, child, callback, result);
-          });
-        } else {
-          $$$internal$$subscribe(parent, child, onFulfillment, onRejection);
-        }
-
-        return child;
-      },
-
-    /**
-      `catch` is simply sugar for `then(undefined, onRejection)` which makes it the same
-      as the catch block of a try/catch statement.
-
-      ```js
-      function findAuthor(){
-        throw new Error('couldn't find that author');
-      }
-
-      // synchronous
-      try {
-        findAuthor();
-      } catch(reason) {
-        // something went wrong
-      }
-
-      // async with promises
-      findAuthor().catch(function(reason){
-        // something went wrong
-      });
-      ```
-
-      @method catch
-      @param {Function} onRejection
-      Useful for tooling.
-      @return {Promise}
-    */
-      'catch': function(onRejection) {
-        return this.then(null, onRejection);
-      }
-    };
-
-    var $$es6$promise$polyfill$$default = function polyfill() {
-      var local;
-
-      if (typeof global !== 'undefined') {
-        local = global;
-      } else if (typeof window !== 'undefined' && window.document) {
-        local = window;
-      } else {
-        local = self;
-      }
-
-      var es6PromiseSupport =
-        "Promise" in local &&
-        // Some of these methods are missing from
-        // Firefox/Chrome experimental implementations
-        "resolve" in local.Promise &&
-        "reject" in local.Promise &&
-        "all" in local.Promise &&
-        "race" in local.Promise &&
-        // Older version of the spec had a resolver object
-        // as the arg rather than a function
-        (function() {
-          var resolve;
-          new local.Promise(function(r) { resolve = r; });
-          return $$utils$$isFunction(resolve);
-        }());
-
-      if (!es6PromiseSupport) {
-        local.Promise = $$es6$promise$promise$$default;
-      }
-    };
-
-    var es6$promise$umd$$ES6Promise = {
-      'Promise': $$es6$promise$promise$$default,
-      'polyfill': $$es6$promise$polyfill$$default
-    };
-
-    /* global define:true module:true window: true */
-    if (typeof define === 'function' && define['amd']) {
-      define(function() { return es6$promise$umd$$ES6Promise; });
-    } else if (typeof module !== 'undefined' && module['exports']) {
-      module['exports'] = es6$promise$umd$$ES6Promise;
-    } else if (typeof this !== 'undefined') {
-      this['ES6Promise'] = es6$promise$umd$$ES6Promise;
-    }
-}).call(this);
-}).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":11}],32:[function(require,module,exports){
+},{"_process":24,"crypto":13,"es6-promise":7,"http":13,"jsonld-request":13,"pkginfo":13,"request":13,"util":13,"xmldom":13}],15:[function(require,module,exports){
 // Replace local require by a lazy loader
 var globalRequire = require;
 require = function () {};
@@ -15462,7 +12477,7 @@ Object.keys(exports).forEach(function (submodule) {
   });
 });
 
-},{"./lib/N3Lexer":33,"./lib/N3Parser":34,"./lib/N3Store":35,"./lib/N3StreamParser":36,"./lib/N3StreamWriter":37,"./lib/N3Util":38,"./lib/N3Writer":39}],33:[function(require,module,exports){
+},{"./lib/N3Lexer":16,"./lib/N3Parser":17,"./lib/N3Store":18,"./lib/N3StreamParser":19,"./lib/N3StreamWriter":20,"./lib/N3Util":21,"./lib/N3Writer":22}],16:[function(require,module,exports){
 // **N3Lexer** tokenizes N3 documents.
 var fromCharCode = String.fromCharCode;
 var immediately = typeof setImmediate === 'function' ? setImmediate :
@@ -15492,7 +12507,7 @@ function N3Lexer(options) {
     this._tokenize = this.tokenize;
     this.tokenize = function (input, callback) {
       this._tokenize(input, function (error, token) {
-        if (!error && /IRI|prefixed|literal|langcode|type|\.|eof/.test(token.type))
+        if (!error && /^(?:IRI|prefixed|literal|langcode|type|\.|eof)$/.test(token.type))
           callback && callback(error, token);
         else
           callback && callback(error || self._syntaxError(token.type, callback = null));
@@ -15565,17 +12580,14 @@ N3Lexer.prototype = {
 
       case '<':
         // Try to find a full IRI without escape sequences.
-        if (match = this._unescapedIri.exec(input)) {
-          type = 'IRI';
-          value = match[1];
-        }
+        if (match = this._unescapedIri.exec(input))
+          type = 'IRI', value = match[1];
         // Try to find a full IRI with escape sequences.
         else if (match = this._iri.exec(input)) {
           unescaped = this._unescape(match[1]);
           if (unescaped === null || illegalIriChars.test(unescaped))
             return reportSyntaxError(this);
-          type = 'IRI';
-          value = unescaped;
+          type = 'IRI', value = unescaped;
         }
         break;
 
@@ -15584,27 +12596,21 @@ N3Lexer.prototype = {
         // we always need a non-dot character before deciding it is a prefixed name.
         // Therefore, try inserting a space if we're at the end of the input.
         if ((match = this._blank.exec(input)) ||
-            inputFinished && (match = this._blank.exec(input + ' '))) {
-          type = 'prefixed';
-          prefix = '_';
-          value = match[1];
-        }
+            inputFinished && (match = this._blank.exec(input + ' ')))
+          type = 'prefixed', prefix = '_', value = match[1];
         break;
 
       case '"':
       case "'":
         // Try to find a non-empty double-quoted literal without escape sequences.
-        if (match = this._unescapedString.exec(input)) {
-          type = 'literal';
-          value = match[0];
-        }
+        if (match = this._unescapedString.exec(input))
+          type = 'literal', value = match[0];
         // Try to find any other literal wrapped in a pair of single or double quotes.
         else if (match = this._singleQuotedString.exec(input)) {
           unescaped = this._unescape(match[0]);
           if (unescaped === null)
             return reportSyntaxError(this);
-          type = 'literal';
-          value = unescaped.replace(/^'|'$/g, '"');
+          type = 'literal', value = unescaped.replace(/^'|'$/g, '"');
         }
         // Try to find a literal wrapped in three pairs of single or double quotes.
         else if (match = this._tripleQuotedString.exec(input)) {
@@ -15614,21 +12620,17 @@ N3Lexer.prototype = {
           unescaped = this._unescape(unescaped);
           if (unescaped === null)
             return reportSyntaxError(this);
-          type = 'literal';
-          value = unescaped.replace(/^'|'$/g, '"');
+          type = 'literal', value = unescaped.replace(/^'|'$/g, '"');
         }
         break;
 
       case '@':
         // Try to find a language code.
-        if (this._prevTokenType === 'literal' && (match = this._langcode.exec(input))) {
-          type = 'langcode';
-          value = match[1];
-        }
+        if (this._prevTokenType === 'literal' && (match = this._langcode.exec(input)))
+          type = 'langcode', value = match[1];
         // Try to find a keyword.
-        else if (match = this._keyword.exec(input)) {
+        else if (match = this._keyword.exec(input))
           type = match[0];
-        }
         break;
 
       case '.':
@@ -15676,20 +12678,16 @@ N3Lexer.prototype = {
       case 'f':
       case 't':
         // Try to match a boolean.
-        if (match = this._boolean.exec(input)) {
-          type = 'literal';
-          value = '"' + match[0] + '"^^http://www.w3.org/2001/XMLSchema#boolean';
-        }
+        if (match = this._boolean.exec(input))
+          type = 'literal', value = '"' + match[0] + '"^^http://www.w3.org/2001/XMLSchema#boolean';
         else
           inconclusive = true;
         break;
 
       case 'a':
         // Try to find an abbreviated predicate.
-        if (match = this._shortPredicates.exec(input)) {
-          type = 'abbreviation';
-          value = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
-        }
+        if (match = this._shortPredicates.exec(input))
+          type = 'abbreviation', value = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
         else
           inconclusive = true;
         break;
@@ -15715,19 +12713,14 @@ N3Lexer.prototype = {
       if (inconclusive) {
         // Try to find a prefix.
         if ((this._prevTokenType === '@prefix' || this._prevTokenType === 'PREFIX') &&
-            (match = this._prefix.exec(input))) {
-          type = 'prefix';
-          value = match[1] || '';
-        }
+            (match = this._prefix.exec(input)))
+          type = 'prefix', value = match[1] || '';
         // Try to find a prefixed name. Since it can contain (but not end with) a dot,
         // we always need a non-dot character before deciding it is a prefixed name.
         // Therefore, try inserting a space if we're at the end of the input.
         else if ((match = this._prefixed.exec(input)) ||
-                 inputFinished && (match = this._prefixed.exec(input + ' '))) {
-          type = 'prefixed';
-          prefix = match[1] || '';
-          value = this._unescape(match[2]);
-        }
+                 inputFinished && (match = this._prefixed.exec(input + ' ')))
+          type = 'prefixed', prefix = match[1] || '', value = this._unescape(match[2]);
       }
 
       // A type token is special: it can only be emitted after an IRI or prefixed name is read.
@@ -15834,9 +12827,8 @@ N3Lexer.prototype = {
 
     // Parses until the end
     function end() {
-      if (self._input !== null) {
+      if (self._input !== null)
         self._tokenizeToEnd(callback, true);
-      }
     }
   },
 };
@@ -15846,7 +12838,7 @@ N3Lexer.prototype = {
 // Export the `N3Lexer` class as a whole.
 module.exports = N3Lexer;
 
-},{}],34:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 // **N3Parser** parses N3 documents.
 var N3Lexer = require('./N3Lexer');
 
@@ -15855,9 +12847,9 @@ var RDF_PREFIX = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
     RDF_FIRST  = RDF_PREFIX + 'first',
     RDF_REST   = RDF_PREFIX + 'rest';
 
-var absoluteIRI = /:/,
-    documentPart = /[^\/]*$/,
-    rootIRI = /^(?:[^:]+:\/*)?[^\/]*/;
+var absoluteIRI = /^[a-z][a-z0-9+.-]*:/i,
+    schemeAuthority = /^(?:([a-z][a-z0-9+.-]*:))?(?:\/\/[^\/]*)?/i,
+    dotSegments = /(?:^|\/)\.\.?(?:$|[\/#?])/;
 
 // The next ID for new blank nodes
 var blankNodePrefix = 0, blankNodeCount = 0;
@@ -15871,17 +12863,7 @@ function N3Parser(options) {
 
   // Set the document IRI.
   options = options || {};
-  if (!options.documentIRI) {
-    this._baseIRI = null;
-    this._baseIRIPath = null;
-  }
-  else {
-    if (options.documentIRI.indexOf('#') > 0)
-      throw new Error('Invalid document IRI');
-    this._baseIRI = options.documentIRI;
-    this._baseIRIPath = this._baseIRI.replace(documentPart, '');
-    this._baseIRIRoot = this._baseIRI.match(rootIRI)[0];
-  }
+  this._setBase(options.documentIRI);
 
   // Set supported features depending on the format.
   var format = (typeof options.format === 'string') && options.format.match(/\w*$/)[0].toLowerCase(),
@@ -15893,7 +12875,7 @@ function N3Parser(options) {
   this._supportsQuads = !(isTurtle || isTriG || isNTriples);
   // Disable relative IRIs in N-Triples or N-Quads mode
   if (isLineMode) {
-    this._baseIRI = '';
+    this._base = '';
     this._resolveIRI = function (token) {
       this._error('Disallowed relative IRI', token);
       return this._callback = noop, this._subject = null;
@@ -15913,6 +12895,21 @@ N3Parser._resetBlankNodeIds = function () {
 
 N3Parser.prototype = {
   // ## Private methods
+
+  // ### `_setBase` sets the base IRI to resolve relative IRIs.
+  _setBase: function (baseIRI) {
+    if (!baseIRI)
+      baseIRI = null;
+    else if (baseIRI.indexOf('#') >= 0)
+      throw new Error('Invalid base IRI ' + baseIRI);
+    // Set base IRI and its components
+    if (this._base = baseIRI) {
+      this._basePath   = baseIRI.replace(/[^\/?]*(?:\?.*)?$/, '');
+      baseIRI = baseIRI.match(schemeAuthority);
+      this._baseRoot   = baseIRI[0];
+      this._baseScheme = baseIRI[1];
+    }
+  },
 
   // ### `_readInTopContext` reads a token when in the top context.
   _readInTopContext: function (token) {
@@ -15945,9 +12942,8 @@ N3Parser.prototype = {
         return this._readSubject;
       }
     case 'GRAPH':
-      if (this._supportsNamedGraphs) {
+      if (this._supportsNamedGraphs)
         return this._readNamedGraphLabel;
-      }
     // Otherwise, the next token must be a subject.
     default:
       return this._readSubject(token);
@@ -15959,7 +12955,7 @@ N3Parser.prototype = {
     this._predicate = null;
     switch (token.type) {
     case 'IRI':
-      if (this._baseIRI === null || absoluteIRI.test(token.value))
+      if (this._base === null || absoluteIRI.test(token.value))
         this._subject = token.value;
       else
         this._subject = this._resolveIRI(token);
@@ -15996,21 +12992,18 @@ N3Parser.prototype = {
     switch (type) {
     case 'IRI':
     case 'abbreviation':
-      if (this._baseIRI === null || absoluteIRI.test(token.value))
+      if (this._base === null || absoluteIRI.test(token.value))
         this._predicate = token.value;
       else
         this._predicate = this._resolveIRI(token);
       break;
     case 'prefixed':
-      if (token.prefix === '_') {
+      if (token.prefix === '_')
         return this._error('Disallowed blank node as predicate', token);
-      }
-      else {
-        var prefix = this._prefixes[token.prefix];
-        if (prefix === undefined)
-          return this._error('Undefined prefix "' + token.prefix + ':"', token);
-        this._predicate = prefix + token.value;
-      }
+      var prefix = this._prefixes[token.prefix];
+      if (prefix === undefined)
+        return this._error('Undefined prefix "' + token.prefix + ':"', token);
+      this._predicate = prefix + token.value;
       break;
     case '.':
     case ']':
@@ -16034,7 +13027,7 @@ N3Parser.prototype = {
   _readObject: function (token) {
     switch (token.type) {
     case 'IRI':
-      if (this._baseIRI === null || absoluteIRI.test(token.value))
+      if (this._base === null || absoluteIRI.test(token.value))
         this._object = token.value;
       else
         this._object = this._resolveIRI(token);
@@ -16085,8 +13078,10 @@ N3Parser.prototype = {
       this._subject = null;
       return this._readBlankNodeTail(token);
     }
-    this._predicate = null;
-    return this._readPredicate(token);
+    else {
+      this._predicate = null;
+      return this._readPredicate(token);
+    }
   },
 
   // ### `_readBlankNodeTail` reads the end of a blank node.
@@ -16122,7 +13117,7 @@ N3Parser.prototype = {
     case 'type':
       var value;
       if (token.prefix === '') {
-        if (this._baseIRI === null || absoluteIRI.test(token.value))
+        if (this._base === null || absoluteIRI.test(token.value))
           value = token.value;
         else
           value = this._resolveIRI(token);
@@ -16154,7 +13149,10 @@ N3Parser.prototype = {
 
     switch (token.type) {
     case 'IRI':
-      item = token.value;
+      if (this._base === null || absoluteIRI.test(token.value))
+        item = token.value;
+      else
+        item = this._resolveIRI(token);
       break;
     case 'prefixed':
       var prefix = this._prefixes[token.prefix];
@@ -16271,7 +13269,7 @@ N3Parser.prototype = {
     // An IRI means this is a quad (only allowed if not already inside a graph).
     case 'IRI':
       if (this._supportsQuads && this._graph === null) {
-        if (this._baseIRI === null || absoluteIRI.test(token.value))
+        if (this._base === null || absoluteIRI.test(token.value))
           graph = token.value;
         else
           graph = this._resolveIRI(token);
@@ -16344,7 +13342,7 @@ N3Parser.prototype = {
     if (token.type !== 'IRI')
       return this._error('Expected IRI to follow prefix "' + this._prefix + ':"', token);
     var prefixIRI;
-    if (this._baseIRI === null || absoluteIRI.test(token.value))
+    if (this._base === null || absoluteIRI.test(token.value))
       prefixIRI = token.value;
     else
       prefixIRI = this._resolveIRI(token);
@@ -16357,14 +13355,11 @@ N3Parser.prototype = {
   _readBaseIRI: function (token) {
     if (token.type !== 'IRI')
       return this._error('Expected IRI to follow base declaration', token);
-    if (token.value.indexOf('#') > 0)
-      return this._error('Invalid base IRI', token);
-    if (this._baseIRI === null || absoluteIRI.test(token.value))
-      this._baseIRI = token.value;
-    else
-      this._baseIRI = this._resolveIRI(token);
-    this._baseIRIPath = this._baseIRI.replace(documentPart, '');
-    this._baseIRIRoot = this._baseIRI.match(rootIRI)[0];
+    try {
+      this._setBase(this._base === null ||
+                    absoluteIRI.test(token.value) ? token.value : this._resolveIRI(token));
+    }
+    catch (error) { this._error(error.message, token); }
     return this._readDeclarationPunctuation;
   },
 
@@ -16419,26 +13414,87 @@ N3Parser.prototype = {
     this._callback(new Error(message + ' at line ' + token.line + '.'));
   },
 
-  // ### `_resolveIRI` resolves an IRI token against the base path
+  // ### `_resolveIRI` resolves a relative IRI token against the base path,
+  // assuming that a base path has been set and that the IRI is indeed relative.
   _resolveIRI: function (token) {
     var iri = token.value;
     switch (iri[0]) {
     // An empty relative IRI indicates the base IRI
-    case undefined:
-      return this._baseIRI;
+    case undefined: return this._base;
     // Resolve relative fragment IRIs against the base IRI
-    case '#':
-      return this._baseIRI     + iri;
+    case '#': return this._base + iri;
     // Resolve relative query string IRIs by replacing the query string
-    case '?':
-      return this._baseIRI.replace(/(?:\?.*)?$/, iri);
-    // Resolve root relative IRIs at the root of the base IRI
+    case '?': return this._base.replace(/(?:\?.*)?$/, iri);
+    // Resolve root-relative IRIs at the root of the base IRI
     case '/':
-      return this._baseIRIRoot + iri;
+      // Resolve scheme-relative IRIs to the scheme
+      return (iri[1] === '/' ? this._baseScheme : this._baseRoot) + this._removeDotSegments(iri);
     // Resolve all other IRIs at the base IRI's path
     default:
-      return this._baseIRIPath + iri;
+      return this._removeDotSegments(this._basePath + iri);
     }
+  },
+
+  // ### `_removeDotSegments` resolves './' and '../' path segments in an IRI as per RFC3986.
+  _removeDotSegments: function (iri) {
+    // Don't modify the IRI if it does not contain any dot segments
+    if (!dotSegments.test(iri))
+      return iri;
+
+    // Start with an imaginary slash before the IRI in order to resolve trailing './' and '../'
+    var result = '', length = iri.length, i = -1, pathStart = -1, segmentStart = 0, next = '/';
+
+    while (i < length) {
+      switch (next) {
+      // The path starts with the first slash after the authority
+      case ':':
+        if (pathStart < 0) {
+          // Skip two slashes before the authority
+          if (iri[++i] === '/' && iri[++i] === '/')
+            // Skip to slash after the authority
+            while ((pathStart = i + 1) < length && iri[pathStart] !== '/')
+              i = pathStart;
+        }
+        break;
+      // Don't modify a query string or fragment
+      case '?':
+      case '#':
+        i = length;
+        break;
+      // Handle '/.' or '/..' path segments
+      case '/':
+        if (iri[i + 1] === '.') {
+          next = iri[++i + 1];
+          switch (next) {
+          // Remove a '/.' segment
+          case '/':
+            result += iri.substring(segmentStart, i - 1);
+            segmentStart = i + 1;
+            break;
+          // Remove a trailing '/.' segment
+          case undefined:
+          case '?':
+          case '#':
+            return result + iri.substring(segmentStart, i) + iri.substr(i + 1);
+          // Remove a '/..' segment
+          case '.':
+            next = iri[++i + 1];
+            if (next === undefined || next === '/' || next === '?' || next === '#') {
+              result += iri.substring(segmentStart, i - 2);
+              // Try to remove the parent path from result
+              if ((segmentStart = result.lastIndexOf('/')) >= pathStart)
+                result = result.substr(0, segmentStart);
+              // Remove a trailing '/..' segment
+              if (next !== '/')
+                return result + '/' + iri.substr(i + 1);
+              segmentStart = i + 1;
+            }
+          }
+        }
+      }
+      next = iri[++i];
+    }
+    return result + iri.substring(segmentStart);
   },
 
   // ## Public methods
@@ -16473,7 +13529,7 @@ N3Parser.prototype = {
       this.addChunk = this._lexer.addChunk;
       this.end = this._lexer.end;
     }
-  }
+  },
 };
 
 // The empty function
@@ -16484,7 +13540,7 @@ function noop() {}
 // Export the `N3Parser` class as a whole.
 module.exports = N3Parser;
 
-},{"./N3Lexer":33}],35:[function(require,module,exports){
+},{"./N3Lexer":16}],18:[function(require,module,exports){
 // **N3Store** objects store N3 triples by graph in memory.
 
 var expandPrefixedName = require('./N3Util').expandPrefixedName;
@@ -16639,11 +13695,7 @@ N3Store.prototype = {
     var graphItem = this._graphs[graph];
     // Create the graph if it doesn't exist yet.
     if (!graphItem) {
-      graphItem = this._graphs[graph] = {
-        subjects: {},
-        predicates: {},
-        objects: {}
-      };
+      graphItem = this._graphs[graph] = { subjects: {}, predicates: {}, objects: {} };
       // Freezing a graph helps subsequent `add` performance,
       // and properties will never be modified anyway.
       Object.freeze(graphItem);
@@ -16824,18 +13876,20 @@ N3Store.prototype = {
 
   // ### `createBlankNode` creates a new blank node, returning its name.
   createBlankNode: function (suggestedName) {
-    var name;
+    var name, index;
+    // Generate a name based on the suggested name
     if (suggestedName) {
-      name = suggestedName = '_:' + suggestedName;
-      var index = 1;
+      name = suggestedName = '_:' + suggestedName, index = 1;
       while (this._entities[name])
         name = suggestedName + index++;
     }
+    // Generate a generic blank node name
     else {
       do { name = '_:b' + this._blankNodeIndex++; }
       while (this._entities[name]);
     }
-    this._entities[name] = this._entityCount++;
+    // Add the blank node to the entities, avoiding the generation of duplicates
+    this._entities[name] = ++this._entityCount;
     return name;
   },
 };
@@ -16845,7 +13899,7 @@ N3Store.prototype = {
 // Export the `N3Store` class as a whole.
 module.exports = N3Store;
 
-},{"./N3Util":38}],36:[function(require,module,exports){
+},{"./N3Util":21}],19:[function(require,module,exports){
 // **N3StreamParser** parses an N3 stream into a triple stream
 var Transform = require('stream').Transform,
     util = require('util'),
@@ -16881,7 +13935,7 @@ util.inherits(N3StreamParser, Transform);
 // Export the `N3StreamParser` class as a whole.
 module.exports = N3StreamParser;
 
-},{"./N3Parser.js":34,"stream":25,"util":28}],37:[function(require,module,exports){
+},{"./N3Parser.js":17,"stream":35,"util":39}],20:[function(require,module,exports){
 // **N3StreamWriter** serializes a triple stream into an N3 stream
 var Transform = require('stream').Transform,
     util = require('util'),
@@ -16913,7 +13967,7 @@ util.inherits(N3StreamWriter, Transform);
 // Export the `N3StreamWriter` class as a whole.
 module.exports = N3StreamWriter;
 
-},{"./N3Writer.js":39,"stream":25,"util":28}],38:[function(require,module,exports){
+},{"./N3Writer.js":22,"stream":35,"util":39}],21:[function(require,module,exports){
 // **N3Util** provides N3 utility functions
 
 var Xsd = 'http://www.w3.org/2001/XMLSchema#';
@@ -17013,25 +14067,25 @@ var N3Util = {
 };
 
 // Add the N3Util functions to the given object or its prototype
-function AddN3Util(parent, toPrototype) {
+function addN3Util(parent, toPrototype) {
   for (var name in N3Util)
     if (!toPrototype)
       parent[name] = N3Util[name];
     else
-      parent.prototype[name] = ApplyToThis(N3Util[name]);
+      parent.prototype[name] = applyToThis(N3Util[name]);
 
   return parent;
 }
 
 // Returns a function that applies `f` to the `this` object
-function ApplyToThis(f) {
+function applyToThis(f) {
   return function (a) { return f(this, a); };
 }
 
 // Expose N3Util, attaching all functions to it
-module.exports = AddN3Util(AddN3Util);
+module.exports = addN3Util(addN3Util);
 
-},{}],39:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 // **N3Writer** writes N3 documents.
 
 // Matches a literal as represented in memory by the N3 library
@@ -17099,7 +14153,9 @@ N3Writer.prototype = {
         // Close the previous graph and start the new one
         this._write((this._subject === null ? '' : (this._graph ? '\n}\n' : '.\n')) +
                     (graph ? this._encodeIriOrBlankNode(graph) + ' {\n' : ''));
-        this._graph = graph, this._subject = null;
+        this._subject = null;
+        // Don't treat identical blank nodes as repeating graphs
+        this._graph = graph[0] !== '[' ? graph : ']';
       }
       // Don't repeat the subject if it's the same
       if (this._subject === subject) {
@@ -17137,16 +14193,18 @@ N3Writer.prototype = {
   },
 
   // ### `_encodeIriOrBlankNode` represents an IRI or blank node
-  _encodeIriOrBlankNode: function (iri) {
-    // A blank node is represented as-is
-    if (iri[0] === '_' && iri[1] === ':') return iri;
+  _encodeIriOrBlankNode: function (entity) {
+    // A blank node or list is represented as-is
+    var firstChar = entity[0];
+    if (firstChar === '[' || firstChar === '(' || firstChar === '_' && entity[1] === ':')
+      return entity;
     // Escape special characters
-    if (escape.test(iri))
-      iri = iri.replace(escapeAll, characterReplacer);
+    if (escape.test(entity))
+      entity = entity.replace(escapeAll, characterReplacer);
     // Try to represent the IRI as prefixed name
-    var prefixMatch = this._prefixRegex.exec(iri);
-    return !prefixMatch ? '<' + iri + '>' :
-           (!prefixMatch[1] ? iri : this._prefixIRIs[prefixMatch[1]] + prefixMatch[2]);
+    var prefixMatch = this._prefixRegex.exec(entity);
+    return !prefixMatch ? '<' + entity + '>' :
+           (!prefixMatch[1] ? entity : this._prefixIRIs[prefixMatch[1]] + prefixMatch[2]);
   },
 
   // ### `_encodeLiteral` represents a literal
@@ -17167,6 +14225,9 @@ N3Writer.prototype = {
   _encodeSubject: function (subject) {
     if (subject[0] === '"')
       throw new Error('A literal as subject is not allowed: ' + subject);
+    // Don't treat identical blank nodes as repeating subjects
+    if (subject[0] === '[')
+      this._subject = ']';
     return this._encodeIriOrBlankNode(subject);
   },
 
@@ -17196,7 +14257,7 @@ N3Writer.prototype = {
   // ### `addTriple` adds the triple to the output stream
   addTriple: function (subject, predicate, object, graph, done) {
     // The triple was given as a triple object, so shift parameters
-    if (typeof object !== 'string')
+    if (object === undefined)
       this._writeTriple(subject.subject, subject.predicate, subject.object,
                         subject.graph || '', predicate);
     // The optional `graph` parameter was not provided
@@ -17254,6 +14315,58 @@ N3Writer.prototype = {
     this._write(hasPrefixes ? '\n' : '', done);
   },
 
+  // ### `blank` creates a blank node with the given content
+  blank: function (predicate, object) {
+    var children = predicate, child, length;
+    // Empty blank node
+    if (predicate === undefined)
+      children = [];
+    // Blank node passed as blank("predicate", "object")
+    else if (typeof predicate === 'string')
+      children = [{ predicate: predicate, object: object }];
+    // Blank node passed as blank({ predicate: predicate, object: object })
+    else if (!('length' in predicate))
+      children = [predicate];
+
+    switch (length = children.length) {
+    // Generate an empty blank node
+    case 0:
+      return '[]';
+    // Generate a non-nested one-triple blank node
+    case 1:
+      child = children[0];
+      if (child.object[0] !== '[')
+        return '[ ' + this._encodePredicate(child.predicate) + ' ' +
+                      this._encodeObject(child.object) + ' ]';
+    // Generate a multi-triple or nested blank node
+    default:
+      var contents = '[';
+      // Write all triples in order
+      for (var i = 0; i < length; i++) {
+        child = children[i];
+        // Write only the object is the predicate is the same as the previous
+        if (child.predicate === predicate)
+          contents += ', ' + this._encodeObject(child.object);
+        // Otherwise, write the predicate and the object
+        else {
+          contents += (i ? ';\n  ' : '\n  ') +
+                      this._encodePredicate(child.predicate) + ' ' +
+                      this._encodeObject(child.object);
+          predicate = child.predicate;
+        }
+      }
+      return contents + '\n]';
+    }
+  },
+
+  // ### `list` creates a list node with the given content
+  list: function (elements) {
+    var length = elements && elements.length || 0, contents = new Array(length);
+    for (var i = 0; i < length; i++)
+      contents[i] = this._encodeObject(elements[i]);
+    return '(' + contents.join(' ') + ')';
+  },
+
   // ### `_prefixRegex` matches a prefixed name or IRI that begins with one of the added prefixes
   _prefixRegex: /$0^/,
 
@@ -17302,7 +14415,2992 @@ function characterReplacer(character) {
 // Export the `N3Writer` class as a whole.
 module.exports = N3Writer;
 
-},{}],40:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
+(function (process){
+'use strict';
+
+if (!process.version ||
+    process.version.indexOf('v0.') === 0 ||
+    process.version.indexOf('v1.') === 0 && process.version.indexOf('v1.8.') !== 0) {
+  module.exports = nextTick;
+} else {
+  module.exports = process.nextTick;
+}
+
+function nextTick(fn) {
+  var args = new Array(arguments.length - 1);
+  var i = 0;
+  while (i < args.length) {
+    args[i++] = arguments[i];
+  }
+  process.nextTick(function afterTick() {
+    fn.apply(null, args);
+  });
+}
+
+}).call(this,require('_process'))
+},{"_process":24}],24:[function(require,module,exports){
+// shim for using process in browser
+
+var process = module.exports = {};
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
+
+function cleanUpNextTick() {
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
+    }
+    if (queue.length) {
+        drainQueue();
+    }
+}
+
+function drainQueue() {
+    if (draining) {
+        return;
+    }
+    var timeout = setTimeout(cleanUpNextTick);
+    draining = true;
+
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
+        }
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    clearTimeout(timeout);
+}
+
+process.nextTick = function (fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
+        }
+    }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        setTimeout(drainQueue, 0);
+    }
+};
+
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
+process.title = 'browser';
+process.browser = true;
+process.env = {};
+process.argv = [];
+process.version = ''; // empty string to avoid regexp issues
+process.versions = {};
+
+function noop() {}
+
+process.on = noop;
+process.addListener = noop;
+process.once = noop;
+process.off = noop;
+process.removeListener = noop;
+process.removeAllListeners = noop;
+process.emit = noop;
+
+process.binding = function (name) {
+    throw new Error('process.binding is not supported');
+};
+
+process.cwd = function () { return '/' };
+process.chdir = function (dir) {
+    throw new Error('process.chdir is not supported');
+};
+process.umask = function() { return 0; };
+
+},{}],25:[function(require,module,exports){
+module.exports = require("./lib/_stream_duplex.js")
+
+},{"./lib/_stream_duplex.js":26}],26:[function(require,module,exports){
+// a duplex stream is just a stream that is both readable and writable.
+// Since JS doesn't have multiple prototypal inheritance, this class
+// prototypally inherits from Readable, and then parasitically from
+// Writable.
+
+'use strict';
+
+/*<replacement>*/
+var objectKeys = Object.keys || function (obj) {
+  var keys = [];
+  for (var key in obj) keys.push(key);
+  return keys;
+}
+/*</replacement>*/
+
+
+module.exports = Duplex;
+
+/*<replacement>*/
+var processNextTick = require('process-nextick-args');
+/*</replacement>*/
+
+
+
+/*<replacement>*/
+var util = require('core-util-is');
+util.inherits = require('inherits');
+/*</replacement>*/
+
+var Readable = require('./_stream_readable');
+var Writable = require('./_stream_writable');
+
+util.inherits(Duplex, Readable);
+
+var keys = objectKeys(Writable.prototype);
+for (var v = 0; v < keys.length; v++) {
+  var method = keys[v];
+  if (!Duplex.prototype[method])
+    Duplex.prototype[method] = Writable.prototype[method];
+}
+
+function Duplex(options) {
+  if (!(this instanceof Duplex))
+    return new Duplex(options);
+
+  Readable.call(this, options);
+  Writable.call(this, options);
+
+  if (options && options.readable === false)
+    this.readable = false;
+
+  if (options && options.writable === false)
+    this.writable = false;
+
+  this.allowHalfOpen = true;
+  if (options && options.allowHalfOpen === false)
+    this.allowHalfOpen = false;
+
+  this.once('end', onend);
+}
+
+// the no-half-open enforcer
+function onend() {
+  // if we allow half-open state, or if the writable side ended,
+  // then we're ok.
+  if (this.allowHalfOpen || this._writableState.ended)
+    return;
+
+  // no more data can be written.
+  // But allow more writes to happen in this tick.
+  processNextTick(onEndNT, this);
+}
+
+function onEndNT(self) {
+  self.end();
+}
+
+function forEach (xs, f) {
+  for (var i = 0, l = xs.length; i < l; i++) {
+    f(xs[i], i);
+  }
+}
+
+},{"./_stream_readable":28,"./_stream_writable":30,"core-util-is":6,"inherits":10,"process-nextick-args":23}],27:[function(require,module,exports){
+// a passthrough stream.
+// basically just the most minimal sort of Transform stream.
+// Every written chunk gets output as-is.
+
+'use strict';
+
+module.exports = PassThrough;
+
+var Transform = require('./_stream_transform');
+
+/*<replacement>*/
+var util = require('core-util-is');
+util.inherits = require('inherits');
+/*</replacement>*/
+
+util.inherits(PassThrough, Transform);
+
+function PassThrough(options) {
+  if (!(this instanceof PassThrough))
+    return new PassThrough(options);
+
+  Transform.call(this, options);
+}
+
+PassThrough.prototype._transform = function(chunk, encoding, cb) {
+  cb(null, chunk);
+};
+
+},{"./_stream_transform":29,"core-util-is":6,"inherits":10}],28:[function(require,module,exports){
+(function (process){
+'use strict';
+
+module.exports = Readable;
+
+/*<replacement>*/
+var processNextTick = require('process-nextick-args');
+/*</replacement>*/
+
+
+/*<replacement>*/
+var isArray = require('isarray');
+/*</replacement>*/
+
+
+/*<replacement>*/
+var Buffer = require('buffer').Buffer;
+/*</replacement>*/
+
+Readable.ReadableState = ReadableState;
+
+var EE = require('events');
+
+/*<replacement>*/
+var EElistenerCount = function(emitter, type) {
+  return emitter.listeners(type).length;
+};
+/*</replacement>*/
+
+
+
+/*<replacement>*/
+var Stream;
+(function (){try{
+  Stream = require('st' + 'ream');
+}catch(_){}finally{
+  if (!Stream)
+    Stream = require('events').EventEmitter;
+}}())
+/*</replacement>*/
+
+var Buffer = require('buffer').Buffer;
+
+/*<replacement>*/
+var util = require('core-util-is');
+util.inherits = require('inherits');
+/*</replacement>*/
+
+
+
+/*<replacement>*/
+var debugUtil = require('util');
+var debug;
+if (debugUtil && debugUtil.debuglog) {
+  debug = debugUtil.debuglog('stream');
+} else {
+  debug = function () {};
+}
+/*</replacement>*/
+
+var StringDecoder;
+
+util.inherits(Readable, Stream);
+
+var Duplex;
+function ReadableState(options, stream) {
+  Duplex = Duplex || require('./_stream_duplex');
+
+  options = options || {};
+
+  // object stream flag. Used to make read(n) ignore n and to
+  // make all the buffer merging and length checks go away
+  this.objectMode = !!options.objectMode;
+
+  if (stream instanceof Duplex)
+    this.objectMode = this.objectMode || !!options.readableObjectMode;
+
+  // the point at which it stops calling _read() to fill the buffer
+  // Note: 0 is a valid value, means "don't call _read preemptively ever"
+  var hwm = options.highWaterMark;
+  var defaultHwm = this.objectMode ? 16 : 16 * 1024;
+  this.highWaterMark = (hwm || hwm === 0) ? hwm : defaultHwm;
+
+  // cast to ints.
+  this.highWaterMark = ~~this.highWaterMark;
+
+  this.buffer = [];
+  this.length = 0;
+  this.pipes = null;
+  this.pipesCount = 0;
+  this.flowing = null;
+  this.ended = false;
+  this.endEmitted = false;
+  this.reading = false;
+
+  // a flag to be able to tell if the onwrite cb is called immediately,
+  // or on a later tick.  We set this to true at first, because any
+  // actions that shouldn't happen until "later" should generally also
+  // not happen before the first write call.
+  this.sync = true;
+
+  // whenever we return null, then we set a flag to say
+  // that we're awaiting a 'readable' event emission.
+  this.needReadable = false;
+  this.emittedReadable = false;
+  this.readableListening = false;
+
+  // Crypto is kind of old and crusty.  Historically, its default string
+  // encoding is 'binary' so we have to make this configurable.
+  // Everything else in the universe uses 'utf8', though.
+  this.defaultEncoding = options.defaultEncoding || 'utf8';
+
+  // when piping, we only care about 'readable' events that happen
+  // after read()ing all the bytes and not getting any pushback.
+  this.ranOut = false;
+
+  // the number of writers that are awaiting a drain event in .pipe()s
+  this.awaitDrain = 0;
+
+  // if true, a maybeReadMore has been scheduled
+  this.readingMore = false;
+
+  this.decoder = null;
+  this.encoding = null;
+  if (options.encoding) {
+    if (!StringDecoder)
+      StringDecoder = require('string_decoder/').StringDecoder;
+    this.decoder = new StringDecoder(options.encoding);
+    this.encoding = options.encoding;
+  }
+}
+
+var Duplex;
+function Readable(options) {
+  Duplex = Duplex || require('./_stream_duplex');
+
+  if (!(this instanceof Readable))
+    return new Readable(options);
+
+  this._readableState = new ReadableState(options, this);
+
+  // legacy
+  this.readable = true;
+
+  if (options && typeof options.read === 'function')
+    this._read = options.read;
+
+  Stream.call(this);
+}
+
+// Manually shove something into the read() buffer.
+// This returns true if the highWaterMark has not been hit yet,
+// similar to how Writable.write() returns true if you should
+// write() some more.
+Readable.prototype.push = function(chunk, encoding) {
+  var state = this._readableState;
+
+  if (!state.objectMode && typeof chunk === 'string') {
+    encoding = encoding || state.defaultEncoding;
+    if (encoding !== state.encoding) {
+      chunk = new Buffer(chunk, encoding);
+      encoding = '';
+    }
+  }
+
+  return readableAddChunk(this, state, chunk, encoding, false);
+};
+
+// Unshift should *always* be something directly out of read()
+Readable.prototype.unshift = function(chunk) {
+  var state = this._readableState;
+  return readableAddChunk(this, state, chunk, '', true);
+};
+
+Readable.prototype.isPaused = function() {
+  return this._readableState.flowing === false;
+};
+
+function readableAddChunk(stream, state, chunk, encoding, addToFront) {
+  var er = chunkInvalid(state, chunk);
+  if (er) {
+    stream.emit('error', er);
+  } else if (chunk === null) {
+    state.reading = false;
+    onEofChunk(stream, state);
+  } else if (state.objectMode || chunk && chunk.length > 0) {
+    if (state.ended && !addToFront) {
+      var e = new Error('stream.push() after EOF');
+      stream.emit('error', e);
+    } else if (state.endEmitted && addToFront) {
+      var e = new Error('stream.unshift() after end event');
+      stream.emit('error', e);
+    } else {
+      if (state.decoder && !addToFront && !encoding)
+        chunk = state.decoder.write(chunk);
+
+      if (!addToFront)
+        state.reading = false;
+
+      // if we want the data now, just emit it.
+      if (state.flowing && state.length === 0 && !state.sync) {
+        stream.emit('data', chunk);
+        stream.read(0);
+      } else {
+        // update the buffer info.
+        state.length += state.objectMode ? 1 : chunk.length;
+        if (addToFront)
+          state.buffer.unshift(chunk);
+        else
+          state.buffer.push(chunk);
+
+        if (state.needReadable)
+          emitReadable(stream);
+      }
+
+      maybeReadMore(stream, state);
+    }
+  } else if (!addToFront) {
+    state.reading = false;
+  }
+
+  return needMoreData(state);
+}
+
+
+// if it's past the high water mark, we can push in some more.
+// Also, if we have no data yet, we can stand some
+// more bytes.  This is to work around cases where hwm=0,
+// such as the repl.  Also, if the push() triggered a
+// readable event, and the user called read(largeNumber) such that
+// needReadable was set, then we ought to push more, so that another
+// 'readable' event will be triggered.
+function needMoreData(state) {
+  return !state.ended &&
+         (state.needReadable ||
+          state.length < state.highWaterMark ||
+          state.length === 0);
+}
+
+// backwards compatibility.
+Readable.prototype.setEncoding = function(enc) {
+  if (!StringDecoder)
+    StringDecoder = require('string_decoder/').StringDecoder;
+  this._readableState.decoder = new StringDecoder(enc);
+  this._readableState.encoding = enc;
+  return this;
+};
+
+// Don't raise the hwm > 8MB
+var MAX_HWM = 0x800000;
+function computeNewHighWaterMark(n) {
+  if (n >= MAX_HWM) {
+    n = MAX_HWM;
+  } else {
+    // Get the next highest power of 2
+    n--;
+    n |= n >>> 1;
+    n |= n >>> 2;
+    n |= n >>> 4;
+    n |= n >>> 8;
+    n |= n >>> 16;
+    n++;
+  }
+  return n;
+}
+
+function howMuchToRead(n, state) {
+  if (state.length === 0 && state.ended)
+    return 0;
+
+  if (state.objectMode)
+    return n === 0 ? 0 : 1;
+
+  if (n === null || isNaN(n)) {
+    // only flow one buffer at a time
+    if (state.flowing && state.buffer.length)
+      return state.buffer[0].length;
+    else
+      return state.length;
+  }
+
+  if (n <= 0)
+    return 0;
+
+  // If we're asking for more than the target buffer level,
+  // then raise the water mark.  Bump up to the next highest
+  // power of 2, to prevent increasing it excessively in tiny
+  // amounts.
+  if (n > state.highWaterMark)
+    state.highWaterMark = computeNewHighWaterMark(n);
+
+  // don't have that much.  return null, unless we've ended.
+  if (n > state.length) {
+    if (!state.ended) {
+      state.needReadable = true;
+      return 0;
+    } else {
+      return state.length;
+    }
+  }
+
+  return n;
+}
+
+// you can override either this method, or the async _read(n) below.
+Readable.prototype.read = function(n) {
+  debug('read', n);
+  var state = this._readableState;
+  var nOrig = n;
+
+  if (typeof n !== 'number' || n > 0)
+    state.emittedReadable = false;
+
+  // if we're doing read(0) to trigger a readable event, but we
+  // already have a bunch of data in the buffer, then just trigger
+  // the 'readable' event and move on.
+  if (n === 0 &&
+      state.needReadable &&
+      (state.length >= state.highWaterMark || state.ended)) {
+    debug('read: emitReadable', state.length, state.ended);
+    if (state.length === 0 && state.ended)
+      endReadable(this);
+    else
+      emitReadable(this);
+    return null;
+  }
+
+  n = howMuchToRead(n, state);
+
+  // if we've ended, and we're now clear, then finish it up.
+  if (n === 0 && state.ended) {
+    if (state.length === 0)
+      endReadable(this);
+    return null;
+  }
+
+  // All the actual chunk generation logic needs to be
+  // *below* the call to _read.  The reason is that in certain
+  // synthetic stream cases, such as passthrough streams, _read
+  // may be a completely synchronous operation which may change
+  // the state of the read buffer, providing enough data when
+  // before there was *not* enough.
+  //
+  // So, the steps are:
+  // 1. Figure out what the state of things will be after we do
+  // a read from the buffer.
+  //
+  // 2. If that resulting state will trigger a _read, then call _read.
+  // Note that this may be asynchronous, or synchronous.  Yes, it is
+  // deeply ugly to write APIs this way, but that still doesn't mean
+  // that the Readable class should behave improperly, as streams are
+  // designed to be sync/async agnostic.
+  // Take note if the _read call is sync or async (ie, if the read call
+  // has returned yet), so that we know whether or not it's safe to emit
+  // 'readable' etc.
+  //
+  // 3. Actually pull the requested chunks out of the buffer and return.
+
+  // if we need a readable event, then we need to do some reading.
+  var doRead = state.needReadable;
+  debug('need readable', doRead);
+
+  // if we currently have less than the highWaterMark, then also read some
+  if (state.length === 0 || state.length - n < state.highWaterMark) {
+    doRead = true;
+    debug('length less than watermark', doRead);
+  }
+
+  // however, if we've ended, then there's no point, and if we're already
+  // reading, then it's unnecessary.
+  if (state.ended || state.reading) {
+    doRead = false;
+    debug('reading or ended', doRead);
+  }
+
+  if (doRead) {
+    debug('do read');
+    state.reading = true;
+    state.sync = true;
+    // if the length is currently zero, then we *need* a readable event.
+    if (state.length === 0)
+      state.needReadable = true;
+    // call internal read method
+    this._read(state.highWaterMark);
+    state.sync = false;
+  }
+
+  // If _read pushed data synchronously, then `reading` will be false,
+  // and we need to re-evaluate how much data we can return to the user.
+  if (doRead && !state.reading)
+    n = howMuchToRead(nOrig, state);
+
+  var ret;
+  if (n > 0)
+    ret = fromList(n, state);
+  else
+    ret = null;
+
+  if (ret === null) {
+    state.needReadable = true;
+    n = 0;
+  }
+
+  state.length -= n;
+
+  // If we have nothing in the buffer, then we want to know
+  // as soon as we *do* get something into the buffer.
+  if (state.length === 0 && !state.ended)
+    state.needReadable = true;
+
+  // If we tried to read() past the EOF, then emit end on the next tick.
+  if (nOrig !== n && state.ended && state.length === 0)
+    endReadable(this);
+
+  if (ret !== null)
+    this.emit('data', ret);
+
+  return ret;
+};
+
+function chunkInvalid(state, chunk) {
+  var er = null;
+  if (!(Buffer.isBuffer(chunk)) &&
+      typeof chunk !== 'string' &&
+      chunk !== null &&
+      chunk !== undefined &&
+      !state.objectMode) {
+    er = new TypeError('Invalid non-string/buffer chunk');
+  }
+  return er;
+}
+
+
+function onEofChunk(stream, state) {
+  if (state.ended) return;
+  if (state.decoder) {
+    var chunk = state.decoder.end();
+    if (chunk && chunk.length) {
+      state.buffer.push(chunk);
+      state.length += state.objectMode ? 1 : chunk.length;
+    }
+  }
+  state.ended = true;
+
+  // emit 'readable' now to make sure it gets picked up.
+  emitReadable(stream);
+}
+
+// Don't emit readable right away in sync mode, because this can trigger
+// another read() call => stack overflow.  This way, it might trigger
+// a nextTick recursion warning, but that's not so bad.
+function emitReadable(stream) {
+  var state = stream._readableState;
+  state.needReadable = false;
+  if (!state.emittedReadable) {
+    debug('emitReadable', state.flowing);
+    state.emittedReadable = true;
+    if (state.sync)
+      processNextTick(emitReadable_, stream);
+    else
+      emitReadable_(stream);
+  }
+}
+
+function emitReadable_(stream) {
+  debug('emit readable');
+  stream.emit('readable');
+  flow(stream);
+}
+
+
+// at this point, the user has presumably seen the 'readable' event,
+// and called read() to consume some data.  that may have triggered
+// in turn another _read(n) call, in which case reading = true if
+// it's in progress.
+// However, if we're not ended, or reading, and the length < hwm,
+// then go ahead and try to read some more preemptively.
+function maybeReadMore(stream, state) {
+  if (!state.readingMore) {
+    state.readingMore = true;
+    processNextTick(maybeReadMore_, stream, state);
+  }
+}
+
+function maybeReadMore_(stream, state) {
+  var len = state.length;
+  while (!state.reading && !state.flowing && !state.ended &&
+         state.length < state.highWaterMark) {
+    debug('maybeReadMore read 0');
+    stream.read(0);
+    if (len === state.length)
+      // didn't get any data, stop spinning.
+      break;
+    else
+      len = state.length;
+  }
+  state.readingMore = false;
+}
+
+// abstract method.  to be overridden in specific implementation classes.
+// call cb(er, data) where data is <= n in length.
+// for virtual (non-string, non-buffer) streams, "length" is somewhat
+// arbitrary, and perhaps not very meaningful.
+Readable.prototype._read = function(n) {
+  this.emit('error', new Error('not implemented'));
+};
+
+Readable.prototype.pipe = function(dest, pipeOpts) {
+  var src = this;
+  var state = this._readableState;
+
+  switch (state.pipesCount) {
+    case 0:
+      state.pipes = dest;
+      break;
+    case 1:
+      state.pipes = [state.pipes, dest];
+      break;
+    default:
+      state.pipes.push(dest);
+      break;
+  }
+  state.pipesCount += 1;
+  debug('pipe count=%d opts=%j', state.pipesCount, pipeOpts);
+
+  var doEnd = (!pipeOpts || pipeOpts.end !== false) &&
+              dest !== process.stdout &&
+              dest !== process.stderr;
+
+  var endFn = doEnd ? onend : cleanup;
+  if (state.endEmitted)
+    processNextTick(endFn);
+  else
+    src.once('end', endFn);
+
+  dest.on('unpipe', onunpipe);
+  function onunpipe(readable) {
+    debug('onunpipe');
+    if (readable === src) {
+      cleanup();
+    }
+  }
+
+  function onend() {
+    debug('onend');
+    dest.end();
+  }
+
+  // when the dest drains, it reduces the awaitDrain counter
+  // on the source.  This would be more elegant with a .once()
+  // handler in flow(), but adding and removing repeatedly is
+  // too slow.
+  var ondrain = pipeOnDrain(src);
+  dest.on('drain', ondrain);
+
+  var cleanedUp = false;
+  function cleanup() {
+    debug('cleanup');
+    // cleanup event handlers once the pipe is broken
+    dest.removeListener('close', onclose);
+    dest.removeListener('finish', onfinish);
+    dest.removeListener('drain', ondrain);
+    dest.removeListener('error', onerror);
+    dest.removeListener('unpipe', onunpipe);
+    src.removeListener('end', onend);
+    src.removeListener('end', cleanup);
+    src.removeListener('data', ondata);
+
+    cleanedUp = true;
+
+    // if the reader is waiting for a drain event from this
+    // specific writer, then it would cause it to never start
+    // flowing again.
+    // So, if this is awaiting a drain, then we just call it now.
+    // If we don't know, then assume that we are waiting for one.
+    if (state.awaitDrain &&
+        (!dest._writableState || dest._writableState.needDrain))
+      ondrain();
+  }
+
+  src.on('data', ondata);
+  function ondata(chunk) {
+    debug('ondata');
+    var ret = dest.write(chunk);
+    if (false === ret) {
+      // If the user unpiped during `dest.write()`, it is possible
+      // to get stuck in a permanently paused state if that write
+      // also returned false.
+      if (state.pipesCount === 1 &&
+          state.pipes[0] === dest &&
+          src.listenerCount('data') === 1 &&
+          !cleanedUp) {
+        debug('false write response, pause', src._readableState.awaitDrain);
+        src._readableState.awaitDrain++;
+      }
+      src.pause();
+    }
+  }
+
+  // if the dest has an error, then stop piping into it.
+  // however, don't suppress the throwing behavior for this.
+  function onerror(er) {
+    debug('onerror', er);
+    unpipe();
+    dest.removeListener('error', onerror);
+    if (EElistenerCount(dest, 'error') === 0)
+      dest.emit('error', er);
+  }
+  // This is a brutally ugly hack to make sure that our error handler
+  // is attached before any userland ones.  NEVER DO THIS.
+  if (!dest._events || !dest._events.error)
+    dest.on('error', onerror);
+  else if (isArray(dest._events.error))
+    dest._events.error.unshift(onerror);
+  else
+    dest._events.error = [onerror, dest._events.error];
+
+
+  // Both close and finish should trigger unpipe, but only once.
+  function onclose() {
+    dest.removeListener('finish', onfinish);
+    unpipe();
+  }
+  dest.once('close', onclose);
+  function onfinish() {
+    debug('onfinish');
+    dest.removeListener('close', onclose);
+    unpipe();
+  }
+  dest.once('finish', onfinish);
+
+  function unpipe() {
+    debug('unpipe');
+    src.unpipe(dest);
+  }
+
+  // tell the dest that it's being piped to
+  dest.emit('pipe', src);
+
+  // start the flow if it hasn't been started already.
+  if (!state.flowing) {
+    debug('pipe resume');
+    src.resume();
+  }
+
+  return dest;
+};
+
+function pipeOnDrain(src) {
+  return function() {
+    var state = src._readableState;
+    debug('pipeOnDrain', state.awaitDrain);
+    if (state.awaitDrain)
+      state.awaitDrain--;
+    if (state.awaitDrain === 0 && EElistenerCount(src, 'data')) {
+      state.flowing = true;
+      flow(src);
+    }
+  };
+}
+
+
+Readable.prototype.unpipe = function(dest) {
+  var state = this._readableState;
+
+  // if we're not piping anywhere, then do nothing.
+  if (state.pipesCount === 0)
+    return this;
+
+  // just one destination.  most common case.
+  if (state.pipesCount === 1) {
+    // passed in one, but it's not the right one.
+    if (dest && dest !== state.pipes)
+      return this;
+
+    if (!dest)
+      dest = state.pipes;
+
+    // got a match.
+    state.pipes = null;
+    state.pipesCount = 0;
+    state.flowing = false;
+    if (dest)
+      dest.emit('unpipe', this);
+    return this;
+  }
+
+  // slow case. multiple pipe destinations.
+
+  if (!dest) {
+    // remove all.
+    var dests = state.pipes;
+    var len = state.pipesCount;
+    state.pipes = null;
+    state.pipesCount = 0;
+    state.flowing = false;
+
+    for (var i = 0; i < len; i++)
+      dests[i].emit('unpipe', this);
+    return this;
+  }
+
+  // try to find the right one.
+  var i = indexOf(state.pipes, dest);
+  if (i === -1)
+    return this;
+
+  state.pipes.splice(i, 1);
+  state.pipesCount -= 1;
+  if (state.pipesCount === 1)
+    state.pipes = state.pipes[0];
+
+  dest.emit('unpipe', this);
+
+  return this;
+};
+
+// set up data events if they are asked for
+// Ensure readable listeners eventually get something
+Readable.prototype.on = function(ev, fn) {
+  var res = Stream.prototype.on.call(this, ev, fn);
+
+  // If listening to data, and it has not explicitly been paused,
+  // then call resume to start the flow of data on the next tick.
+  if (ev === 'data' && false !== this._readableState.flowing) {
+    this.resume();
+  }
+
+  if (ev === 'readable' && this.readable) {
+    var state = this._readableState;
+    if (!state.readableListening) {
+      state.readableListening = true;
+      state.emittedReadable = false;
+      state.needReadable = true;
+      if (!state.reading) {
+        processNextTick(nReadingNextTick, this);
+      } else if (state.length) {
+        emitReadable(this, state);
+      }
+    }
+  }
+
+  return res;
+};
+Readable.prototype.addListener = Readable.prototype.on;
+
+function nReadingNextTick(self) {
+  debug('readable nexttick read 0');
+  self.read(0);
+}
+
+// pause() and resume() are remnants of the legacy readable stream API
+// If the user uses them, then switch into old mode.
+Readable.prototype.resume = function() {
+  var state = this._readableState;
+  if (!state.flowing) {
+    debug('resume');
+    state.flowing = true;
+    resume(this, state);
+  }
+  return this;
+};
+
+function resume(stream, state) {
+  if (!state.resumeScheduled) {
+    state.resumeScheduled = true;
+    processNextTick(resume_, stream, state);
+  }
+}
+
+function resume_(stream, state) {
+  if (!state.reading) {
+    debug('resume read 0');
+    stream.read(0);
+  }
+
+  state.resumeScheduled = false;
+  stream.emit('resume');
+  flow(stream);
+  if (state.flowing && !state.reading)
+    stream.read(0);
+}
+
+Readable.prototype.pause = function() {
+  debug('call pause flowing=%j', this._readableState.flowing);
+  if (false !== this._readableState.flowing) {
+    debug('pause');
+    this._readableState.flowing = false;
+    this.emit('pause');
+  }
+  return this;
+};
+
+function flow(stream) {
+  var state = stream._readableState;
+  debug('flow', state.flowing);
+  if (state.flowing) {
+    do {
+      var chunk = stream.read();
+    } while (null !== chunk && state.flowing);
+  }
+}
+
+// wrap an old-style stream as the async data source.
+// This is *not* part of the readable stream interface.
+// It is an ugly unfortunate mess of history.
+Readable.prototype.wrap = function(stream) {
+  var state = this._readableState;
+  var paused = false;
+
+  var self = this;
+  stream.on('end', function() {
+    debug('wrapped end');
+    if (state.decoder && !state.ended) {
+      var chunk = state.decoder.end();
+      if (chunk && chunk.length)
+        self.push(chunk);
+    }
+
+    self.push(null);
+  });
+
+  stream.on('data', function(chunk) {
+    debug('wrapped data');
+    if (state.decoder)
+      chunk = state.decoder.write(chunk);
+
+    // don't skip over falsy values in objectMode
+    if (state.objectMode && (chunk === null || chunk === undefined))
+      return;
+    else if (!state.objectMode && (!chunk || !chunk.length))
+      return;
+
+    var ret = self.push(chunk);
+    if (!ret) {
+      paused = true;
+      stream.pause();
+    }
+  });
+
+  // proxy all the other methods.
+  // important when wrapping filters and duplexes.
+  for (var i in stream) {
+    if (this[i] === undefined && typeof stream[i] === 'function') {
+      this[i] = function(method) { return function() {
+        return stream[method].apply(stream, arguments);
+      }; }(i);
+    }
+  }
+
+  // proxy certain important events.
+  var events = ['error', 'close', 'destroy', 'pause', 'resume'];
+  forEach(events, function(ev) {
+    stream.on(ev, self.emit.bind(self, ev));
+  });
+
+  // when we try to consume some more bytes, simply unpause the
+  // underlying stream.
+  self._read = function(n) {
+    debug('wrapped _read', n);
+    if (paused) {
+      paused = false;
+      stream.resume();
+    }
+  };
+
+  return self;
+};
+
+
+// exposed for testing purposes only.
+Readable._fromList = fromList;
+
+// Pluck off n bytes from an array of buffers.
+// Length is the combined lengths of all the buffers in the list.
+function fromList(n, state) {
+  var list = state.buffer;
+  var length = state.length;
+  var stringMode = !!state.decoder;
+  var objectMode = !!state.objectMode;
+  var ret;
+
+  // nothing in the list, definitely empty.
+  if (list.length === 0)
+    return null;
+
+  if (length === 0)
+    ret = null;
+  else if (objectMode)
+    ret = list.shift();
+  else if (!n || n >= length) {
+    // read it all, truncate the array.
+    if (stringMode)
+      ret = list.join('');
+    else if (list.length === 1)
+      ret = list[0];
+    else
+      ret = Buffer.concat(list, length);
+    list.length = 0;
+  } else {
+    // read just some of it.
+    if (n < list[0].length) {
+      // just take a part of the first list item.
+      // slice is the same for buffers and strings.
+      var buf = list[0];
+      ret = buf.slice(0, n);
+      list[0] = buf.slice(n);
+    } else if (n === list[0].length) {
+      // first list is a perfect match
+      ret = list.shift();
+    } else {
+      // complex case.
+      // we have enough to cover it, but it spans past the first buffer.
+      if (stringMode)
+        ret = '';
+      else
+        ret = new Buffer(n);
+
+      var c = 0;
+      for (var i = 0, l = list.length; i < l && c < n; i++) {
+        var buf = list[0];
+        var cpy = Math.min(n - c, buf.length);
+
+        if (stringMode)
+          ret += buf.slice(0, cpy);
+        else
+          buf.copy(ret, c, 0, cpy);
+
+        if (cpy < buf.length)
+          list[0] = buf.slice(cpy);
+        else
+          list.shift();
+
+        c += cpy;
+      }
+    }
+  }
+
+  return ret;
+}
+
+function endReadable(stream) {
+  var state = stream._readableState;
+
+  // If we get here before consuming all the bytes, then that is a
+  // bug in node.  Should never happen.
+  if (state.length > 0)
+    throw new Error('endReadable called on non-empty stream');
+
+  if (!state.endEmitted) {
+    state.ended = true;
+    processNextTick(endReadableNT, state, stream);
+  }
+}
+
+function endReadableNT(state, stream) {
+  // Check that we didn't get one last unshift.
+  if (!state.endEmitted && state.length === 0) {
+    state.endEmitted = true;
+    stream.readable = false;
+    stream.emit('end');
+  }
+}
+
+function forEach (xs, f) {
+  for (var i = 0, l = xs.length; i < l; i++) {
+    f(xs[i], i);
+  }
+}
+
+function indexOf (xs, x) {
+  for (var i = 0, l = xs.length; i < l; i++) {
+    if (xs[i] === x) return i;
+  }
+  return -1;
+}
+
+}).call(this,require('_process'))
+},{"./_stream_duplex":26,"_process":24,"buffer":4,"core-util-is":6,"events":8,"inherits":10,"isarray":12,"process-nextick-args":23,"string_decoder/":36,"util":3}],29:[function(require,module,exports){
+// a transform stream is a readable/writable stream where you do
+// something with the data.  Sometimes it's called a "filter",
+// but that's not a great name for it, since that implies a thing where
+// some bits pass through, and others are simply ignored.  (That would
+// be a valid example of a transform, of course.)
+//
+// While the output is causally related to the input, it's not a
+// necessarily symmetric or synchronous transformation.  For example,
+// a zlib stream might take multiple plain-text writes(), and then
+// emit a single compressed chunk some time in the future.
+//
+// Here's how this works:
+//
+// The Transform stream has all the aspects of the readable and writable
+// stream classes.  When you write(chunk), that calls _write(chunk,cb)
+// internally, and returns false if there's a lot of pending writes
+// buffered up.  When you call read(), that calls _read(n) until
+// there's enough pending readable data buffered up.
+//
+// In a transform stream, the written data is placed in a buffer.  When
+// _read(n) is called, it transforms the queued up data, calling the
+// buffered _write cb's as it consumes chunks.  If consuming a single
+// written chunk would result in multiple output chunks, then the first
+// outputted bit calls the readcb, and subsequent chunks just go into
+// the read buffer, and will cause it to emit 'readable' if necessary.
+//
+// This way, back-pressure is actually determined by the reading side,
+// since _read has to be called to start processing a new chunk.  However,
+// a pathological inflate type of transform can cause excessive buffering
+// here.  For example, imagine a stream where every byte of input is
+// interpreted as an integer from 0-255, and then results in that many
+// bytes of output.  Writing the 4 bytes {ff,ff,ff,ff} would result in
+// 1kb of data being output.  In this case, you could write a very small
+// amount of input, and end up with a very large amount of output.  In
+// such a pathological inflating mechanism, there'd be no way to tell
+// the system to stop doing the transform.  A single 4MB write could
+// cause the system to run out of memory.
+//
+// However, even in such a pathological case, only a single written chunk
+// would be consumed, and then the rest would wait (un-transformed) until
+// the results of the previous transformed chunk were consumed.
+
+'use strict';
+
+module.exports = Transform;
+
+var Duplex = require('./_stream_duplex');
+
+/*<replacement>*/
+var util = require('core-util-is');
+util.inherits = require('inherits');
+/*</replacement>*/
+
+util.inherits(Transform, Duplex);
+
+
+function TransformState(stream) {
+  this.afterTransform = function(er, data) {
+    return afterTransform(stream, er, data);
+  };
+
+  this.needTransform = false;
+  this.transforming = false;
+  this.writecb = null;
+  this.writechunk = null;
+}
+
+function afterTransform(stream, er, data) {
+  var ts = stream._transformState;
+  ts.transforming = false;
+
+  var cb = ts.writecb;
+
+  if (!cb)
+    return stream.emit('error', new Error('no writecb in Transform class'));
+
+  ts.writechunk = null;
+  ts.writecb = null;
+
+  if (data !== null && data !== undefined)
+    stream.push(data);
+
+  if (cb)
+    cb(er);
+
+  var rs = stream._readableState;
+  rs.reading = false;
+  if (rs.needReadable || rs.length < rs.highWaterMark) {
+    stream._read(rs.highWaterMark);
+  }
+}
+
+
+function Transform(options) {
+  if (!(this instanceof Transform))
+    return new Transform(options);
+
+  Duplex.call(this, options);
+
+  this._transformState = new TransformState(this);
+
+  // when the writable side finishes, then flush out anything remaining.
+  var stream = this;
+
+  // start out asking for a readable event once data is transformed.
+  this._readableState.needReadable = true;
+
+  // we have implemented the _read method, and done the other things
+  // that Readable wants before the first _read call, so unset the
+  // sync guard flag.
+  this._readableState.sync = false;
+
+  if (options) {
+    if (typeof options.transform === 'function')
+      this._transform = options.transform;
+
+    if (typeof options.flush === 'function')
+      this._flush = options.flush;
+  }
+
+  this.once('prefinish', function() {
+    if (typeof this._flush === 'function')
+      this._flush(function(er) {
+        done(stream, er);
+      });
+    else
+      done(stream);
+  });
+}
+
+Transform.prototype.push = function(chunk, encoding) {
+  this._transformState.needTransform = false;
+  return Duplex.prototype.push.call(this, chunk, encoding);
+};
+
+// This is the part where you do stuff!
+// override this function in implementation classes.
+// 'chunk' is an input chunk.
+//
+// Call `push(newChunk)` to pass along transformed output
+// to the readable side.  You may call 'push' zero or more times.
+//
+// Call `cb(err)` when you are done with this chunk.  If you pass
+// an error, then that'll put the hurt on the whole operation.  If you
+// never call cb(), then you'll never get another chunk.
+Transform.prototype._transform = function(chunk, encoding, cb) {
+  throw new Error('not implemented');
+};
+
+Transform.prototype._write = function(chunk, encoding, cb) {
+  var ts = this._transformState;
+  ts.writecb = cb;
+  ts.writechunk = chunk;
+  ts.writeencoding = encoding;
+  if (!ts.transforming) {
+    var rs = this._readableState;
+    if (ts.needTransform ||
+        rs.needReadable ||
+        rs.length < rs.highWaterMark)
+      this._read(rs.highWaterMark);
+  }
+};
+
+// Doesn't matter what the args are here.
+// _transform does all the work.
+// That we got here means that the readable side wants more data.
+Transform.prototype._read = function(n) {
+  var ts = this._transformState;
+
+  if (ts.writechunk !== null && ts.writecb && !ts.transforming) {
+    ts.transforming = true;
+    this._transform(ts.writechunk, ts.writeencoding, ts.afterTransform);
+  } else {
+    // mark that we need a transform, so that any data that comes in
+    // will get processed, now that we've asked for it.
+    ts.needTransform = true;
+  }
+};
+
+
+function done(stream, er) {
+  if (er)
+    return stream.emit('error', er);
+
+  // if there's nothing in the write buffer, then that means
+  // that nothing more will ever be provided
+  var ws = stream._writableState;
+  var ts = stream._transformState;
+
+  if (ws.length)
+    throw new Error('calling transform done when ws.length != 0');
+
+  if (ts.transforming)
+    throw new Error('calling transform done when still transforming');
+
+  return stream.push(null);
+}
+
+},{"./_stream_duplex":26,"core-util-is":6,"inherits":10}],30:[function(require,module,exports){
+// A bit simpler than readable streams.
+// Implement an async ._write(chunk, encoding, cb), and it'll handle all
+// the drain event emission and buffering.
+
+'use strict';
+
+module.exports = Writable;
+
+/*<replacement>*/
+var processNextTick = require('process-nextick-args');
+/*</replacement>*/
+
+
+/*<replacement>*/
+var Buffer = require('buffer').Buffer;
+/*</replacement>*/
+
+Writable.WritableState = WritableState;
+
+
+/*<replacement>*/
+var util = require('core-util-is');
+util.inherits = require('inherits');
+/*</replacement>*/
+
+
+/*<replacement>*/
+var internalUtil = {
+  deprecate: require('util-deprecate')
+};
+/*</replacement>*/
+
+
+
+/*<replacement>*/
+var Stream;
+(function (){try{
+  Stream = require('st' + 'ream');
+}catch(_){}finally{
+  if (!Stream)
+    Stream = require('events').EventEmitter;
+}}())
+/*</replacement>*/
+
+var Buffer = require('buffer').Buffer;
+
+util.inherits(Writable, Stream);
+
+function nop() {}
+
+function WriteReq(chunk, encoding, cb) {
+  this.chunk = chunk;
+  this.encoding = encoding;
+  this.callback = cb;
+  this.next = null;
+}
+
+var Duplex;
+function WritableState(options, stream) {
+  Duplex = Duplex || require('./_stream_duplex');
+
+  options = options || {};
+
+  // object stream flag to indicate whether or not this stream
+  // contains buffers or objects.
+  this.objectMode = !!options.objectMode;
+
+  if (stream instanceof Duplex)
+    this.objectMode = this.objectMode || !!options.writableObjectMode;
+
+  // the point at which write() starts returning false
+  // Note: 0 is a valid value, means that we always return false if
+  // the entire buffer is not flushed immediately on write()
+  var hwm = options.highWaterMark;
+  var defaultHwm = this.objectMode ? 16 : 16 * 1024;
+  this.highWaterMark = (hwm || hwm === 0) ? hwm : defaultHwm;
+
+  // cast to ints.
+  this.highWaterMark = ~~this.highWaterMark;
+
+  this.needDrain = false;
+  // at the start of calling end()
+  this.ending = false;
+  // when end() has been called, and returned
+  this.ended = false;
+  // when 'finish' is emitted
+  this.finished = false;
+
+  // should we decode strings into buffers before passing to _write?
+  // this is here so that some node-core streams can optimize string
+  // handling at a lower level.
+  var noDecode = options.decodeStrings === false;
+  this.decodeStrings = !noDecode;
+
+  // Crypto is kind of old and crusty.  Historically, its default string
+  // encoding is 'binary' so we have to make this configurable.
+  // Everything else in the universe uses 'utf8', though.
+  this.defaultEncoding = options.defaultEncoding || 'utf8';
+
+  // not an actual buffer we keep track of, but a measurement
+  // of how much we're waiting to get pushed to some underlying
+  // socket or file.
+  this.length = 0;
+
+  // a flag to see when we're in the middle of a write.
+  this.writing = false;
+
+  // when true all writes will be buffered until .uncork() call
+  this.corked = 0;
+
+  // a flag to be able to tell if the onwrite cb is called immediately,
+  // or on a later tick.  We set this to true at first, because any
+  // actions that shouldn't happen until "later" should generally also
+  // not happen before the first write call.
+  this.sync = true;
+
+  // a flag to know if we're processing previously buffered items, which
+  // may call the _write() callback in the same tick, so that we don't
+  // end up in an overlapped onwrite situation.
+  this.bufferProcessing = false;
+
+  // the callback that's passed to _write(chunk,cb)
+  this.onwrite = function(er) {
+    onwrite(stream, er);
+  };
+
+  // the callback that the user supplies to write(chunk,encoding,cb)
+  this.writecb = null;
+
+  // the amount that is being written when _write is called.
+  this.writelen = 0;
+
+  this.bufferedRequest = null;
+  this.lastBufferedRequest = null;
+
+  // number of pending user-supplied write callbacks
+  // this must be 0 before 'finish' can be emitted
+  this.pendingcb = 0;
+
+  // emit prefinish if the only thing we're waiting for is _write cbs
+  // This is relevant for synchronous Transform streams
+  this.prefinished = false;
+
+  // True if the error was already emitted and should not be thrown again
+  this.errorEmitted = false;
+}
+
+WritableState.prototype.getBuffer = function writableStateGetBuffer() {
+  var current = this.bufferedRequest;
+  var out = [];
+  while (current) {
+    out.push(current);
+    current = current.next;
+  }
+  return out;
+};
+
+(function (){try {
+Object.defineProperty(WritableState.prototype, 'buffer', {
+  get: internalUtil.deprecate(function() {
+    return this.getBuffer();
+  }, '_writableState.buffer is deprecated. Use _writableState.getBuffer ' +
+     'instead.')
+});
+}catch(_){}}());
+
+
+var Duplex;
+function Writable(options) {
+  Duplex = Duplex || require('./_stream_duplex');
+
+  // Writable ctor is applied to Duplexes, though they're not
+  // instanceof Writable, they're instanceof Readable.
+  if (!(this instanceof Writable) && !(this instanceof Duplex))
+    return new Writable(options);
+
+  this._writableState = new WritableState(options, this);
+
+  // legacy.
+  this.writable = true;
+
+  if (options) {
+    if (typeof options.write === 'function')
+      this._write = options.write;
+
+    if (typeof options.writev === 'function')
+      this._writev = options.writev;
+  }
+
+  Stream.call(this);
+}
+
+// Otherwise people can pipe Writable streams, which is just wrong.
+Writable.prototype.pipe = function() {
+  this.emit('error', new Error('Cannot pipe. Not readable.'));
+};
+
+
+function writeAfterEnd(stream, cb) {
+  var er = new Error('write after end');
+  // TODO: defer error events consistently everywhere, not just the cb
+  stream.emit('error', er);
+  processNextTick(cb, er);
+}
+
+// If we get something that is not a buffer, string, null, or undefined,
+// and we're not in objectMode, then that's an error.
+// Otherwise stream chunks are all considered to be of length=1, and the
+// watermarks determine how many objects to keep in the buffer, rather than
+// how many bytes or characters.
+function validChunk(stream, state, chunk, cb) {
+  var valid = true;
+
+  if (!(Buffer.isBuffer(chunk)) &&
+      typeof chunk !== 'string' &&
+      chunk !== null &&
+      chunk !== undefined &&
+      !state.objectMode) {
+    var er = new TypeError('Invalid non-string/buffer chunk');
+    stream.emit('error', er);
+    processNextTick(cb, er);
+    valid = false;
+  }
+  return valid;
+}
+
+Writable.prototype.write = function(chunk, encoding, cb) {
+  var state = this._writableState;
+  var ret = false;
+
+  if (typeof encoding === 'function') {
+    cb = encoding;
+    encoding = null;
+  }
+
+  if (Buffer.isBuffer(chunk))
+    encoding = 'buffer';
+  else if (!encoding)
+    encoding = state.defaultEncoding;
+
+  if (typeof cb !== 'function')
+    cb = nop;
+
+  if (state.ended)
+    writeAfterEnd(this, cb);
+  else if (validChunk(this, state, chunk, cb)) {
+    state.pendingcb++;
+    ret = writeOrBuffer(this, state, chunk, encoding, cb);
+  }
+
+  return ret;
+};
+
+Writable.prototype.cork = function() {
+  var state = this._writableState;
+
+  state.corked++;
+};
+
+Writable.prototype.uncork = function() {
+  var state = this._writableState;
+
+  if (state.corked) {
+    state.corked--;
+
+    if (!state.writing &&
+        !state.corked &&
+        !state.finished &&
+        !state.bufferProcessing &&
+        state.bufferedRequest)
+      clearBuffer(this, state);
+  }
+};
+
+Writable.prototype.setDefaultEncoding = function setDefaultEncoding(encoding) {
+  // node::ParseEncoding() requires lower case.
+  if (typeof encoding === 'string')
+    encoding = encoding.toLowerCase();
+  if (!(['hex', 'utf8', 'utf-8', 'ascii', 'binary', 'base64',
+'ucs2', 'ucs-2','utf16le', 'utf-16le', 'raw']
+.indexOf((encoding + '').toLowerCase()) > -1))
+    throw new TypeError('Unknown encoding: ' + encoding);
+  this._writableState.defaultEncoding = encoding;
+};
+
+function decodeChunk(state, chunk, encoding) {
+  if (!state.objectMode &&
+      state.decodeStrings !== false &&
+      typeof chunk === 'string') {
+    chunk = new Buffer(chunk, encoding);
+  }
+  return chunk;
+}
+
+// if we're already writing something, then just put this
+// in the queue, and wait our turn.  Otherwise, call _write
+// If we return false, then we need a drain event, so set that flag.
+function writeOrBuffer(stream, state, chunk, encoding, cb) {
+  chunk = decodeChunk(state, chunk, encoding);
+
+  if (Buffer.isBuffer(chunk))
+    encoding = 'buffer';
+  var len = state.objectMode ? 1 : chunk.length;
+
+  state.length += len;
+
+  var ret = state.length < state.highWaterMark;
+  // we must ensure that previous needDrain will not be reset to false.
+  if (!ret)
+    state.needDrain = true;
+
+  if (state.writing || state.corked) {
+    var last = state.lastBufferedRequest;
+    state.lastBufferedRequest = new WriteReq(chunk, encoding, cb);
+    if (last) {
+      last.next = state.lastBufferedRequest;
+    } else {
+      state.bufferedRequest = state.lastBufferedRequest;
+    }
+  } else {
+    doWrite(stream, state, false, len, chunk, encoding, cb);
+  }
+
+  return ret;
+}
+
+function doWrite(stream, state, writev, len, chunk, encoding, cb) {
+  state.writelen = len;
+  state.writecb = cb;
+  state.writing = true;
+  state.sync = true;
+  if (writev)
+    stream._writev(chunk, state.onwrite);
+  else
+    stream._write(chunk, encoding, state.onwrite);
+  state.sync = false;
+}
+
+function onwriteError(stream, state, sync, er, cb) {
+  --state.pendingcb;
+  if (sync)
+    processNextTick(cb, er);
+  else
+    cb(er);
+
+  stream._writableState.errorEmitted = true;
+  stream.emit('error', er);
+}
+
+function onwriteStateUpdate(state) {
+  state.writing = false;
+  state.writecb = null;
+  state.length -= state.writelen;
+  state.writelen = 0;
+}
+
+function onwrite(stream, er) {
+  var state = stream._writableState;
+  var sync = state.sync;
+  var cb = state.writecb;
+
+  onwriteStateUpdate(state);
+
+  if (er)
+    onwriteError(stream, state, sync, er, cb);
+  else {
+    // Check if we're actually ready to finish, but don't emit yet
+    var finished = needFinish(state);
+
+    if (!finished &&
+        !state.corked &&
+        !state.bufferProcessing &&
+        state.bufferedRequest) {
+      clearBuffer(stream, state);
+    }
+
+    if (sync) {
+      processNextTick(afterWrite, stream, state, finished, cb);
+    } else {
+      afterWrite(stream, state, finished, cb);
+    }
+  }
+}
+
+function afterWrite(stream, state, finished, cb) {
+  if (!finished)
+    onwriteDrain(stream, state);
+  state.pendingcb--;
+  cb();
+  finishMaybe(stream, state);
+}
+
+// Must force callback to be called on nextTick, so that we don't
+// emit 'drain' before the write() consumer gets the 'false' return
+// value, and has a chance to attach a 'drain' listener.
+function onwriteDrain(stream, state) {
+  if (state.length === 0 && state.needDrain) {
+    state.needDrain = false;
+    stream.emit('drain');
+  }
+}
+
+
+// if there's something in the buffer waiting, then process it
+function clearBuffer(stream, state) {
+  state.bufferProcessing = true;
+  var entry = state.bufferedRequest;
+
+  if (stream._writev && entry && entry.next) {
+    // Fast case, write everything using _writev()
+    var buffer = [];
+    var cbs = [];
+    while (entry) {
+      cbs.push(entry.callback);
+      buffer.push(entry);
+      entry = entry.next;
+    }
+
+    // count the one we are adding, as well.
+    // TODO(isaacs) clean this up
+    state.pendingcb++;
+    state.lastBufferedRequest = null;
+    doWrite(stream, state, true, state.length, buffer, '', function(err) {
+      for (var i = 0; i < cbs.length; i++) {
+        state.pendingcb--;
+        cbs[i](err);
+      }
+    });
+
+    // Clear buffer
+  } else {
+    // Slow case, write chunks one-by-one
+    while (entry) {
+      var chunk = entry.chunk;
+      var encoding = entry.encoding;
+      var cb = entry.callback;
+      var len = state.objectMode ? 1 : chunk.length;
+
+      doWrite(stream, state, false, len, chunk, encoding, cb);
+      entry = entry.next;
+      // if we didn't call the onwrite immediately, then
+      // it means that we need to wait until it does.
+      // also, that means that the chunk and cb are currently
+      // being processed, so move the buffer counter past them.
+      if (state.writing) {
+        break;
+      }
+    }
+
+    if (entry === null)
+      state.lastBufferedRequest = null;
+  }
+  state.bufferedRequest = entry;
+  state.bufferProcessing = false;
+}
+
+Writable.prototype._write = function(chunk, encoding, cb) {
+  cb(new Error('not implemented'));
+};
+
+Writable.prototype._writev = null;
+
+Writable.prototype.end = function(chunk, encoding, cb) {
+  var state = this._writableState;
+
+  if (typeof chunk === 'function') {
+    cb = chunk;
+    chunk = null;
+    encoding = null;
+  } else if (typeof encoding === 'function') {
+    cb = encoding;
+    encoding = null;
+  }
+
+  if (chunk !== null && chunk !== undefined)
+    this.write(chunk, encoding);
+
+  // .end() fully uncorks
+  if (state.corked) {
+    state.corked = 1;
+    this.uncork();
+  }
+
+  // ignore unnecessary end() calls.
+  if (!state.ending && !state.finished)
+    endWritable(this, state, cb);
+};
+
+
+function needFinish(state) {
+  return (state.ending &&
+          state.length === 0 &&
+          state.bufferedRequest === null &&
+          !state.finished &&
+          !state.writing);
+}
+
+function prefinish(stream, state) {
+  if (!state.prefinished) {
+    state.prefinished = true;
+    stream.emit('prefinish');
+  }
+}
+
+function finishMaybe(stream, state) {
+  var need = needFinish(state);
+  if (need) {
+    if (state.pendingcb === 0) {
+      prefinish(stream, state);
+      state.finished = true;
+      stream.emit('finish');
+    } else {
+      prefinish(stream, state);
+    }
+  }
+  return need;
+}
+
+function endWritable(stream, state, cb) {
+  state.ending = true;
+  finishMaybe(stream, state);
+  if (cb) {
+    if (state.finished)
+      processNextTick(cb);
+    else
+      stream.once('finish', cb);
+  }
+  state.ended = true;
+}
+
+},{"./_stream_duplex":26,"buffer":4,"core-util-is":6,"events":8,"inherits":10,"process-nextick-args":23,"util-deprecate":37}],31:[function(require,module,exports){
+module.exports = require("./lib/_stream_passthrough.js")
+
+},{"./lib/_stream_passthrough.js":27}],32:[function(require,module,exports){
+var Stream = (function (){
+  try {
+    return require('st' + 'ream'); // hack to fix a circular dependency issue when used with browserify
+  } catch(_){}
+}());
+exports = module.exports = require('./lib/_stream_readable.js');
+exports.Stream = Stream || exports;
+exports.Readable = exports;
+exports.Writable = require('./lib/_stream_writable.js');
+exports.Duplex = require('./lib/_stream_duplex.js');
+exports.Transform = require('./lib/_stream_transform.js');
+exports.PassThrough = require('./lib/_stream_passthrough.js');
+
+},{"./lib/_stream_duplex.js":26,"./lib/_stream_passthrough.js":27,"./lib/_stream_readable.js":28,"./lib/_stream_transform.js":29,"./lib/_stream_writable.js":30}],33:[function(require,module,exports){
+module.exports = require("./lib/_stream_transform.js")
+
+},{"./lib/_stream_transform.js":29}],34:[function(require,module,exports){
+module.exports = require("./lib/_stream_writable.js")
+
+},{"./lib/_stream_writable.js":30}],35:[function(require,module,exports){
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+module.exports = Stream;
+
+var EE = require('events').EventEmitter;
+var inherits = require('inherits');
+
+inherits(Stream, EE);
+Stream.Readable = require('readable-stream/readable.js');
+Stream.Writable = require('readable-stream/writable.js');
+Stream.Duplex = require('readable-stream/duplex.js');
+Stream.Transform = require('readable-stream/transform.js');
+Stream.PassThrough = require('readable-stream/passthrough.js');
+
+// Backwards-compat with node 0.4.x
+Stream.Stream = Stream;
+
+
+
+// old-style streams.  Note that the pipe method (the only relevant
+// part of this class) is overridden in the Readable class.
+
+function Stream() {
+  EE.call(this);
+}
+
+Stream.prototype.pipe = function(dest, options) {
+  var source = this;
+
+  function ondata(chunk) {
+    if (dest.writable) {
+      if (false === dest.write(chunk) && source.pause) {
+        source.pause();
+      }
+    }
+  }
+
+  source.on('data', ondata);
+
+  function ondrain() {
+    if (source.readable && source.resume) {
+      source.resume();
+    }
+  }
+
+  dest.on('drain', ondrain);
+
+  // If the 'end' option is not supplied, dest.end() will be called when
+  // source gets the 'end' or 'close' events.  Only dest.end() once.
+  if (!dest._isStdio && (!options || options.end !== false)) {
+    source.on('end', onend);
+    source.on('close', onclose);
+  }
+
+  var didOnEnd = false;
+  function onend() {
+    if (didOnEnd) return;
+    didOnEnd = true;
+
+    dest.end();
+  }
+
+
+  function onclose() {
+    if (didOnEnd) return;
+    didOnEnd = true;
+
+    if (typeof dest.destroy === 'function') dest.destroy();
+  }
+
+  // don't leave dangling pipes when there are errors.
+  function onerror(er) {
+    cleanup();
+    if (EE.listenerCount(this, 'error') === 0) {
+      throw er; // Unhandled stream error in pipe.
+    }
+  }
+
+  source.on('error', onerror);
+  dest.on('error', onerror);
+
+  // remove all the event listeners that were added.
+  function cleanup() {
+    source.removeListener('data', ondata);
+    dest.removeListener('drain', ondrain);
+
+    source.removeListener('end', onend);
+    source.removeListener('close', onclose);
+
+    source.removeListener('error', onerror);
+    dest.removeListener('error', onerror);
+
+    source.removeListener('end', cleanup);
+    source.removeListener('close', cleanup);
+
+    dest.removeListener('close', cleanup);
+  }
+
+  source.on('end', cleanup);
+  source.on('close', cleanup);
+
+  dest.on('close', cleanup);
+
+  dest.emit('pipe', source);
+
+  // Allow for unix-like usage: A.pipe(B).pipe(C)
+  return dest;
+};
+
+},{"events":8,"inherits":10,"readable-stream/duplex.js":25,"readable-stream/passthrough.js":31,"readable-stream/readable.js":32,"readable-stream/transform.js":33,"readable-stream/writable.js":34}],36:[function(require,module,exports){
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+var Buffer = require('buffer').Buffer;
+
+var isBufferEncoding = Buffer.isEncoding
+  || function(encoding) {
+       switch (encoding && encoding.toLowerCase()) {
+         case 'hex': case 'utf8': case 'utf-8': case 'ascii': case 'binary': case 'base64': case 'ucs2': case 'ucs-2': case 'utf16le': case 'utf-16le': case 'raw': return true;
+         default: return false;
+       }
+     }
+
+
+function assertEncoding(encoding) {
+  if (encoding && !isBufferEncoding(encoding)) {
+    throw new Error('Unknown encoding: ' + encoding);
+  }
+}
+
+// StringDecoder provides an interface for efficiently splitting a series of
+// buffers into a series of JS strings without breaking apart multi-byte
+// characters. CESU-8 is handled as part of the UTF-8 encoding.
+//
+// @TODO Handling all encodings inside a single object makes it very difficult
+// to reason about this code, so it should be split up in the future.
+// @TODO There should be a utf8-strict encoding that rejects invalid UTF-8 code
+// points as used by CESU-8.
+var StringDecoder = exports.StringDecoder = function(encoding) {
+  this.encoding = (encoding || 'utf8').toLowerCase().replace(/[-_]/, '');
+  assertEncoding(encoding);
+  switch (this.encoding) {
+    case 'utf8':
+      // CESU-8 represents each of Surrogate Pair by 3-bytes
+      this.surrogateSize = 3;
+      break;
+    case 'ucs2':
+    case 'utf16le':
+      // UTF-16 represents each of Surrogate Pair by 2-bytes
+      this.surrogateSize = 2;
+      this.detectIncompleteChar = utf16DetectIncompleteChar;
+      break;
+    case 'base64':
+      // Base-64 stores 3 bytes in 4 chars, and pads the remainder.
+      this.surrogateSize = 3;
+      this.detectIncompleteChar = base64DetectIncompleteChar;
+      break;
+    default:
+      this.write = passThroughWrite;
+      return;
+  }
+
+  // Enough space to store all bytes of a single character. UTF-8 needs 4
+  // bytes, but CESU-8 may require up to 6 (3 bytes per surrogate).
+  this.charBuffer = new Buffer(6);
+  // Number of bytes received for the current incomplete multi-byte character.
+  this.charReceived = 0;
+  // Number of bytes expected for the current incomplete multi-byte character.
+  this.charLength = 0;
+};
+
+
+// write decodes the given buffer and returns it as JS string that is
+// guaranteed to not contain any partial multi-byte characters. Any partial
+// character found at the end of the buffer is buffered up, and will be
+// returned when calling write again with the remaining bytes.
+//
+// Note: Converting a Buffer containing an orphan surrogate to a String
+// currently works, but converting a String to a Buffer (via `new Buffer`, or
+// Buffer#write) will replace incomplete surrogates with the unicode
+// replacement character. See https://codereview.chromium.org/121173009/ .
+StringDecoder.prototype.write = function(buffer) {
+  var charStr = '';
+  // if our last write ended with an incomplete multibyte character
+  while (this.charLength) {
+    // determine how many remaining bytes this buffer has to offer for this char
+    var available = (buffer.length >= this.charLength - this.charReceived) ?
+        this.charLength - this.charReceived :
+        buffer.length;
+
+    // add the new bytes to the char buffer
+    buffer.copy(this.charBuffer, this.charReceived, 0, available);
+    this.charReceived += available;
+
+    if (this.charReceived < this.charLength) {
+      // still not enough chars in this buffer? wait for more ...
+      return '';
+    }
+
+    // remove bytes belonging to the current character from the buffer
+    buffer = buffer.slice(available, buffer.length);
+
+    // get the character that was split
+    charStr = this.charBuffer.slice(0, this.charLength).toString(this.encoding);
+
+    // CESU-8: lead surrogate (D800-DBFF) is also the incomplete character
+    var charCode = charStr.charCodeAt(charStr.length - 1);
+    if (charCode >= 0xD800 && charCode <= 0xDBFF) {
+      this.charLength += this.surrogateSize;
+      charStr = '';
+      continue;
+    }
+    this.charReceived = this.charLength = 0;
+
+    // if there are no more bytes in this buffer, just emit our char
+    if (buffer.length === 0) {
+      return charStr;
+    }
+    break;
+  }
+
+  // determine and set charLength / charReceived
+  this.detectIncompleteChar(buffer);
+
+  var end = buffer.length;
+  if (this.charLength) {
+    // buffer the incomplete character bytes we got
+    buffer.copy(this.charBuffer, 0, buffer.length - this.charReceived, end);
+    end -= this.charReceived;
+  }
+
+  charStr += buffer.toString(this.encoding, 0, end);
+
+  var end = charStr.length - 1;
+  var charCode = charStr.charCodeAt(end);
+  // CESU-8: lead surrogate (D800-DBFF) is also the incomplete character
+  if (charCode >= 0xD800 && charCode <= 0xDBFF) {
+    var size = this.surrogateSize;
+    this.charLength += size;
+    this.charReceived += size;
+    this.charBuffer.copy(this.charBuffer, size, 0, size);
+    buffer.copy(this.charBuffer, 0, 0, size);
+    return charStr.substring(0, end);
+  }
+
+  // or just emit the charStr
+  return charStr;
+};
+
+// detectIncompleteChar determines if there is an incomplete UTF-8 character at
+// the end of the given buffer. If so, it sets this.charLength to the byte
+// length that character, and sets this.charReceived to the number of bytes
+// that are available for this character.
+StringDecoder.prototype.detectIncompleteChar = function(buffer) {
+  // determine how many bytes we have to check at the end of this buffer
+  var i = (buffer.length >= 3) ? 3 : buffer.length;
+
+  // Figure out if one of the last i bytes of our buffer announces an
+  // incomplete char.
+  for (; i > 0; i--) {
+    var c = buffer[buffer.length - i];
+
+    // See http://en.wikipedia.org/wiki/UTF-8#Description
+
+    // 110XXXXX
+    if (i == 1 && c >> 5 == 0x06) {
+      this.charLength = 2;
+      break;
+    }
+
+    // 1110XXXX
+    if (i <= 2 && c >> 4 == 0x0E) {
+      this.charLength = 3;
+      break;
+    }
+
+    // 11110XXX
+    if (i <= 3 && c >> 3 == 0x1E) {
+      this.charLength = 4;
+      break;
+    }
+  }
+  this.charReceived = i;
+};
+
+StringDecoder.prototype.end = function(buffer) {
+  var res = '';
+  if (buffer && buffer.length)
+    res = this.write(buffer);
+
+  if (this.charReceived) {
+    var cr = this.charReceived;
+    var buf = this.charBuffer;
+    var enc = this.encoding;
+    res += buf.slice(0, cr).toString(enc);
+  }
+
+  return res;
+};
+
+function passThroughWrite(buffer) {
+  return buffer.toString(this.encoding);
+}
+
+function utf16DetectIncompleteChar(buffer) {
+  this.charReceived = buffer.length % 2;
+  this.charLength = this.charReceived ? 2 : 0;
+}
+
+function base64DetectIncompleteChar(buffer) {
+  this.charReceived = buffer.length % 3;
+  this.charLength = this.charReceived ? 3 : 0;
+}
+
+},{"buffer":4}],37:[function(require,module,exports){
+(function (global){
+
+/**
+ * Module exports.
+ */
+
+module.exports = deprecate;
+
+/**
+ * Mark that a method should not be used.
+ * Returns a modified function which warns once by default.
+ *
+ * If `localStorage.noDeprecation = true` is set, then it is a no-op.
+ *
+ * If `localStorage.throwDeprecation = true` is set, then deprecated functions
+ * will throw an Error when invoked.
+ *
+ * If `localStorage.traceDeprecation = true` is set, then deprecated functions
+ * will invoke `console.trace()` instead of `console.error()`.
+ *
+ * @param {Function} fn - the function to deprecate
+ * @param {String} msg - the string to print to the console when `fn` is invoked
+ * @returns {Function} a new "deprecated" version of `fn`
+ * @api public
+ */
+
+function deprecate (fn, msg) {
+  if (config('noDeprecation')) {
+    return fn;
+  }
+
+  var warned = false;
+  function deprecated() {
+    if (!warned) {
+      if (config('throwDeprecation')) {
+        throw new Error(msg);
+      } else if (config('traceDeprecation')) {
+        console.trace(msg);
+      } else {
+        console.warn(msg);
+      }
+      warned = true;
+    }
+    return fn.apply(this, arguments);
+  }
+
+  return deprecated;
+}
+
+/**
+ * Checks `localStorage` for boolean values for the given `name`.
+ *
+ * @param {String} name
+ * @returns {Boolean}
+ * @api private
+ */
+
+function config (name) {
+  // accessing global.localStorage can trigger a DOMException in sandboxed iframes
+  try {
+    if (!global.localStorage) return false;
+  } catch (_) {
+    return false;
+  }
+  var val = global.localStorage[name];
+  if (null == val) return false;
+  return String(val).toLowerCase() === 'true';
+}
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],38:[function(require,module,exports){
+module.exports = function isBuffer(arg) {
+  return arg && typeof arg === 'object'
+    && typeof arg.copy === 'function'
+    && typeof arg.fill === 'function'
+    && typeof arg.readUInt8 === 'function';
+}
+},{}],39:[function(require,module,exports){
+(function (process,global){
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+var formatRegExp = /%[sdj%]/g;
+exports.format = function(f) {
+  if (!isString(f)) {
+    var objects = [];
+    for (var i = 0; i < arguments.length; i++) {
+      objects.push(inspect(arguments[i]));
+    }
+    return objects.join(' ');
+  }
+
+  var i = 1;
+  var args = arguments;
+  var len = args.length;
+  var str = String(f).replace(formatRegExp, function(x) {
+    if (x === '%%') return '%';
+    if (i >= len) return x;
+    switch (x) {
+      case '%s': return String(args[i++]);
+      case '%d': return Number(args[i++]);
+      case '%j':
+        try {
+          return JSON.stringify(args[i++]);
+        } catch (_) {
+          return '[Circular]';
+        }
+      default:
+        return x;
+    }
+  });
+  for (var x = args[i]; i < len; x = args[++i]) {
+    if (isNull(x) || !isObject(x)) {
+      str += ' ' + x;
+    } else {
+      str += ' ' + inspect(x);
+    }
+  }
+  return str;
+};
+
+
+// Mark that a method should not be used.
+// Returns a modified function which warns once by default.
+// If --no-deprecation is set, then it is a no-op.
+exports.deprecate = function(fn, msg) {
+  // Allow for deprecating things in the process of starting up.
+  if (isUndefined(global.process)) {
+    return function() {
+      return exports.deprecate(fn, msg).apply(this, arguments);
+    };
+  }
+
+  if (process.noDeprecation === true) {
+    return fn;
+  }
+
+  var warned = false;
+  function deprecated() {
+    if (!warned) {
+      if (process.throwDeprecation) {
+        throw new Error(msg);
+      } else if (process.traceDeprecation) {
+        console.trace(msg);
+      } else {
+        console.error(msg);
+      }
+      warned = true;
+    }
+    return fn.apply(this, arguments);
+  }
+
+  return deprecated;
+};
+
+
+var debugs = {};
+var debugEnviron;
+exports.debuglog = function(set) {
+  if (isUndefined(debugEnviron))
+    debugEnviron = process.env.NODE_DEBUG || '';
+  set = set.toUpperCase();
+  if (!debugs[set]) {
+    if (new RegExp('\\b' + set + '\\b', 'i').test(debugEnviron)) {
+      var pid = process.pid;
+      debugs[set] = function() {
+        var msg = exports.format.apply(exports, arguments);
+        console.error('%s %d: %s', set, pid, msg);
+      };
+    } else {
+      debugs[set] = function() {};
+    }
+  }
+  return debugs[set];
+};
+
+
+/**
+ * Echos the value of a value. Trys to print the value out
+ * in the best way possible given the different types.
+ *
+ * @param {Object} obj The object to print out.
+ * @param {Object} opts Optional options object that alters the output.
+ */
+/* legacy: obj, showHidden, depth, colors*/
+function inspect(obj, opts) {
+  // default options
+  var ctx = {
+    seen: [],
+    stylize: stylizeNoColor
+  };
+  // legacy...
+  if (arguments.length >= 3) ctx.depth = arguments[2];
+  if (arguments.length >= 4) ctx.colors = arguments[3];
+  if (isBoolean(opts)) {
+    // legacy...
+    ctx.showHidden = opts;
+  } else if (opts) {
+    // got an "options" object
+    exports._extend(ctx, opts);
+  }
+  // set default options
+  if (isUndefined(ctx.showHidden)) ctx.showHidden = false;
+  if (isUndefined(ctx.depth)) ctx.depth = 2;
+  if (isUndefined(ctx.colors)) ctx.colors = false;
+  if (isUndefined(ctx.customInspect)) ctx.customInspect = true;
+  if (ctx.colors) ctx.stylize = stylizeWithColor;
+  return formatValue(ctx, obj, ctx.depth);
+}
+exports.inspect = inspect;
+
+
+// http://en.wikipedia.org/wiki/ANSI_escape_code#graphics
+inspect.colors = {
+  'bold' : [1, 22],
+  'italic' : [3, 23],
+  'underline' : [4, 24],
+  'inverse' : [7, 27],
+  'white' : [37, 39],
+  'grey' : [90, 39],
+  'black' : [30, 39],
+  'blue' : [34, 39],
+  'cyan' : [36, 39],
+  'green' : [32, 39],
+  'magenta' : [35, 39],
+  'red' : [31, 39],
+  'yellow' : [33, 39]
+};
+
+// Don't use 'blue' not visible on cmd.exe
+inspect.styles = {
+  'special': 'cyan',
+  'number': 'yellow',
+  'boolean': 'yellow',
+  'undefined': 'grey',
+  'null': 'bold',
+  'string': 'green',
+  'date': 'magenta',
+  // "name": intentionally not styling
+  'regexp': 'red'
+};
+
+
+function stylizeWithColor(str, styleType) {
+  var style = inspect.styles[styleType];
+
+  if (style) {
+    return '\u001b[' + inspect.colors[style][0] + 'm' + str +
+           '\u001b[' + inspect.colors[style][1] + 'm';
+  } else {
+    return str;
+  }
+}
+
+
+function stylizeNoColor(str, styleType) {
+  return str;
+}
+
+
+function arrayToHash(array) {
+  var hash = {};
+
+  array.forEach(function(val, idx) {
+    hash[val] = true;
+  });
+
+  return hash;
+}
+
+
+function formatValue(ctx, value, recurseTimes) {
+  // Provide a hook for user-specified inspect functions.
+  // Check that value is an object with an inspect function on it
+  if (ctx.customInspect &&
+      value &&
+      isFunction(value.inspect) &&
+      // Filter out the util module, it's inspect function is special
+      value.inspect !== exports.inspect &&
+      // Also filter out any prototype objects using the circular check.
+      !(value.constructor && value.constructor.prototype === value)) {
+    var ret = value.inspect(recurseTimes, ctx);
+    if (!isString(ret)) {
+      ret = formatValue(ctx, ret, recurseTimes);
+    }
+    return ret;
+  }
+
+  // Primitive types cannot have properties
+  var primitive = formatPrimitive(ctx, value);
+  if (primitive) {
+    return primitive;
+  }
+
+  // Look up the keys of the object.
+  var keys = Object.keys(value);
+  var visibleKeys = arrayToHash(keys);
+
+  if (ctx.showHidden) {
+    keys = Object.getOwnPropertyNames(value);
+  }
+
+  // IE doesn't make error fields non-enumerable
+  // http://msdn.microsoft.com/en-us/library/ie/dww52sbt(v=vs.94).aspx
+  if (isError(value)
+      && (keys.indexOf('message') >= 0 || keys.indexOf('description') >= 0)) {
+    return formatError(value);
+  }
+
+  // Some type of object without properties can be shortcutted.
+  if (keys.length === 0) {
+    if (isFunction(value)) {
+      var name = value.name ? ': ' + value.name : '';
+      return ctx.stylize('[Function' + name + ']', 'special');
+    }
+    if (isRegExp(value)) {
+      return ctx.stylize(RegExp.prototype.toString.call(value), 'regexp');
+    }
+    if (isDate(value)) {
+      return ctx.stylize(Date.prototype.toString.call(value), 'date');
+    }
+    if (isError(value)) {
+      return formatError(value);
+    }
+  }
+
+  var base = '', array = false, braces = ['{', '}'];
+
+  // Make Array say that they are Array
+  if (isArray(value)) {
+    array = true;
+    braces = ['[', ']'];
+  }
+
+  // Make functions say that they are functions
+  if (isFunction(value)) {
+    var n = value.name ? ': ' + value.name : '';
+    base = ' [Function' + n + ']';
+  }
+
+  // Make RegExps say that they are RegExps
+  if (isRegExp(value)) {
+    base = ' ' + RegExp.prototype.toString.call(value);
+  }
+
+  // Make dates with properties first say the date
+  if (isDate(value)) {
+    base = ' ' + Date.prototype.toUTCString.call(value);
+  }
+
+  // Make error with message first say the error
+  if (isError(value)) {
+    base = ' ' + formatError(value);
+  }
+
+  if (keys.length === 0 && (!array || value.length == 0)) {
+    return braces[0] + base + braces[1];
+  }
+
+  if (recurseTimes < 0) {
+    if (isRegExp(value)) {
+      return ctx.stylize(RegExp.prototype.toString.call(value), 'regexp');
+    } else {
+      return ctx.stylize('[Object]', 'special');
+    }
+  }
+
+  ctx.seen.push(value);
+
+  var output;
+  if (array) {
+    output = formatArray(ctx, value, recurseTimes, visibleKeys, keys);
+  } else {
+    output = keys.map(function(key) {
+      return formatProperty(ctx, value, recurseTimes, visibleKeys, key, array);
+    });
+  }
+
+  ctx.seen.pop();
+
+  return reduceToSingleString(output, base, braces);
+}
+
+
+function formatPrimitive(ctx, value) {
+  if (isUndefined(value))
+    return ctx.stylize('undefined', 'undefined');
+  if (isString(value)) {
+    var simple = '\'' + JSON.stringify(value).replace(/^"|"$/g, '')
+                                             .replace(/'/g, "\\'")
+                                             .replace(/\\"/g, '"') + '\'';
+    return ctx.stylize(simple, 'string');
+  }
+  if (isNumber(value))
+    return ctx.stylize('' + value, 'number');
+  if (isBoolean(value))
+    return ctx.stylize('' + value, 'boolean');
+  // For some reason typeof null is "object", so special case here.
+  if (isNull(value))
+    return ctx.stylize('null', 'null');
+}
+
+
+function formatError(value) {
+  return '[' + Error.prototype.toString.call(value) + ']';
+}
+
+
+function formatArray(ctx, value, recurseTimes, visibleKeys, keys) {
+  var output = [];
+  for (var i = 0, l = value.length; i < l; ++i) {
+    if (hasOwnProperty(value, String(i))) {
+      output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
+          String(i), true));
+    } else {
+      output.push('');
+    }
+  }
+  keys.forEach(function(key) {
+    if (!key.match(/^\d+$/)) {
+      output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
+          key, true));
+    }
+  });
+  return output;
+}
+
+
+function formatProperty(ctx, value, recurseTimes, visibleKeys, key, array) {
+  var name, str, desc;
+  desc = Object.getOwnPropertyDescriptor(value, key) || { value: value[key] };
+  if (desc.get) {
+    if (desc.set) {
+      str = ctx.stylize('[Getter/Setter]', 'special');
+    } else {
+      str = ctx.stylize('[Getter]', 'special');
+    }
+  } else {
+    if (desc.set) {
+      str = ctx.stylize('[Setter]', 'special');
+    }
+  }
+  if (!hasOwnProperty(visibleKeys, key)) {
+    name = '[' + key + ']';
+  }
+  if (!str) {
+    if (ctx.seen.indexOf(desc.value) < 0) {
+      if (isNull(recurseTimes)) {
+        str = formatValue(ctx, desc.value, null);
+      } else {
+        str = formatValue(ctx, desc.value, recurseTimes - 1);
+      }
+      if (str.indexOf('\n') > -1) {
+        if (array) {
+          str = str.split('\n').map(function(line) {
+            return '  ' + line;
+          }).join('\n').substr(2);
+        } else {
+          str = '\n' + str.split('\n').map(function(line) {
+            return '   ' + line;
+          }).join('\n');
+        }
+      }
+    } else {
+      str = ctx.stylize('[Circular]', 'special');
+    }
+  }
+  if (isUndefined(name)) {
+    if (array && key.match(/^\d+$/)) {
+      return str;
+    }
+    name = JSON.stringify('' + key);
+    if (name.match(/^"([a-zA-Z_][a-zA-Z_0-9]*)"$/)) {
+      name = name.substr(1, name.length - 2);
+      name = ctx.stylize(name, 'name');
+    } else {
+      name = name.replace(/'/g, "\\'")
+                 .replace(/\\"/g, '"')
+                 .replace(/(^"|"$)/g, "'");
+      name = ctx.stylize(name, 'string');
+    }
+  }
+
+  return name + ': ' + str;
+}
+
+
+function reduceToSingleString(output, base, braces) {
+  var numLinesEst = 0;
+  var length = output.reduce(function(prev, cur) {
+    numLinesEst++;
+    if (cur.indexOf('\n') >= 0) numLinesEst++;
+    return prev + cur.replace(/\u001b\[\d\d?m/g, '').length + 1;
+  }, 0);
+
+  if (length > 60) {
+    return braces[0] +
+           (base === '' ? '' : base + '\n ') +
+           ' ' +
+           output.join(',\n  ') +
+           ' ' +
+           braces[1];
+  }
+
+  return braces[0] + base + ' ' + output.join(', ') + ' ' + braces[1];
+}
+
+
+// NOTE: These type checking functions intentionally don't use `instanceof`
+// because it is fragile and can be easily faked with `Object.create()`.
+function isArray(ar) {
+  return Array.isArray(ar);
+}
+exports.isArray = isArray;
+
+function isBoolean(arg) {
+  return typeof arg === 'boolean';
+}
+exports.isBoolean = isBoolean;
+
+function isNull(arg) {
+  return arg === null;
+}
+exports.isNull = isNull;
+
+function isNullOrUndefined(arg) {
+  return arg == null;
+}
+exports.isNullOrUndefined = isNullOrUndefined;
+
+function isNumber(arg) {
+  return typeof arg === 'number';
+}
+exports.isNumber = isNumber;
+
+function isString(arg) {
+  return typeof arg === 'string';
+}
+exports.isString = isString;
+
+function isSymbol(arg) {
+  return typeof arg === 'symbol';
+}
+exports.isSymbol = isSymbol;
+
+function isUndefined(arg) {
+  return arg === void 0;
+}
+exports.isUndefined = isUndefined;
+
+function isRegExp(re) {
+  return isObject(re) && objectToString(re) === '[object RegExp]';
+}
+exports.isRegExp = isRegExp;
+
+function isObject(arg) {
+  return typeof arg === 'object' && arg !== null;
+}
+exports.isObject = isObject;
+
+function isDate(d) {
+  return isObject(d) && objectToString(d) === '[object Date]';
+}
+exports.isDate = isDate;
+
+function isError(e) {
+  return isObject(e) &&
+      (objectToString(e) === '[object Error]' || e instanceof Error);
+}
+exports.isError = isError;
+
+function isFunction(arg) {
+  return typeof arg === 'function';
+}
+exports.isFunction = isFunction;
+
+function isPrimitive(arg) {
+  return arg === null ||
+         typeof arg === 'boolean' ||
+         typeof arg === 'number' ||
+         typeof arg === 'string' ||
+         typeof arg === 'symbol' ||  // ES6 symbol
+         typeof arg === 'undefined';
+}
+exports.isPrimitive = isPrimitive;
+
+exports.isBuffer = require('./support/isBuffer');
+
+function objectToString(o) {
+  return Object.prototype.toString.call(o);
+}
+
+
+function pad(n) {
+  return n < 10 ? '0' + n.toString(10) : n.toString(10);
+}
+
+
+var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
+              'Oct', 'Nov', 'Dec'];
+
+// 26 Feb 16:19:34
+function timestamp() {
+  var d = new Date();
+  var time = [pad(d.getHours()),
+              pad(d.getMinutes()),
+              pad(d.getSeconds())].join(':');
+  return [d.getDate(), months[d.getMonth()], time].join(' ');
+}
+
+
+// log is just a thin wrapper to console.log that prepends a timestamp
+exports.log = function() {
+  console.log('%s - %s', timestamp(), exports.format.apply(exports, arguments));
+};
+
+
+/**
+ * Inherit the prototype methods from one constructor into another.
+ *
+ * The Function.prototype.inherits from lang.js rewritten as a standalone
+ * function (not on Function.prototype). NOTE: If this file is to be loaded
+ * during bootstrapping this function needs to be rewritten using some native
+ * functions as prototype setup using normal JavaScript does not work as
+ * expected during bootstrapping (see mirror.js in r114903).
+ *
+ * @param {function} ctor Constructor function which needs to inherit the
+ *     prototype.
+ * @param {function} superCtor Constructor function to inherit prototype from.
+ */
+exports.inherits = require('inherits');
+
+exports._extend = function(origin, add) {
+  // Don't do anything if add isn't an object
+  if (!add || !isObject(add)) return origin;
+
+  var keys = Object.keys(add);
+  var i = keys.length;
+  while (i--) {
+    origin[keys[i]] = add[keys[i]];
+  }
+  return origin;
+};
+
+function hasOwnProperty(obj, prop) {
+  return Object.prototype.hasOwnProperty.call(obj, prop);
+}
+
+}).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./support/isBuffer":38,"_process":24,"inherits":10}],40:[function(require,module,exports){
 function DOMParser(options){
 	this.options = options ||{locator:{}};
 	
@@ -19296,18 +19394,12 @@ if(typeof require == 'function'){
 * Utility functions for $rdf and the $rdf object itself
  */
 
-if (typeof tabulator !== 'undefined' &&
-  typeof tabulator.isExtension === 'undefined') {
+if (typeof tabulator !== 'undefined' && tabulator.isExtension) {
   tabulator.isExtension = false // stand-alone library
 }
 if (typeof $rdf === 'undefined') {
   var $rdf = {}
 } else {
-  // dump("Internal error: RDF libray has already been loaded\n")
-  // dump("Internal error: $rdf type is "+typeof $rdf+"\n")
-  // dump("Internal error: $rdf.log type is "+typeof $rdf.log+"\n")
-  // dump("Internal error: $rdf.log.error type is "+typeof $rdf.log.error+"\n")
-  // return $rdf
   throw new Error('Internal error: RDF libray has already been loaded: $rdf already exists')
 }
 
@@ -20461,10 +20553,6 @@ $rdf.Formula = (function (superClass) {
   Formula.prototype.sym = function (uri, name) {
     if (name) {
       throw new Error('This feature (kb.sym with 2 args) is removed. Do not assume prefix mappings.')
-      // if (!$rdf.ns[uri]) {
-      //   throw new Error('The prefix ' + uri + ' is not set in the API')
-      // }
-      // uri = $rdf.ns[uri] + name
     }
     return new $rdf.NamedNode(uri)
   }
@@ -26245,7 +26333,7 @@ $rdf.SPARQLResultsInterpreter = function (xml, callback, doneCallback) {
 // 2010-08-08 TimBL folded in Kenny's WEBDAV
 // 2010-12-07 TimBL addred local file write code
 
-$rdf.sparqlUpdate = (function () {
+$rdf.UpdateManager = (function () {
   var sparql = function (store) {
     this.store = store
     this.ifps = {}
@@ -26382,7 +26470,7 @@ $rdf.sparqlUpdate = (function () {
   // A list of all bnodes occuring in a list of statements
   sparql.prototype._statement_array_bnodes = function (sts) {
     var bnodes = []
-    for (var i = 0; i < sts.length;i++) {
+    for (var i = 0; i < sts.length; i++) {
       bnodes = bnodes.concat(this._statement_bnodes(sts[i]))
     }
     bnodes.sort() // in place sort - result may have duplicates
@@ -26578,7 +26666,7 @@ $rdf.sparqlUpdate = (function () {
 
     if (st instanceof Array) {
       var stText = ''
-      for (var i = 0;i < st.length;i++) stText += st[i] + '\n'
+      for (var i = 0; i < st.length; i++) stText += st[i] + '\n'
       query += 'INSERT DATA { ' + stText + ' }\n'
     } else {
       query += 'INSERT DATA { ' +
@@ -26596,7 +26684,7 @@ $rdf.sparqlUpdate = (function () {
 
     if (st instanceof Array) {
       var stText = ''
-      for (var i = 0;i < st.length;i++) stText += st[i] + '\n'
+      for (var i = 0; i < st.length; i++) stText += st[i] + '\n'
       query += 'DELETE DATA { ' + stText + ' }\n'
     } else {
       query += 'DELETE DATA { ' +
@@ -26638,8 +26726,8 @@ $rdf.sparqlUpdate = (function () {
     control.upstreamCount = 0
   }
 
-  sparql.prototype.getUpdatesVia = function (doc) {
-    var linkHeaders = tabulator.fetcher.getHeader(doc, 'updates-via')
+  sparql.prototype.getUpdatesVia = function (doc, kb) {
+    var linkHeaders = kb.fetcher.getHeader(doc, 'updates-via')
     if (!linkHeaders || !linkHeaders.length) return null
     return linkHeaders[0].trim()
   }
@@ -26697,8 +26785,10 @@ $rdf.sparqlUpdate = (function () {
   // Alternative is addDownstreamChangeListener(), where you do not
   // have to do the reload yourslf. Do mot mix them.
   //
-  sparql.prototype.setRefreshHandler = function (doc, handler) {
-    var wssURI = this.getUpdatesVia(doc) // relative
+  //  kb contains the HTTP  metadata from prefvious operations
+  //
+  sparql.prototype.setRefreshHandler = function (doc, kb, handler) {
+    var wssURI = this.getUpdatesVia(doc, kb) // relative
     var theHandler = handler
     var self = this
     var updater = this
@@ -26790,294 +26880,278 @@ $rdf.sparqlUpdate = (function () {
   //  - callback is called as callback(uri, success, errorbody)
   //
   sparql.prototype.update = function (deletions, insertions, callback) {
-    var kb = this.store
-    var ds = !deletions ? []
-      : deletions instanceof $rdf.IndexedFormula ? deletions.statements
-        : deletions instanceof Array ? deletions : [ deletions ]
-    var is = !insertions ? []
-      : insertions instanceof $rdf.IndexedFormula ? insertions.statements
-        : insertions instanceof Array ? insertions : [ insertions ]
-    if (!(ds instanceof Array)) {
-      throw new Error('Type Error ' + (typeof ds) + ': ' + ds)
-    }
-    if (!(is instanceof Array)) {
-      throw new Error('Type Error ' + (typeof is) + ': ' + is)
-    }
-    if (ds.length === 0 && is.length === 0) {
-      return callback(null, true) // success -- nothing needed to be done.
-    }
-    var doc = ds.length ? ds[0].why : is[0].why
-    var control = this.patchControlFor(doc)
-    var startTime = Date.now()
+    try {
+      var kb = this.store
+      var ds = !deletions ? []
+        : deletions instanceof $rdf.IndexedFormula ? deletions.statements
+          : deletions instanceof Array ? deletions : [ deletions ]
+      var is = !insertions ? []
+        : insertions instanceof $rdf.IndexedFormula ? insertions.statements
+          : insertions instanceof Array ? insertions : [ insertions ]
+      if (!(ds instanceof Array)) {
+        throw new Error('Type Error ' + (typeof ds) + ': ' + ds)
+      }
+      if (!(is instanceof Array)) {
+        throw new Error('Type Error ' + (typeof is) + ': ' + is)
+      }
+      if (ds.length === 0 && is.length === 0) {
+        return callback(null, true) // success -- nothing needed to be done.
+      }
+      var doc = ds.length ? ds[0].why : is[0].why
+      var control = this.patchControlFor(doc)
+      var startTime = Date.now()
 
-    var props = ['subject', 'predicate', 'object', 'why']
-    var verbs = ['insert', 'delete']
-    var clauses = { 'delete': ds, 'insert': is }
-    verbs.map(function (verb) {
-      clauses[verb].map(function (st) {
-        if (!doc.sameTerm(st.why)) {
-          throw new Error('update: destination ' + doc +
-            ' inconsistent with delete quad ' + st.why)
-        }
-        props.map(function (prop) {
-          if (typeof st[prop] === 'undefined') {
-            throw new Error('update: undefined ' + prop + ' of statement.')
+      var props = ['subject', 'predicate', 'object', 'why']
+      var verbs = ['insert', 'delete']
+      var clauses = { 'delete': ds, 'insert': is }
+      verbs.map(function (verb) {
+        clauses[verb].map(function (st) {
+          if (!doc.sameTerm(st.why)) {
+            throw new Error('update: destination ' + doc +
+              ' inconsistent with delete quad ' + st.why)
           }
+          props.map(function (prop) {
+            if (typeof st[prop] === 'undefined') {
+              throw new Error('update: undefined ' + prop + ' of statement.')
+            }
+          })
         })
       })
-    })
 
-    /*
-    })
-
-    ds.map(function(st){
-        if (!doc.sameTerm(st.why)) {
-            throw "Update: destination "+doc+" inconsistent with delete quad "+st.why
-        }
-        props.map(function(prop){
-            if (typeof ds[prop] === 'undefined') {
-                throw "Update: undefined "+prop+" of statement."
+      var protocol = this.editable(doc.uri, kb)
+      if (!protocol) {
+        throw new Error("Can't make changes in uneditable " + doc)
+      }
+      var i
+      var newSts
+      var documentString
+      var sz
+      if (protocol.indexOf('SPARQL') >= 0) {
+        var bnodes = []
+        if (ds.length) bnodes = this._statement_array_bnodes(ds)
+        if (is.length) bnodes = bnodes.concat(this._statement_array_bnodes(is))
+        var context = this._bnode_context(bnodes, doc)
+        var whereClause = this._context_where(context)
+        var query = ''
+        if (whereClause.length) { // Is there a WHERE clause?
+          if (ds.length) {
+            query += 'DELETE { '
+            for (i = 0; i < ds.length; i++) {
+              query += this.anonymizeNT(ds[i]) + '\n'
             }
-        })
-
-    })
-    is.map(function(st){i
-        f (!doc.sameTerm(st.why))
-            throw "sparql update: destination = "+doc+" inconsistent with insert st.why ="+st.why
-        }
-    })
-    */
-
-    var protocol = this.editable(doc.uri, kb)
-    if (!protocol) {
-      throw new Error("Can't make changes in uneditable " + doc)
-    }
-    var i
-    var newSts
-    var documentString
-    var sz
-    if (protocol.indexOf('SPARQL') >= 0) {
-      var bnodes = []
-      if (ds.length) bnodes = this._statement_array_bnodes(ds)
-      if (is.length) bnodes = bnodes.concat(this._statement_array_bnodes(is))
-      var context = this._bnode_context(bnodes, doc)
-      var whereClause = this._context_where(context)
-      var query = ''
-      if (whereClause.length) { // Is there a WHERE clause?
-        if (ds.length) {
-          query += 'DELETE { '
-          for (i = 0; i < ds.length; i++) {
-            query += this.anonymizeNT(ds[i]) + '\n'
+            query += ' }\n'
           }
-          query += ' }\n'
-        }
-        if (is.length) {
-          query += 'INSERT { '
-          for (i = 0; i < is.length; i++) {
-            query += this.anonymizeNT(is[i]) + '\n'
-          }
-          query += ' }\n'
-        }
-        query += whereClause
-      } else { // no where clause
-        if (ds.length) {
-          query += 'DELETE DATA { '
-          for (i = 0; i < ds.length; i++) {
-            query += this.anonymizeNT(ds[i]) + '\n'
-          }
-          query += ' } \n'
-        }
-        if (is.length) {
-          if (ds.length) query += ' ; '
-          query += 'INSERT DATA { '
-          for (i = 0; i < is.length; i++) {
-            query += this.anonymizeNT(is[i]) + '\n'
-          }
-          query += ' }\n'
-        }
-      }
-      // Track pending upstream patches until they have fnished their callback
-      control.pendingUpstream = control.pendingUpstream ? control.pendingUpstream + 1 : 1
-      if (typeof control.upstreamCount !== 'undefined') {
-        control.upstreamCount += 1 // count changes we originated ourselves
-      }
-
-      this._fire(doc.uri, query,
-        function (uri, success, body, xhr) {
-          xhr.elapsedTime_ms = Date.now() - startTime
-          console.log('    sparql: Return ' + (success ? 'success' : 'FAILURE ' + xhr.status) +
-            ' elapsed ' + xhr.elapsedTime_ms + 'ms')
-          if (success) {
-            try {
-              kb.remove(ds)
-            } catch (e) {
-              success = false
-              body = 'Remote Ok BUT error deleting ' + ds.length + ' from store!!! ' + e
-            } // Add in any case -- help recover from weirdness??
-            for (var i = 0; i < is.length;i++) {
-              kb.add(is[i].subject, is[i].predicate, is[i].object, doc)
+          if (is.length) {
+            query += 'INSERT { '
+            for (i = 0; i < is.length; i++) {
+              query += this.anonymizeNT(is[i]) + '\n'
             }
+            query += ' }\n'
           }
-
-          callback(uri, success, body, xhr)
-          control.pendingUpstream -= 1
-          // When upstream patches have been sent, reload state if downstream waiting
-          if (control.pendingUpstream === 0 && control.downstreamAction) {
-            var downstreamAction = control.downstreamAction
-            delete control.downstreamAction
-            console.log('delayed downstream action:')
-            downstreamAction(doc)
+          query += whereClause
+        } else { // no where clause
+          if (ds.length) {
+            query += 'DELETE DATA { '
+            for (i = 0; i < ds.length; i++) {
+              query += this.anonymizeNT(ds[i]) + '\n'
+            }
+            query += ' } \n'
           }
-        })
-    } else if (protocol.indexOf('DAV') >= 0) {
-      // The code below is derived from Kenny's UpdateCenter.js
-      documentString
-      var request = kb.any(doc, this.ns.link('request'))
-      if (!request) {
-        throw new Error('No record of our HTTP GET request for document: ' +
-          doc)
-      } // should not happen
-      var response = kb.any(request, this.ns.link('response'))
-      if (!response) {
-        return null // throw "No record HTTP GET response for document: "+doc
-      }
-      var content_type = kb.the(response, this.ns.httph('content-type')).value
+          if (is.length) {
+            if (ds.length) query += ' ; '
+            query += 'INSERT DATA { '
+            for (i = 0; i < is.length; i++) {
+              query += this.anonymizeNT(is[i]) + '\n'
+            }
+            query += ' }\n'
+          }
+        }
+        // Track pending upstream patches until they have fnished their callback
+        control.pendingUpstream = control.pendingUpstream ? control.pendingUpstream + 1 : 1
+        if (typeof control.upstreamCount !== 'undefined') {
+          control.upstreamCount += 1 // count changes we originated ourselves
+        }
 
-      // prepare contents of revised document
-      newSts = kb.statementsMatching(undefined, undefined, undefined, doc).slice() // copy!
-      for (i = 0; i < ds.length; i++) {
-        $rdf.Util.RDFArrayRemove(newSts, ds[i])
-      }
-      for (i = 0; i < is.length; i++) {
-        newSts.push(is[i])
-      }
+        this._fire(doc.uri, query,
+          function (uri, success, body, xhr) {
+            xhr.elapsedTime_ms = Date.now() - startTime
+            console.log('    sparql: Return ' + (success ? 'success' : 'FAILURE ' + xhr.status) +
+              ' elapsed ' + xhr.elapsedTime_ms + 'ms')
+            if (success) {
+              try {
+                kb.remove(ds)
+              } catch (e) {
+                success = false
+                body = 'Remote Ok BUT error deleting ' + ds.length + ' from store!!! ' + e
+              } // Add in any case -- help recover from weirdness??
+              for (var i = 0; i < is.length; i++) {
+                kb.add(is[i].subject, is[i].predicate, is[i].object, doc)
+              }
+            }
 
-      // serialize to te appropriate format
-      sz = $rdf.Serializer(kb)
-      sz.suggestNamespaces(kb.namespaces)
-      sz.setBase(doc.uri) // ?? beware of this - kenny (why? tim)
-      switch (content_type) {
-        case 'application/rdf+xml':
-          documentString = sz.statementsToXML(newSts)
-          break
-        case 'text/n3':
-        case 'text/turtle':
-        case 'application/x-turtle': // Legacy
-        case 'application/n3': // Legacy
-          documentString = sz.statementsToN3(newSts)
-          break
-        default:
-          throw new Error('Content-type ' + content_type + ' not supported for data write')
-      }
+            callback(uri, success, body, xhr)
+            control.pendingUpstream -= 1
+            // When upstream patches have been sent, reload state if downstream waiting
+            if (control.pendingUpstream === 0 && control.downstreamAction) {
+              var downstreamAction = control.downstreamAction
+              delete control.downstreamAction
+              console.log('delayed downstream action:')
+              downstreamAction(doc)
+            }
+          })
+      } else if (protocol.indexOf('DAV') >= 0) {
+        // The code below is derived from Kenny's UpdateCenter.js
+        documentString
+        var request = kb.any(doc, this.ns.link('request'))
+        if (!request) {
+          throw new Error('No record of our HTTP GET request for document: ' +
+            doc)
+        } // should not happen
+        var response = kb.any(request, this.ns.link('response'))
+        if (!response) {
+          return null // throw "No record HTTP GET response for document: "+doc
+        }
+        var content_type = kb.the(response, this.ns.httph('content-type')).value
 
-      // Write the new version back
+        // prepare contents of revised document
+        newSts = kb.statementsMatching(undefined, undefined, undefined, doc).slice() // copy!
+        for (i = 0; i < ds.length; i++) {
+          $rdf.Util.RDFArrayRemove(newSts, ds[i])
+        }
+        for (i = 0; i < is.length; i++) {
+          newSts.push(is[i])
+        }
 
-      var candidateTarget = kb.the(response, this.ns.httph('content-location'))
-      if (candidateTarget) {
-        targetURI = $rdf.uri.join(candidateTarget.value, targetURI)
-      }
-      var xhr = $rdf.Util.XMLHTTPFactory()
-      xhr.options = {}
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-          // formula from sparqlUpdate.js, what about redirects?
-          var success = (!xhr.status || (xhr.status >= 200 && xhr.status < 300))
-          if (success) {
-            for (var i = 0; i < ds.length; i++) {
+        // serialize to te appropriate format
+        sz = $rdf.Serializer(kb)
+        sz.suggestNamespaces(kb.namespaces)
+        sz.setBase(doc.uri) // ?? beware of this - kenny (why? tim)
+        switch (content_type) {
+          case 'application/rdf+xml':
+            documentString = sz.statementsToXML(newSts)
+            break
+          case 'text/n3':
+          case 'text/turtle':
+          case 'application/x-turtle': // Legacy
+          case 'application/n3': // Legacy
+            documentString = sz.statementsToN3(newSts)
+            break
+          default:
+            throw new Error('Content-type ' + content_type + ' not supported for data write')
+        }
+
+        // Write the new version back
+
+        var candidateTarget = kb.the(response, this.ns.httph('content-location'))
+        var targetURI
+        if (candidateTarget) {
+          targetURI = $rdf.uri.join(candidateTarget.value, targetURI)
+        }
+        var xhr = $rdf.Util.XMLHTTPFactory()
+        xhr.options = {}
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            // formula from sparqlUpdate.js, what about redirects?
+            var success = (!xhr.status || (xhr.status >= 200 && xhr.status < 300))
+            if (success) {
+              for (var i = 0; i < ds.length; i++) {
+                kb.remove(ds[i])
+              }
+              for (i = 0; i < is.length; i++) {
+                kb.add(is[i].subject, is[i].predicate, is[i].object, doc)
+              }
+            }
+            callback(doc.uri, success, xhr.responseText)
+          }
+        }
+        xhr.open('PUT', targetURI, true)
+        // assume the server does PUT content-negotiation.
+        xhr.setRequestHeader('Content-type', content_type) // OK?
+        xhr.send(documentString)
+      } else {
+        if (protocol.indexOf('LOCALFILE') >= 0) {
+          try {
+            console.log('Writing back to local file\n')
+            // See http://simon-jung.blogspot.com/2007/10/firefox-extension-file-io.html
+            // prepare contents of revised document
+            newSts = kb.statementsMatching(undefined, undefined, undefined, doc).slice() // copy!
+            for (i = 0; i < ds.length; i++) {
+              $rdf.Util.RDFArrayRemove(newSts, ds[i])
+            }
+            for (i = 0; i < is.length; i++) {
+              newSts.push(is[i])
+            }
+            // serialize to the appropriate format
+            documentString
+            sz = $rdf.Serializer(kb)
+            sz.suggestNamespaces(kb.namespaces)
+            sz.setBase(doc.uri) // ?? beware of this - kenny (why? tim)
+            var dot = doc.uri.lastIndexOf('.')
+            if (dot < 1) {
+              throw new Error('Rewriting file: No filename extension: ' + doc.uri)
+            }
+            var ext = doc.uri.slice(dot + 1)
+            switch (ext) {
+              case 'rdf':
+              case 'owl': // Just my experence   ...@@ we should keep the format in which it was parsed
+              case 'xml':
+                documentString = sz.statementsToXML(newSts)
+                break
+              case 'n3':
+              case 'nt':
+              case 'ttl':
+                documentString = sz.statementsToN3(newSts)
+                break
+              default:
+                throw new Error('File extension .' + ext + ' not supported for data write')
+            }
+            // Write the new version back
+            // create component for file writing
+            console.log('Writing back: <<<' + documentString + '>>>')
+            var filename = doc.uri.slice(7) // chop off   file://  leaving /path
+            // console.log("Writeback: Filename: "+filename+"\n")
+            var file = Components.classes['@mozilla.org/file/local;1']
+              .createInstance(Components.interfaces.nsILocalFile)
+            file.initWithPath(filename)
+            if (!file.exists()) {
+              throw new Error('Rewriting file <' + doc.uri +
+                '> but it does not exist!')
+            }
+            // {
+            // file.create( Components.interfaces.nsIFile.NORMAL_FILE_TYPE, 420)
+            // }
+            // create file output stream and use write/create/truncate mode
+            // 0x02 writing, 0x08 create file, 0x20 truncate length if exist
+            var stream = Components.classes['@mozilla.org/network/file-output-stream;1']
+              .createInstance(Components.interfaces.nsIFileOutputStream)
+
+            // Various JS systems object to 0666 in struct mode as dangerous
+            stream.init(file, 0x02 | 0x08 | 0x20, parseInt('0666', 8), 0)
+
+            // write data to file then close output stream
+            stream.write(documentString, documentString.length)
+            stream.close()
+
+            for (i = 0; i < ds.length; i++) {
               kb.remove(ds[i])
             }
             for (i = 0; i < is.length; i++) {
               kb.add(is[i].subject, is[i].predicate, is[i].object, doc)
             }
+            callback(doc.uri, true, '') // success!
+          } catch (e) {
+            callback(doc.uri, false,
+              'Exception trying to write back file <' + doc.uri + '>\n' +
+              tabulator.Util.stackString(e))
           }
-          callback(doc.uri, success, xhr.responseText)
+        } else {
+          throw new Error("Unhandled edit method: '" + protocol + "' for " + doc)
         }
       }
-      xhr.open('PUT', targetURI, true)
-      // assume the server does PUT content-negotiation.
-      xhr.setRequestHeader('Content-type', content_type) // OK?
-      xhr.send(documentString)
-    } else {
-      if (protocol.indexOf('LOCALFILE') >= 0) {
-        try {
-          console.log('Writing back to local file\n')
-          // See http://simon-jung.blogspot.com/2007/10/firefox-extension-file-io.html
-          // prepare contents of revised document
-          newSts = kb.statementsMatching(undefined, undefined, undefined, doc).slice() // copy!
-          for (i = 0; i < ds.length; i++) {
-            $rdf.Util.RDFArrayRemove(newSts, ds[i])
-          }
-          for (i = 0; i < is.length; i++) {
-            newSts.push(is[i])
-          }
-          // serialize to the appropriate format
-          documentString
-          sz = $rdf.Serializer(kb)
-          sz.suggestNamespaces(kb.namespaces)
-          sz.setBase(doc.uri) // ?? beware of this - kenny (why? tim)
-          var dot = doc.uri.lastIndexOf('.')
-          if (dot < 1) {
-            throw new Error('Rewriting file: No filename extension: ' + doc.uri)
-          }
-          var ext = doc.uri.slice(dot + 1)
-          switch (ext) {
-            case 'rdf':
-            case 'owl': // Just my experence   ...@@ we should keep the format in which it was parsed
-            case 'xml':
-              documentString = sz.statementsToXML(newSts)
-              break
-            case 'n3':
-            case 'nt':
-            case 'ttl':
-              documentString = sz.statementsToN3(newSts)
-              break
-            default:
-              throw new Error('File extension .' + ext + ' not supported for data write')
-          }
-          // Write the new version back
-          // create component for file writing
-          dump('Writing back: <<<' + documentString + '>>>\n')
-          var filename = doc.uri.slice(7) // chop off   file://  leaving /path
-          // console.log("Writeback: Filename: "+filename+"\n")
-          var file = Components.classes['@mozilla.org/file/local;1']
-            .createInstance(Components.interfaces.nsILocalFile)
-          file.initWithPath(filename)
-          if (!file.exists()) {
-            throw new Error('Rewriting file <' + doc.uri +
-              '> but it does not exist!')
-          }
-          // {
-          // file.create( Components.interfaces.nsIFile.NORMAL_FILE_TYPE, 420)
-          // }
-          // create file output stream and use write/create/truncate mode
-          // 0x02 writing, 0x08 create file, 0x20 truncate length if exist
-          var stream = Components.classes['@mozilla.org/network/file-output-stream;1']
-            .createInstance(Components.interfaces.nsIFileOutputStream)
-
-          // Various JS systems object to 0666 in struct mode as dangerous
-          stream.init(file, 0x02 | 0x08 | 0x20, parseInt('0666', 8), 0)
-
-          // write data to file then close output stream
-          stream.write(documentString, documentString.length)
-          stream.close()
-
-          for (i = 0; i < ds.length; i++) {
-            kb.remove(ds[i])
-          }
-          for (i = 0; i < is.length; i++) {
-            kb.add(is[i].subject, is[i].predicate, is[i].object, doc)
-          }
-          callback(doc.uri, true, '') // success!
-        } catch (e) {
-          callback(doc.uri, false,
-            'Exception trying to write back file <' + doc.uri + '>\n' +
-            tabulator.Util.stackString(e))
-        }
-      } else {
-        throw new Error("Unhandled edit method: '" + protocol + "' for " + doc)
-      }
+    } catch (e) {
+      callback(undefined, false, 'Exception in update: ' + e)
     }
-  }
+  } // wnd update
 
   // This suitable for an inital creation of a document
   //
@@ -27154,7 +27228,7 @@ $rdf.sparqlUpdate = (function () {
           xhr.onErrorWasCalled + ' status: ' + xhr.status)
         callback(false, 'Non-HTTP error reloading data: ' + body, xhr)
       } else {
-        elapsedTime_ms = Date.now() - startTime
+        var elapsedTime_ms = Date.now() - startTime
         if (!doc.reloadTime_total) doc.reloadTime_total = 0
         if (!doc.reloadTime_count) doc.reloadTime_count = 0
         doc.reloadTime_total += elapsedTime_ms
@@ -27187,7 +27261,7 @@ $rdf.sparqlUpdate = (function () {
           ' out of total statements ' + kb.statements.length)
         kb.remove(sts1)
         kb.add(sts2)
-        elapsedTime_ms = Date.now() - startTime
+        var elapsedTime_ms = Date.now() - startTime
         if (sts2.length === 0) {
           console.log('????????????????? 0000000')
         }
@@ -28545,6 +28619,7 @@ $rdf.Fetcher = function (store, timeout, async) {
       return undefined
     }
   }
+
   $rdf.Fetcher.RDFXMLHandler = function (args) {
     if (args) {
       this.dom = args[0]
@@ -28559,24 +28634,15 @@ $rdf.Fetcher = function (store, timeout, async) {
           sf.failFetch(xhr, 'Badly formed XML in ' + xhr.resource.uri) // have to fail the request
           throw new Error('Badly formed XML in ' + xhr.resource.uri) // @@ Add details
         }
-        // Find the last URI we actual URI in a series of redirects
-        // (xhr.resource.uri is the original one)
-        var lastRequested = kb.any(xhr.req, ns.link('requestedURI'))
-        if (!lastRequested) {
-          lastRequested = xhr.resource
-        } else {
-          lastRequested = kb.sym(lastRequested.value)
-        }
         var parser = new $rdf.RDFParser(kb)
-        // sf.addStatus(xhr.req, 'parsing as RDF/XML...')
         try {
-          parser.parse(this.dom, lastRequested.uri, lastRequested)
+          parser.parse(this.dom, xhr.original.uri, xhr.original)
         } catch (e) {
           sf.addStatus(xhr.req, 'Syntax error parsing RDF/XML! ' + e)
           console.log('Syntax error parsing RDF/XML! ' + e)
         }
         if (!xhr.options.noMeta) {
-          kb.add(lastRequested, ns.rdf('type'), ns.link('RDFDocument'), sf.appNode)
+          kb.add(xhr.original, ns.rdf('type'), ns.link('RDFDocument'), sf.appNode)
         }
         cb()
       }
@@ -28636,31 +28702,18 @@ $rdf.Fetcher = function (store, timeout, async) {
         for (var i = 0; i < scripts.length; i++) {
           var contentType = scripts[i].getAttribute('type')
           if ($rdf.parsable[contentType]) {
-            $rdf.parse(scripts[i].textContent, kb, xhr.resource.uri, contentType)
+            $rdf.parse(scripts[i].textContent, kb, xhr.original.uri, contentType)
           }
         }
 
-        // GRDDL
-        /*
-        var head = this.dom.getElementsByTagName('head')[0]
-        if (head) {
-            var profile = head.getAttribute('profile')
-            if (profile && $rdf.uri.protocol(profile) === 'http') {
-                // $rdf.log.info("GRDDL: Using generic " + "2003/11/rdf-in-xhtml-processor.")
-                 $rdf.Fetcher.doGRDDL(kb, xhr.resource, "http://www.w3.org/2003/11/rdf-in-xhtml-processor", xhr.resource.uri)
-
-            } else {
-                // $rdf.log.info("GRDDL: No GRDDL profile in " + xhr.resource)
-            }
-        }
-        */
         if (!xhr.options.noMeta) {
           kb.add(xhr.resource, ns.rdf('type'), ns.link('WebPage'), sf.appNode)
         }
         // Do RDFa here
 
-        if ($rdf.parseDOM_RDFa) {
-          $rdf.parseDOM_RDFa(this.dom, kb, xhr.resource.uri)
+        // Warning the RDFa parser in NOT working yet 2016-03
+        if (xhr.options.doRDFa && $rdf.parseDOM_RDFa) {
+          $rdf.parseDOM_RDFa(this.dom, kb, xhr.original)
         }
         cb() // Fire done callbacks
       }
@@ -28797,7 +28850,7 @@ $rdf.Fetcher = function (store, timeout, async) {
           return
         }
         sf.addStatus(xhr.req, 'non-XML HTML document, not parsed for data.')
-        sf.doneFetch(xhr, [xhr.resource.uri])
+        sf.doneFetch(xhr)
         // sf.failFetch(xhr, "Sorry, can't yet parse non-XML HTML")
       }
     }
@@ -28837,7 +28890,7 @@ $rdf.Fetcher = function (store, timeout, async) {
 
         // We give up finding semantics - this is not an error, just no data
         sf.addStatus(xhr.req, 'Plain text document, no known RDF semantics.')
-        sf.doneFetch(xhr, [xhr.resource.uri])
+        sf.doneFetch(xhr)
         //                sf.failFetch(xhr, "unparseable - text/plain not visibly XML")
         //                dump(xhr.resource + " unparseable - text/plain not visibly XML, starts:\n" + rt.slice(0, 500)+"\n")
       }
@@ -28858,9 +28911,10 @@ $rdf.Fetcher = function (store, timeout, async) {
     this.handlerFactory = function (xhr) {
       xhr.handle = function (cb) {
         // Parse the text of this non-XML file
-        $rdf.log.debug('web.js: Parsing as N3 ' + xhr.resource.uri) // @@@@ comment me out
+
+        console.log('web.js: Parsing as N3 ' + xhr.resource.uri + ' base: ' + xhr.original.uri) // @@@@ comment me out
         // sf.addStatus(xhr.req, "N3 not parsed yet...")
-        var p = $rdf.N3Parser(kb, kb, xhr.resource.uri, xhr.resource.uri, null, null, '', null)
+        var p = $rdf.N3Parser(kb, kb, xhr.original.uri, xhr.original.uri, null, null, '', null)
         //                p.loadBuf(xhr.responseText)
         try {
           p.loadBuf(xhr.responseText)
@@ -28872,9 +28926,9 @@ $rdf.Fetcher = function (store, timeout, async) {
         }
 
         sf.addStatus(xhr.req, 'N3 parsed: ' + p.statementCount + ' triples in ' + p.lines + ' lines.')
-        sf.store.add(xhr.resource, ns.rdf('type'), ns.link('RDFDocument'), sf.appNode)
-        var args = [xhr.resource.uri] // Other args needed ever?
-        sf.doneFetch(xhr, args)
+        sf.store.add(xhr.original, ns.rdf('type'), ns.link('RDFDocument'), sf.appNode)
+        var args = [xhr.original.uri] // Other args needed ever?
+        sf.doneFetch(xhr)
       }
     }
   }
@@ -28939,15 +28993,19 @@ $rdf.Fetcher = function (store, timeout, async) {
   this.failFetch = function (xhr, status) {
     this.addStatus(xhr.req, status)
     if (!xhr.options.noMeta) {
-      kb.add(xhr.resource, ns.link('error'), status)
+      kb.add(xhr.original, ns.link('error'), status)
     }
-    console.log('@@ Recording failure for ' + xhr.resource + ': ' + xhr.status)
-    this.requested[$rdf.uri.docpart(xhr.resource.uri)] = xhr.status // changed 2015 was false
-    while (this.fetchCallbacks[xhr.resource.uri] && this.fetchCallbacks[xhr.resource.uri].length) {
-      this.fetchCallbacks[xhr.resource.uri].shift()(false, 'Fetch of <' + xhr.resource.uri + '> failed: ' + status, xhr)
+    if (!xhr.resource.sameTerm(xhr.original)) {
+      console.log('@@ Recording failure original ' + xhr.original + '( as ' + xhr.resource + ') : ' + xhr.status)
+    } else {
+      console.log('@@ Recording failure for ' + xhr.original + ': ' + xhr.status)
     }
-    delete this.fetchCallbacks[xhr.resource.uri]
-    this.fireCallbacks('fail', [xhr.requestedURI, status])
+    this.requested[$rdf.uri.docpart(xhr.original.uri)] = xhr.status // changed 2015 was false
+    while (this.fetchCallbacks[xhr.original.uri] && this.fetchCallbacks[xhr.original.uri].length) {
+      this.fetchCallbacks[xhr.original.uri].shift()(false, 'Fetch of <' + xhr.original.uri + '> failed: ' + status, xhr)
+    }
+    delete this.fetchCallbacks[xhr.original.uri]
+    this.fireCallbacks('fail', [xhr.original.uri, status])
     xhr.abort()
     return xhr
   }
@@ -28958,21 +29016,21 @@ $rdf.Fetcher = function (store, timeout, async) {
     if (!uri) return
     var predicate
     // See http://www.w3.org/TR/powder-dr/#httplink for describedby 2008-12-10
-    var obj = kb.sym($rdf.uri.join(uri, xhr.resource.uri))
+    var obj = kb.sym($rdf.uri.join(uri, xhr.original.uri))
     if (rel === 'alternate' || rel === 'seeAlso' || rel === 'meta' || rel === 'describedby') {
-      if (obj.uri === xhr.resource.uri) return
+      if (obj.uri === xhr.original.uri) return
       predicate = ns.rdfs('seeAlso')
     } else if (rel === 'type') {
-      predicate = tabulator.ns.rdf('type')
+      predicate = $rdf.sym('http://www.w3.org/1999/02/22-rdf-syntax-ns#type')
     } else {
       // See https://www.iana.org/assignments/link-relations/link-relations.xml
       // Alas not yet in RDF yet for each predicate
       predicate = kb.sym($rdf.uri.join(rel, 'http://www.iana.org/assignments/link-relations/'))
     }
     if (reverse) {
-      kb.add(obj, predicate, xhr.resource, why)
+      kb.add(obj, predicate, xhr.original, why)
     } else {
-      kb.add(xhr.resource, predicate, obj, why)
+      kb.add(xhr.original, predicate, obj, why)
     }
   }
 
@@ -29002,15 +29060,14 @@ $rdf.Fetcher = function (store, timeout, async) {
     }
   }
 
-  this.doneFetch = function (xhr, args) {
+  this.doneFetch = function (xhr) {
     this.addStatus(xhr.req, 'Done.')
-    // $rdf.log.info("Done with parse, firing 'done' callbacks for " + xhr.resource)
-    this.requested[xhr.resource.uri] = 'done' // Kenny
-    while (this.fetchCallbacks[xhr.resource.uri] && this.fetchCallbacks[xhr.resource.uri].length) {
-      this.fetchCallbacks[xhr.resource.uri].shift()(true, undefined, xhr)
+    this.requested[xhr.original.uri] = 'done' // Kenny
+    while (this.fetchCallbacks[xhr.original.uri] && this.fetchCallbacks[xhr.original.uri].length) {
+      this.fetchCallbacks[xhr.original.uri].shift()(true, undefined, xhr)
     }
-    delete this.fetchCallbacks[xhr.resource.uri]
-    this.fireCallbacks('done', args)
+    delete this.fetchCallbacks[xhr.original.uri]
+    this.fireCallbacks('done', [xhr.original.uri])
   }
   var handlerList = [
     $rdf.Fetcher.RDFXMLHandler, $rdf.Fetcher.XHTMLHandler,
@@ -29041,13 +29098,13 @@ $rdf.Fetcher = function (store, timeout, async) {
     return new Promise(function (resolve, reject) {
       var xhr = $rdf.Util.XMLHTTPFactory()
       xhr.options = options
-      if (!options.noMeta) {
+      if (!options.noMeta && typeof tabulator !== 'undefined') {
         fetcher.saveRequestMetadata(xhr, tabulator.kb, uri)
       }
       xhr.onreadystatechange = function () {
         if (xhr.readyState === 4) { // NOte a 404 can be not afailure
           var ok = (!xhr.status || (xhr.status >= 200 && xhr.status < 300))
-          if (!options.noMeta) {
+          if (!options.noMeta && typeof tabulator !== 'undefined') {
             fetcher.saveResponseMetadata(xhr, tabulator.kb)
           }
           if (ok) resolve(xhr)
@@ -29258,7 +29315,9 @@ $rdf.Fetcher = function (store, timeout, async) {
       var timeNow = '[' + now.getHours() + ':' + now.getMinutes() + ':' + now.getSeconds() + '] '
       kb.add(request, ns.rdfs('label'), kb.literal(timeNow + ' Request for ' + docuri), this.appNode)
       kb.add(request, ns.link('requestedURI'), kb.literal(docuri), this.appNode)
-
+      if (xhr.original && xhr.original.uri !== docuri) {
+        kb.add(request, ns.link('orginalURI'), kb.literal(xhr.original.uri), this.appNode)
+      }
       kb.add(request, ns.link('status'), kb.collection(), this.appNode)
     }
     return request
@@ -29295,21 +29354,25 @@ $rdf.Fetcher = function (store, timeout, async) {
    **              or URI has already been loaded
    */
   this.requestURI = function (docuri, rterm, options, userCallback) { // sources_request_new
-    docuri = docuri.uri || docuri // NamedNode or string
-    // Remove #localid
-    docuri = docuri.split('#')[0]
 
+    // Various calling conventions
+    docuri = docuri.uri || docuri // NamedNode or string
+    docuri = docuri.split('#')[0]
     if (typeof options === 'boolean') {
       options = { 'force': options } // Ols dignature
     }
     if (typeof options === 'undefined') options = {}
+
     var force = !!options.force
     var kb = this.store
     var args = arguments
+    var baseURI = options.baseURI || docuri  // Preseve though proxying etc
+    options.userCallback = userCallback
 
     var pcol = $rdf.uri.protocol(docuri)
     if (pcol === 'tel' || pcol === 'mailto' || pcol === 'urn') {
       // "No look-up operation on these, but they are not errors?"
+      console.log('Unsupported protocol in: ' + docuri)
       return userCallback(false, 'Unsupported protocol', { 'status': 900 }) ||
         undefined
     }
@@ -29355,13 +29418,13 @@ $rdf.Fetcher = function (store, timeout, async) {
     if (!options.noMeta && rterm && rterm.uri) {
       kb.add(docterm.uri, ns.link('requestedBy'), rterm.uri, this.appNode)
     }
-    var xhr, req
 
-    xhr = $rdf.Util.XMLHTTPFactory()
-    req = xhr.req = kb.bnode()
+    var xhr = $rdf.Util.XMLHTTPFactory()
+    var req = xhr.req = kb.bnode()
+    xhr.original = $rdf.sym(baseURI)
+    console.log('XHR original: ' + xhr.original)
     xhr.options = options
-    xhr.resource = docterm
-    xhr.requestedURI = args[0]
+    xhr.resource = docterm  // This might be proxified
     var sf = this
 
     var now = new Date()
@@ -29371,14 +29434,7 @@ $rdf.Fetcher = function (store, timeout, async) {
       kb.add(req, ns.link('requestedURI'), kb.literal(docuri), this.appNode)
       kb.add(req, ns.link('status'), kb.collection(), this.appNode)
     }
-    // This should not be stored in the store, but in the JS data
-    /*
-    if (typeof kb.anyStatementMatching(this.appNode, ns.link("protocol"), $rdf.uri.protocol(docuri)) === "undefined") {
-        // update the status before we break out
-        this.failFetch(xhr, "Unsupported protocol: "+$rdf.uri.protocol(docuri))
-        return xhr
-    }
-    */
+
     var checkCredentialsRetry = function () {
       if (!xhr.withCredentials) return false // not dealt with
 
@@ -29390,14 +29446,14 @@ $rdf.Fetcher = function (store, timeout, async) {
       xhr.abort()
       delete sf.requested[docuri] // forget the original request happened
       var newopt = {}
-      for (var opt in options) {
+      for (var opt in options) { // transfer baseURI etc
         if (options.hasOwnProperty(opt)) {
           newopt[opt] = options[opt]
         }
       }
       newopt.withCredentials = false
       sf.addStatus(xhr.req, 'Abort: Will retry with credentials SUPPRESSED to see if that helps')
-      sf.requestURI(docuri, rterm, newopt, xhr.userCallback) // usercallback already registered (with where?)
+      sf.requestURI(docuri, rterm, newopt, xhr.userCallback) // userCallback already registered (with where?)
       return true
     }
 
@@ -29445,9 +29501,11 @@ $rdf.Fetcher = function (store, timeout, async) {
                   delete sf.fetchCallbacks[xhr.resource.uri]
                 }
 
-                var xhr2 = sf.requestURI(newURI, xhr.resource, options)
+                var xhr2 = sf.requestURI(newURI, xhr.resource, xhr.options, xhr.userCallback)
                 if (xhr2) {
                   xhr2.proxyUsed = true // only try the proxy once
+                  xhr2.original = xhr.original
+                  console.log('Proxying but original still ' + xhr2.original)
                 }
                 if (xhr2 && xhr2.req) {
                   if (!xhr.options.noMeta) {
@@ -29584,7 +29642,7 @@ $rdf.Fetcher = function (store, timeout, async) {
                 sf.requested[udoc] && sf.requested[udoc] === 'done') { // we have already fetched this in fact.
               // should we smush too?
               // $rdf.log.info("HTTP headers indicate we have already" + " retrieved " + xhr.resource + " as " + udoc + ". Aborting.")
-              sf.doneFetch(xhr, args)
+              sf.doneFetch(xhr)
               xhr.abort()
               return
             }
@@ -29607,7 +29665,7 @@ $rdf.Fetcher = function (store, timeout, async) {
               sf.failFetch(xhr, 'Exception handling content-type ' + xhr.headers['content-type'] + ' was: ' + e)
             }
           } else {
-            sf.doneFetch(xhr, args) //  Not a problem, we just don't extract data.
+            sf.doneFetch(xhr) //  Not a problem, we just don't extract data.
             /*
             // sf.failFetch(xhr, "Unhandled content type: " + xhr.headers['content-type']+
             //        ", readyState = "+xhr.readyState)
@@ -29672,7 +29730,7 @@ $rdf.Fetcher = function (store, timeout, async) {
                 sf.fireCallbacks('redirected', args) // Are these args right? @@@
                 sf.requested[xhr.resource.uri] = 'redirected'
 
-                var xhr2 = sf.requestURI(newURI, xhr.resource, xhr.options || {})
+                var xhr2 = sf.requestURI(newURI, xhr.resource, xhr.options || {}, xhr.userCallback)
                 if (xhr2 && xhr2.req) {
                   kb.add(
                     xhr.req,
@@ -29702,7 +29760,7 @@ $rdf.Fetcher = function (store, timeout, async) {
               }
               sf.fireCallbacks('load', args)
               xhr.handle(function () {
-                sf.doneFetch(xhr, args)
+                sf.doneFetch(xhr)
               })
             } else {
               if (xhr.redirected) {
@@ -29746,7 +29804,7 @@ $rdf.Fetcher = function (store, timeout, async) {
 
     // Setup the request
     // var xhr
-    xhr = $rdf.Util.XMLHTTPFactory()
+    // xhr = $rdf.Util.XMLHTTPFactory()
     xhr.onerror = onerrorFactory(xhr)
     xhr.onreadystatechange = onreadystatechangeFactory(xhr)
     xhr.timeout = sf.timeout
@@ -29834,7 +29892,7 @@ $rdf.Fetcher = function (store, timeout, async) {
                   sf.addStatus(oldreq, 'redirected') // why
                   sf.fireCallbacks('redirected', args) // Are these args right? @@@
                   sf.requested[xhr.resource.uri] = 'redirected'
-                  sf.redirectedTo[xhr.ressource.uri] = newURI
+                  sf.redirectedTo[xhr.resource.uri] = newURI
 
                   var hash = newURI.indexOf('#')
                   if (hash >= 0) {
@@ -29844,7 +29902,7 @@ $rdf.Fetcher = function (store, timeout, async) {
                     }
                     newURI = newURI.slice(0, hash)
                   }
-                  var xhr2 = sf.requestURI(newURI, xhr.resource)
+                  var xhr2 = sf.requestURI(newURI, xhr.resource, xhr.options, xhr.userCallback)
                   if (xhr2 && xhr2.req && !options.noMeta) {
                     kb.add(
                       xhr.req,
@@ -29904,11 +29962,12 @@ $rdf.Fetcher = function (store, timeout, async) {
 
                   var hash = newURI.indexOf('#')
                   if (hash >= 0) {
-                    var msg2 = ('Warning: ' + xhr.resource + ' HTTP redirects to' + newURI + ' which should not contain a "#" sign')
+                    var msg2 = ('Warning: ' + xhr.resource + ' HTTP redirects to' + newURI + ' which do not normally contain a "#" sign')
                     // dump(msg+"\n")
                     kb.add(xhr.resource, kb.sym('http://www.w3.org/2007/ont/link#warning'), msg2)
                     newURI = newURI.slice(0, hash)
                   }
+                  /*
                   if (sf.fetchCallbacks[xhr.resource.uri]) {
                     if (!sf.fetchCallbacks[newURI]) {
                       sf.fetchCallbacks[newURI] = []
@@ -29916,19 +29975,21 @@ $rdf.Fetcher = function (store, timeout, async) {
                     sf.fetchCallbacks[newURI] = sf.fetchCallbacks[newURI].concat(sf.fetchCallbacks[xhr.resource.uri])
                     delete sf.fetchCallbacks[xhr.resource.uri]
                   }
-
+                  */
                   sf.requested[xhr.resource.uri] = 'redirected'
-                  sf.redirectedTo[xhr.ressource.uri] = newURI
+                  sf.redirectedTo[xhr.resource.uri] = newURI
 
-                  var xhr2 = sf.requestURI(newURI, xhr.resource)
-                  xhr2.originalXHR = xhr  // use this for finding base
-                  if (xhr2 && xhr2.req) {
-                    kb.add(
-                      xhr.req,
-                      kb.sym('http://www.w3.org/2007/ont/link#redirectedRequest'),
-                      xhr2.req,
-                      sf.appNode
-                    )
+                  var xhr2 = sf.requestURI(newURI, xhr.resource, xhr.options, xhr.userCallback)
+                  if (xhr2) { // may be no XHR is other URI already loaded
+                    xhr2.original = xhr.original  // use this for finding base
+                    if (xhr2.req) {
+                      kb.add(
+                        xhr.req,
+                        kb.sym('http://www.w3.org/2007/ont/link#redirectedRequest'),
+                        xhr2.req,
+                        sf.appNode
+                      )
+                    }
                   }
                 // else dump("No xhr.req available for redirect from "+xhr.resource+" to "+newURI+"\n")
                 } // asyncOnChannelRedirect
@@ -30313,10 +30374,10 @@ if (typeof exports !== 'undefined') {
   // Leak a global regardless of module system
   root['$rdf'] = $rdf
 }
-$rdf.buildTime = "2016-03-14T09:10:14";
+$rdf.buildTime = "2016-04-09T12:04:30";
 })(this);
 
-},{"async":1,"jsonld":30,"n3":32,"xmldom":40,"xmlhttprequest":undefined}]},{},[])("rdflib")
+},{"async":1,"jsonld":14,"n3":15,"xmldom":40,"xmlhttprequest":undefined}]},{},[])("rdflib")
 });
 // ###### Finished expanding js/rdf/dist/rdflib.js ##############
 
@@ -31910,7 +31971,7 @@ tabulator.Icon.tooltips= []
 
 var iconPrefix = tabulator.iconPrefix; // e.g. 'chrome://tabulator/content/';
 
-////////////////////////// Common icons with extension version
+////////////////////////// Common icons
 
 tabulator.Icon.src.icon_expand = iconPrefix + 'icons/tbl-expand-trans.png';
 tabulator.Icon.src.icon_more = iconPrefix + 'icons/tbl-more-trans.png'; // looks just like expand, diff semantics
@@ -31942,9 +32003,9 @@ tabulator.Icon.src.icon_dataContents = iconPrefix + 'icons/rdf_flyer.24.gif';  /
 tabulator.Icon.src.icon_n3Pane = iconPrefix + 'icons/w3c/n3_smaller.png';  //@@ Bad .. find better
 tabulator.Icon.src.icon_RDFXMLPane = iconPrefix + 'icons/22-text-xml4.png';  //@@ Bad .. find better
 tabulator.Icon.src.icon_imageContents = iconPrefix + 'icons/tango/22-image-x-generic.png'
-tabulator.Icon.src.icon_airPane = iconPrefix + 'icons/1pt5a.gif';  
-tabulator.Icon.src.icon_LawPane = iconPrefix + 'icons/law.jpg';  
-tabulator.Icon.src.icon_pushbackPane = iconPrefix + 'icons/pb-logo.png';  
+tabulator.Icon.src.icon_airPane = iconPrefix + 'icons/1pt5a.gif';
+tabulator.Icon.src.icon_LawPane = iconPrefix + 'icons/law.jpg';
+tabulator.Icon.src.icon_pushbackPane = iconPrefix + 'icons/pb-logo.png';
 
 // For photo albums (By albert08@csail.mit.edu)
 tabulator.Icon.src.icon_photoPane = iconPrefix + 'icons/photo_small.png';
@@ -31966,7 +32027,7 @@ tabulator.Icon.src.icon_refresh = iconPrefix + 'icons/refresh.gif';
 tabulator.Icon.src.icon_optoff = iconPrefix + 'icons/optional_off.PNG';
 tabulator.Icon.src.icon_opton = iconPrefix + 'icons/optional_on.PNG';
 tabulator.Icon.src.icon_map = iconPrefix + 'icons/compassrose.png';
-tabulator.Icon.src.icon_retracted = tabulator.Icon.src.icon_unrequested 
+tabulator.Icon.src.icon_retracted = tabulator.Icon.src.icon_unrequested
 tabulator.Icon.src.icon_retracted = tabulator.Icon.src.icon_unrequested;
 
 tabulator.Icon.src.icon_time = iconPrefix+'icons/Wclocksmall.png';
@@ -32026,7 +32087,6 @@ tabulator.Icon.termWidgets.optOn = new tabulator.Icon.OutlinerIcon(tabulator.Ico
 tabulator.Icon.termWidgets.optOff = new tabulator.Icon.OutlinerIcon(tabulator.Icon.src.icon_optoff,20,'opt off','Make this branch of your query optional.');
 tabulator.Icon.termWidgets.addTri = new tabulator.Icon.OutlinerIcon(tabulator.Icon.src.icon_add_triple,18,"add tri","Add one");
 // Ideally: "New "+label(subject)
-
 
 // ###### Finished expanding js/init/icons.js ##############
     //And Namespaces..
@@ -32133,19 +32193,25 @@ if (typeof tabulator.panes.utils === 'undefined') {
 //
 
 // Take the "defaltForNew" ACL and convert it into the equivlent ACL
-// which the resource would have had.  Retur it as a new separate store.
+// which the resource would have had.  Return it as a new separate store.
 
 tabulator.panes.utils.adoptACLDefault = function(doc, aclDoc, defaultResource, defaultACLdoc) {
     var kb = tabulator.kb;
     var ACL = tabulator.ns.acl;
     var ns = tabulator.ns;
+    var isContainer = doc.uri.slice(-1) === '/' // Give default for all directories
     var defaults = kb.each(undefined, ACL('defaultForNew'), defaultResource, defaultACLdoc);
     var proposed = [];
     defaults.map(function(da) {
         proposed = proposed.concat(kb.statementsMatching(da, ACL('agent'), undefined, defaultACLdoc))
-            .concat(kb.statementsMatching(da, ACL('agentClass'), undefined, defaultACLdoc))
+        .concat(kb.statementsMatching(da, ACL('agentClass'), undefined, defaultACLdoc))
+        .concat(kb.statementsMatching(da, ACL('origin'), undefined, defaultACLdoc))
+        .concat(kb.statementsMatching(da, ACL('originClass'), undefined, defaultACLdoc))
             .concat(kb.statementsMatching(da, ACL('mode'), undefined, defaultACLdoc));
         proposed.push($rdf.st(da, ACL('accessTo'), doc, defaultACLdoc)); // Suppose
+        if (isContainer){ // By default, make this apply to folder contents too
+            proposed.push($rdf.st(da, ACL('defaultForNew'), doc, defaultACLdoc))
+        }
     });
     var kb2 = $rdf.graph(); // Potential - derived is kept apart
     proposed.map(function(st){
@@ -32154,7 +32220,7 @@ tabulator.panes.utils.adoptACLDefault = function(doc, aclDoc, defaultResource, d
             return  $rdf.sym( (sym.uri.slice(0, y) == defaultACLdoc.uri) ?
                  aclDoc.uri + sym.uri.slice(y) : sym.uri );
         }
-        kb2.add(move(st.subject), move(st.predicate), move(st.object), $rdf.sym(aclDoc.uri) );
+        kb2.add(move(st.subject), move(st.predicate), move(st.object), $rdf.sym(aclDoc.uri));
     });
 
     //   @@@@@ ADD TRIPLES TO ACCES CONTROL ACL FILE -- until servers fixed @@@@@
@@ -32187,10 +32253,9 @@ tabulator.panes.utils.readACL = function(x, aclDoc, kb, getDefaults) {
     var ns = tabulator.ns
     var predicate = getDefaults ? ns.acl('defaultForNew') : ns.acl('accessTo')
     var ACL = tabulator.ns.acl;
-    var ac = {'agent': [], 'agentClass': []};
+    var ac = {'agent': [], 'agentClass': [], 'origin': [], 'originClass': []};
     var auths = kb.each(undefined, predicate, x);
-    for (var pred in { 'agent': true, 'agentClass': true}) {
-//    ['agent', 'agentClass'].map(function(pred){
+    for (var pred in { 'agent': true, 'agentClass': true, 'origin': true, 'originClass': true}) {
         auths.map(function(a){
             kb.each(a,  ACL('mode')).map(function(mode){
                  kb.each(a,  ACL(pred)).map(function(agent){
@@ -32206,7 +32271,7 @@ tabulator.panes.utils.readACL = function(x, aclDoc, kb, getDefaults) {
 // Compare two ACLs
 tabulator.panes.utils.sameACL = function(a, b) {
     var contains = function(a, b) {
-        for (var pred in { 'agent': true, 'agentClass': true}) {
+        for (var pred in { 'agent': true, 'agentClass': true, 'origin': true, 'originClass': true}) {
             if (a[pred]) {
                 for (var agent in a[pred]) {
                     for (var mode in a[pred][agent]) {
@@ -32226,7 +32291,7 @@ tabulator.panes.utils.sameACL = function(a, b) {
 tabulator.panes.utils.ACLunion = function(list) {
     var b = list[0], a, ag;
     for (var k=1; k < list.length; k++) {
-        ['agent', 'agentClass'].map(function(pred){
+        ['agent', 'agentClass', 'origin', 'originClass'].map(function(pred){
             a = list[k];
             if (a[pred]) {
                 for (ag in a[pred]) {
@@ -32270,7 +32335,7 @@ tabulator.panes.utils.loadUnionACL = function(subjectList, callback) {
 //
 tabulator.panes.utils.ACLbyCombination = function(ac) {
     var byCombo = [];
-    ['agent', 'agentClass'].map(function(pred){
+    ['agent', 'agentClass', 'origin', 'originClass'].map(function(pred){
         for (var agent in ac[pred]) {
             var combo = [];
             for (var mode in ac[pred][agent]) {
@@ -32368,8 +32433,8 @@ tabulator.panes.utils.putACLbyCombo = function(kb, x, byCombo, aclDoc, callback)
     tabulator.panes.utils.makeACLGraphbyCombo(kb2, x, byCombo, aclDoc, true);
 
     //var str = tabulator.panes.utils.makeACLString = function(x, ac, aclDoc);
-    var updater =  new tabulator.rdf.sparqlUpdate(kb);
-    updater.put(aclDoc, kb2.statementsMatching(undefined, undefined, undefined, aclDoc),
+    tabulator.updater =  tabulator.updater || new tabulator.rdf.UpdateManager(kb);
+    tabulator.updater.put(aclDoc, kb2.statementsMatching(undefined, undefined, undefined, aclDoc),
         'text/turtle', function(uri, ok, message){
         if (!ok) {
             callback(ok, message);
@@ -32600,74 +32665,18 @@ tabulator.panes.utils.preventBrowserDropEvents = function(document) {
 }
 
 
-tabulator.panes.utils.personTR = function(dom, pred, obj, options) {
-  var tr = dom.createElement('tr');
-  options = options || {}
-  tr.predObj = [pred.uri, obj.uri];
-  var td1 = tr.appendChild(dom.createElement('td'));
-  var td2 = tr.appendChild(dom.createElement('td'));
-  var td3 = tr.appendChild(dom.createElement('td'));
-
-  var agent = obj;
-  var image = td1.appendChild(dom.createElement('img'));
-  image.setAttribute('style', 'width: 3em; height: 3em; margin: 0.1em; border-radius: 1em;')
-  tabulator.panes.utils.setImage(image, agent);
-  tabulator.panes.utils.setName(td2, agent);
-  if (options.deleteFunction){
-    tabulator.panes.utils.deleteButtonWithCheck(dom, td3, 'person', options.deleteFunction);
-  }
-  if (options.link !== false) {
-    var anchor = td3.appendChild(dom.createElement('a'))
-    anchor.setAttribute('href', obj.uri);
-    anchor.classList.add('HoverControlHide')
-    var linkImage = anchor.appendChild(dom.createElement('img'));
-    linkImage.setAttribute('src', tabulator.scriptBase + 'icons/go-to-this.png');
-    td3.appendChild(dom.createElement('br'))
-  }
-  if (options.draggable !== false){ // default is on
-    tr.setAttribute('draggable','true'); // allow a person to be dragged to diff role
-
-    tr.addEventListener('dragstart', function(e){
-        tr.style.fontWeight = 'bold';
-        // e.dataTransfer.dropEffect = 'move';
-        // e.dataTransfer.effectAllowed = 'all'  // same as default
-        e.dataTransfer.setData("text/uri-list", obj.uri);
-        e.dataTransfer.setData("text/plain", obj.uri);
-        e.dataTransfer.setData("text/html", tr.outerHTML);
-        console.log("Dragstart: " + tr + " -> " + obj + "de: "+ e.dataTransfer.dropEffect)
-    }, false);
-
-    tr.addEventListener('drag', function(e){
-        e.preventDefault();
-        e.stopPropagation();
-        //e.dataTransfer.dropEffect = 'copy';
-        // e.dataTransfer.setData("text/uri-list", obj);
-        console.log("Drag: dropEffect: "+ e.dataTransfer.dropEffect)
-    }, false);
-
-    // icons/go-to-this.png
-
-    tr.addEventListener('dragend', function(e){
-        tr.style.fontWeight = 'normal';
-        console.log("Dragend dropeffect: " + e.dataTransfer.dropEffect )
-        console.log("Dragend: " + tr + " -> " + obj)
-    }, false);
-  }
-  return tr;
-}
-
 
 tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
     var kb = tabulator.kb;
-    var updater = new tabulator.rdf.sparqlUpdate(kb);
+    var updater = new tabulator.rdf.UpdateManager(kb);
     var ACL = tabulator.ns.acl;
     var doc = subject.doc(); // The ACL is actually to the doc describing the thing
 
     var table = dom.createElement('table');
-    table.setAttribute('style', 'font-size:120%; margin: 1em; border: 0.1em #ccc ;');
+    table.setAttribute('style', 'margin: 1em; border: 0.1em #ccc ;');
     var headerRow = table.appendChild(dom.createElement('tr'));
     headerRow.textContent = "Sharing for " + noun + " " + tabulator.Util.label(subject);
-    headerRow.setAttribute('style', 'min-width: 20em; padding: 1em; font-size: 150%; border-bottom: 0.1em solid red; margin-bottom: 2em;');
+    headerRow.setAttribute('style', 'min-width: 20em; padding: 1em; font-size: 120%; border-bottom: 0.1em solid red; margin-bottom: 2em;');
 
     var statusRow = table.appendChild(dom.createElement('tr'));
     var statusBlock = statusRow.appendChild(dom.createElement('div'));
@@ -32696,16 +32705,18 @@ tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
             combo = combo.join('\n')
             return combo;
         };
-        var colloquial = {13: "Owners", 5: "Editors", 3: "Posters", 2: "Submitters", 1: "Viewers"};
+        var colloquial = {13: "Owners", 9: "Owners (write locked)", 5: "Editors", 3: "Posters", 2: "Submitters", 1: "Viewers"};
+        var recommended = {13: true, 5: true, 3: true, 2: true, 1: true};
         var explanation = {
             13: "can read, write, and control sharing.",
+            9: "can read and control sharing, currently write-locked.",
             5: "can read and change information",
             3: "can add new information, and read but not change existing information",
             2: "can add new information but not read any",
             1: "can read but not change information"
         };
 
-        var kToColor = {13: 'purple', 5: 'red', 3: 'orange', 2: '#cc0', 1: 'green'};
+        var kToColor = {13: 'purple', 9: 'blue', 5: 'red', 3: 'orange', 2: '#cc0', 1: 'green'};
 
         var ktToList = function(k){
             var list = "", y = ['Read', 'Append', 'Write', 'Control'];
@@ -32729,6 +32740,33 @@ tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
             }
         }
 
+        //
+        var agentTriage = function(uri) {
+          var ns = tabulator.ns, kb = tabulator.kb, obj = $rdf.sym(uri);
+          var obj = $rdf.sym(uri)
+          var types = kb.findTypeURIs(obj);
+          console.log('Drop object types: ' + types)
+          if (uri.split('/').length = 4 && !(uri.split('/')[1]) && !(uri.split('/')[3])) {
+            return { pred: 'origin', obj: obj} // The only way to know an origin alas
+          }
+          if (ns.vcard('WebID').uri in types) return {pred: 'agent', obj: obj}
+          if (ns.vcard('Group').uri in types || obj.sameTerm(ns.foaf('Agent'))
+            || obj.sameTerm(ns.rdf('Resource'))   || obj.sameTerm(ns.owl('Thing'))) {
+            return { pred: 'agentClass', obj: obj} // @@ note vcard membership not RDFs
+          }
+          if (ns.vcard('Individual').uri in types || ns.foaf('Person').uri in types || ns.foaf('Agent').uri in types) {
+            var pref = kb.any(obj, ns.foaf('preferredURI'))
+            if (pref) return { pred: 'agent', obj: $rdf.sym(pref)}
+            return { pred: 'agent', obj: obj}
+          }
+          if (ns.solid('AppProvider').uri in types) {
+            return { pred: 'origin', obj: obj}
+          }
+          if (ns.solid('AppProviderClass').uri in types) {
+            return { pred: 'originClass', obj: obj}
+          }
+        }
+
         box.saveBack = function(callback){
           var kb2 = $rdf.graph()
           if (!box.isContainer) {
@@ -32739,7 +32777,7 @@ tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
           } else { // Linked controls
               tabulator.panes.utils.makeACLGraphbyCombo(kb2, doc, box.mainByCombo, aclDoc, true, true);
           }
-          var updater =  tabulator.updater = tabulator.updater || new tabulator.rdf.sparqlUpdate(kb);
+          var updater =  tabulator.updater = tabulator.updater || new tabulator.rdf.UpdateManager(kb);
           updater.put(aclDoc, kb2.statementsMatching(undefined, undefined, undefined, aclDoc),
               'text/turtle', function(uri, ok, message){
               if (!ok) {
@@ -32759,7 +32797,7 @@ tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
             var row = box.appendChild(dom.createElement('tr'));
             row.combo = combo;
             row.setAttribute('style', 'color: '
-                + (kToColor[k] || 'black') + ';')
+                + (options.modify ? (kToColor[k] || 'black'): '#888') + ';')
 
             var left = row.appendChild(dom.createElement('td'));
 
@@ -32779,26 +32817,27 @@ tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
                     middleTable.removeChild(middleTable.NoneTR);
                     delete middleTable.NoneTR;
                 }
-                var opt = {
-                  deleteFunction: function deletePerson(){
-                      var arr =  byCombo[combo];
-                      for (var b=0; b < arr.length; b++) {
-                          if  (arr[b][0] === pred && arr[b][1] === obj ) {
-                              arr.splice(b, 1); // remove from ACL
-                              break;
-                          }
-                      };
-                      // @@@ save byCombo back to ACLDoc
-                      middleTable.removeChild(tr);
+                var opt = {}
+                if (options.modify) {
+                  opt.deleteFunction = function deletePerson(){
+                    var arr =  byCombo[combo];
+                    for (var b=0; b < arr.length; b++) {
+                      if  (arr[b][0] === pred && arr[b][1] === obj ) {
+                        arr.splice(b, 1); // remove from ACL
+                        break;
+                      }
+                    };
+                    box.saveBack(function(ok){
+                      if (ok) {
+                        middleTable.removeChild(tr);
+                      } // @@ else
+                    });
                   }
                 }
                 var tr = middleTable.appendChild(
                   tabulator.panes.utils.personTR(
                     dom, $rdf.sym(pred), $rdf.sym(obj), opt));
             };
-
-
-
 
             var syncCombo = function(combo) {
                 var arr = byCombo[combo];
@@ -32892,13 +32931,17 @@ tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
                     console.log("Dropped URI list (2): " + uris);
                     if (uris) {
                         uris.map(function(u){
+                            var res = agentTriage(u); // eg 'agent', 'origin', agentClass'
+                            if (!res) {
+                                console.log("Error: Drop fails to drop appropriate thing! " + u)
+                                return;
+                            }
                             if (!(combo in byCombo)) {
                                 byCombo[combo] = [];
                             }
-                            // @@@ Find out - person or group? - if group, use agentClass
                             removeAgentFromCombos(u); // Combos are mutually distinct
-                            byCombo[combo].push(['agent', u]);
-                            console.log('setting access by ' + u + ' to ' + subject)
+                            byCombo[combo].push([res.pred, res.obj.uri]);
+                            console.log('ACL: setting access to ' + subject + ' by ' + res.pred + ': ' + res.obj)
                             box.saveBack(function(ok){
                               if (ok) {
                                 thisEle.style.backgroundColor = 'white'; // restore look to before drag
@@ -32924,7 +32967,7 @@ tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
         var k, combo, label;
         for (k=15; k>0; k--) {
             combo = kToCombo(k);
-            if (( options.modify && colloquial[k]) || byCombo[combo]){
+            if (( options.modify && recommended[k]) || byCombo[combo]){
                 renderCombo(byCombo, combo);
             } // if
         } // for
@@ -32933,6 +32976,8 @@ tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
 
     tabulator.panes.utils.getACLorDefault(doc, function(ok, p2, targetDoc, targetACLDoc, defaultHolder, defaultACLDoc){
         var defa = !p2;
+        box.isContainer = targetDoc.uri.slice(-1) === '/' // Give default for all directories
+        // @@ Could also set from classes ldp:Container etc etc
         if (!ok) {
             statusBlock.textContent += "Error reading " + (defa? " default " : "") + "ACL."
                 + " status " + targetDoc + ": " + targetACLDoc;
@@ -32958,7 +33003,7 @@ tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
                                 statusBlock.textContent += " (Error writing back access control file: "+message+")";
                             } else {
                                 statusBlock.textContent = " (Now editing specific access for this " + noun + ")";
-                                box.style = 'color: black;';
+                                // box.style = 'color: black;';
                                 bottomRow.removeChild(editPlease);
                             }
                         });
@@ -32979,6 +33024,9 @@ tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
                     useDefault.addEventListener('click', function(event) {
                         tabulator.fetcher.webOperation('DELETE', targetACLDoc)
                         .then(function(xhr) {
+                            tabulator.fetcher.requested[targetACLDoc.uri] = 404
+                            tabulator.fetcher.nonexistant[xhr.resource.uri] = true
+                            tabulator.fetcher.unload(targetACLDoc)
                             statusBlock.textContent = " The sharing for this " + noun + " is now the default.";
                             bottomRow.removeChild(useDefault);
                             box.style = 'color: #777;';
@@ -33008,7 +33056,8 @@ tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
                 }
 
                 box.addControlForDefaults = function() {
-                  box.notice.textContent = "Defaults for things within this folder:"
+                  box.notice.textContent = "Access to things within this folder:"
+                  box.notice.style = 'font-size: 120%; color: black;'
                   var mergeButton = tabulator.panes.utils.clearElement(box.offer).appendChild(dom.createElement('button'))
                   mergeButton.innerHTML = "<p>Set default for folder contents to<br />just track the sharing for the folder</p>"
                   mergeButton.style = bigButtonStyle;
@@ -33027,6 +33076,7 @@ tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
                 box.removeControlForDefaults = function(){
                   statusBlock.textContent = "This is also the default for things in this folder."
                   box.notice.textContent = "Sharing for things within the folder currently tracks sharing for the folder."
+                  box.notice.style = 'font-size: 80%; color: #888;'
                   var splitButton = tabulator.panes.utils.clearElement(box.offer).appendChild(dom.createElement('button'))
                   splitButton.innerHTML = "<p>Set the sharing of folder contets <br />separately from the sharing for the folder</p>"
                   splitButton.style = bigButtonStyle;
@@ -33040,8 +33090,6 @@ tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
                   statusBlock.textContent = "This is now also the default for things in this folder."
                 }
 
-                box.isContainer = targetDoc.uri.slice(-1) === '/' // Give default for all directories
-                // @@ Could also set from classes ldp:Container etc etc
                 if (box.isContainer){
                     var ac = tabulator.panes.utils.readACL(targetDoc, targetACLDoc, kb);
                     var acd = tabulator.panes.utils.readACL(targetDoc, targetACLDoc, kb, true);
@@ -33051,6 +33099,7 @@ tabulator.panes.utils.ACLControlBox = function(subject, dom, noun, callback) {
                 box.mainByCombo = ACLControlEditable(box, targetDoc, targetACLDoc, kb, {modify: true}); // yes can edit
                 box.divider = box.appendChild(dom.createElement('tr'))
                 box.notice = box.divider.appendChild(dom.createElement('td'))
+                box.notice.style = 'font-size: 80%; color: #888;'
                 box.offer = box.divider.appendChild(dom.createElement('td'))
                 box.notice.setAttribute('colspan', '2');
 
@@ -33180,27 +33229,55 @@ tabulator.panes.utils.setName = function(element, x) {
     }
 }
 
+// Set of suitable images
+tabulator.panes.utils.imagesOf = function(x) {
+    return (kb.each(x, ns.sioc('avatar'))
+    .concat(kb.each(x, ns.foaf('img')))
+    .concat(kb.each(x, ns.vcard('logo')))
+    .concat(kb.each(x, ns.vcard('photo')))
+    .concat(kb.each(x, ns.foaf('depiction'))))
+}
 // Best logo or avater or photo etc to represent someone or some group etc
 //
+
 tabulator.panes.utils.setImage = function(element, x) {
     var kb = tabulator.kb, ns = tabulator.ns;
-    var fallback = "https://webizen.org/img/photo.png";
+    var iconDir = tabulator.scriptBase + "js/panes/common/icons/"
+    var fallback = iconDir + "noun_15059.svg";
     var findImage = function(x) {
+        if (x.sameTerm(ns.foaf('Agent')) || x.sameTerm(ns.rdf('Resource'))) {
+          return iconDir + 'noun_98053.svg' // Globe
+        }
         var image = kb.any(x, ns.sioc('avatar'))
             || kb.any(x, ns.foaf('img'))
             || kb.any(x, ns.vcard('logo'))
+            || kb.any(x, ns.vcard('hasPhoto'))
             || kb.any(x, ns.vcard('photo'))
             || kb.any(x, ns.foaf('depiction'));
-        return image ? image.uri : fallback;
+        return image ? image.uri : null
+      }
+      var findImageByClass = function(x) {
+        var types = kb.findTypeURIs(x)
+        if (ns.solid('AppProvider').uri in types) {
+          return iconDir + 'noun_15177.svg' // App
+        }
+        if ((x.uri.split('/').length = 4 && !(x.uri.split('/')[1]) && !(x.uri.split('/')[3]))) {
+          return iconDir + 'noun_15177.svg' // App -- this is an origin
+        }
+        if (ns.solid('AppProviderClass').uri in types) {
+          return iconDir + 'noun_144.svg' // App Whitelist @@@ ICON (three apps ?)
+        }
+        if (ns.vcard('Group').uri in types || ns.rdfs('Class').uri in types) {
+          return iconDir + 'noun_339237.svg' // Group of people
+        }
+        return fallback
     }
 
-    var uri = x.sameTerm(ns.foaf('Agent'))
-      ? tabulator.scriptBase + 'js/panes/common/icons/noun_98053.svg'
-      : findImage(x);
-    element.setAttribute('src', uri);
-    if (uri === fallback && x.uri) {
+    var uri = findImage(x)
+    element.setAttribute('src', uri || findImageByClass(x));
+    if (!uri && x.uri) {
         tabulator.sf.nowOrWhenFetched(x, undefined, function(ok) {
-            element.setAttribute('src', findImage(x));
+            element.setAttribute('src', findImage(x) || findImageByClass(x));
         });
     }
 }
@@ -33240,6 +33317,71 @@ tabulator.panes.utils.deleteButtonWithCheck = function(dom, container, noun, del
     }, false);
 }
 
+
+
+
+// A TR to repreent a draggable person, etc in a list
+//
+//
+tabulator.panes.utils.personTR = function(dom, pred, obj, options) {
+  var tr = dom.createElement('tr');
+  options = options || {}
+  tr.predObj = [pred.uri, obj.uri];
+  var td1 = tr.appendChild(dom.createElement('td'));
+  var td2 = tr.appendChild(dom.createElement('td'));
+  var td3 = tr.appendChild(dom.createElement('td'));
+
+  var agent = obj;
+  var image = td1.appendChild(dom.createElement('img'));
+  td1.setAttribute('style','width:4em; padding:0.5em; height: 4em;')
+  td2.setAttribute('style', 'text-align:left;')
+  td3.setAttribute('style','width:2em; padding:0.5em; height: 4em;')
+  image.setAttribute('style', 'width: 3em; height: 3em; margin: 0.1em; border-radius: 1em;')
+  tabulator.panes.utils.setImage(image, agent);
+
+  tabulator.panes.utils.setName(td2, agent);
+  if (options.deleteFunction){
+    tabulator.panes.utils.deleteButtonWithCheck(dom, td3, 'person', options.deleteFunction);
+  }
+  if (options.link !== false) {
+    var anchor = td3.appendChild(dom.createElement('a'))
+    anchor.setAttribute('href', obj.uri);
+    anchor.classList.add('HoverControlHide')
+    var linkImage = anchor.appendChild(dom.createElement('img'));
+    linkImage.setAttribute('src', tabulator.scriptBase + 'icons/go-to-this.png');
+    td3.appendChild(dom.createElement('br'))
+  }
+  if (options.draggable !== false){ // default is on
+    tr.setAttribute('draggable','true'); // allow a person to be dragged to diff role
+
+    tr.addEventListener('dragstart', function(e){
+        tr.style.fontWeight = 'bold';
+        // e.dataTransfer.dropEffect = 'move';
+        // e.dataTransfer.effectAllowed = 'all'  // same as default
+        e.dataTransfer.setData("text/uri-list", obj.uri);
+        e.dataTransfer.setData("text/plain", obj.uri);
+        e.dataTransfer.setData("text/html", tr.outerHTML);
+        console.log("Dragstart: " + tr + " -> " + obj + "de: "+ e.dataTransfer.dropEffect)
+    }, false);
+
+    tr.addEventListener('drag', function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        //e.dataTransfer.dropEffect = 'copy';
+        // e.dataTransfer.setData("text/uri-list", obj);
+        console.log("Drag: dropEffect: "+ e.dataTransfer.dropEffect)
+    }, false);
+
+    // icons/go-to-this.png
+
+    tr.addEventListener('dragend', function(e){
+        tr.style.fontWeight = 'normal';
+        console.log("Dragend dropeffect: " + e.dataTransfer.dropEffect )
+        console.log("Dragend: " + tr + " -> " + obj)
+    }, false);
+  }
+  return tr;
+}
 
 
 
@@ -33368,7 +33510,7 @@ tabulator.panes.field[tabulator.ns.ui('Options').uri] = function(
 */
 tabulator.panes.field[tabulator.ns.ui('Multiple').uri] = function(
                                     dom, container, already, subject, form, store, callback) {
-    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.sparqlUpdate(kb);
+    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(kb);
     var kb = tabulator.kb;
     var box = dom.createElement('table');
     // We don't indent multiple as it is a sort of a prefix o fthe next field and has contents of one.
@@ -34135,7 +34277,7 @@ tabulator.panes.utils.promptForNew = function(dom, kb, subject, predicate, theCl
 // @param callback - takes (boolean ok, string errorBody)
 
 tabulator.panes.utils.makeDescription = function(dom, kb, subject, predicate, store, callback) {
-    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.sparqlUpdate(kb); // @@ Use a common one attached to each fetcher or merge with fetcher
+    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(kb); // @@ Use a common one attached to each fetcher or merge with fetcher
     var group = dom.createElement('div');
 
     var sts = kb.statementsMatching(subject, predicate,undefined); // Only one please
@@ -34230,7 +34372,7 @@ tabulator.panes.utils.makeDescription = function(dom, kb, subject, predicate, st
 
 tabulator.panes.utils.makeSelectForOptions = function(dom, kb, subject, predicate,
                 possible, options, store, callback) {
-    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.sparqlUpdate(kb);
+    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(kb);
     tabulator.log.debug('Select list length now '+ possible.length)
     var n = 0; var uris ={}; // Count them
     for (var i=0; i < possible.length; i++) {
@@ -34438,7 +34580,7 @@ tabulator.panes.utils.makeSelectForNestedCategory = function(
 */
 tabulator.panes.utils.buildCheckboxForm = function(dom, kb, lab, del, ins, form, store) {
     var box = dom.createElement('div');
-    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.sparqlUpdate(kb);
+    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(kb);
     var tx = dom.createTextNode(lab);
     var editable = tabulator.sparql.editable(store.uri);
     tx.className = 'question';
@@ -34741,6 +34883,7 @@ tabulator.panes.utils.webCopy = function(here, there, content_type, callback) {
 
 tabulator.panes.utils.complain = function(context, err) {
     var ele = context.statusArea || context.div;
+    console.log('Complaint: ' + err)
     return ele.appendChild(tabulator.panes.utils.errorMessageBlock(context.dom, err));
 }
 
@@ -35640,302 +35783,294 @@ tabulator.panes.utils.newAppInstance = function(dom, appDetails, callback) {
 // ###### Expanding js/panes/common/discussion.js ##############
 //  Common code for a discussion are a of messages about something
 //
+var messageArea = function (dom, kb, subject, messageStore, options) {
+  kb = kb || tabulator.kb
+  var ns = tabulator.ns
+  var WF = $rdf.Namespace('http://www.w3.org/2005/01/wf/flow#')
+  var DCT = $rdf.Namespace('http://purl.org/dc/terms/')
 
-tabulator.panes.utils.messageArea = function(dom, kb, subject, messageStore, options) {
-    var kb = tabulator.kb;
-    var ns = tabulator.ns;
-    var WF = $rdf.Namespace('http://www.w3.org/2005/01/wf/flow#');
-    var DC = $rdf.Namespace('http://purl.org/dc/elements/1.1/');
-    var DCT = $rdf.Namespace('http://purl.org/dc/terms/');
-    
-    options = options || {};
-    
-    var newestFirst = !!options.newestFirst;
-    
-    var messageBodyStyle = 'width: 90%; font-size:100%; \
-	    background-color: white; border: 0.07em solid gray; padding: 0.15em; margin: 0.1em 1em 0.1em 1em'
-//	'font-size: 100%; margin: 0.1em 1em 0.1em 1em;  background-color: white; white-space: pre-wrap; padding: 0.1em;'
-    
-    var div = dom.createElement("div")
-    var messageTable; // Shared by initial build and addMessageFromBindings
+  options = options || {}
 
-    var me_uri = tabulator.preferences.get('me');
-    var me = me_uri? kb.sym(me_uri) : null;
+  var newestFirst = !!options.newestFirst
 
-    var updater = new tabulator.rdf.sparqlUpdate(kb);
+  var messageBodyStyle = 'width: 90%; font-size:100%; background-color: white; border: 0.07em solid #eee; padding: .2em 0.5em; margin: 0.1em 1em 0.1em 1em'
+  // 'font-size: 100%; margin: 0.1em 1em 0.1em 1em;  background-color: white; white-space: pre-wrap; padding: 0.1em;'
 
-    var anchor = function(text, term) {
-        var a = dom.createElement('a');
-        a.setAttribute('href', term.uri);
-        a.addEventListener('click', tabulator.panes.utils.openHrefInOutlineMode, true);
-        a.textContent = text;
-        a.setAttribute('style', 'color: #3B5998; text-decoration: none; '); // font-weight: bold;
-        return a;
-    };
+  var div = dom.createElement('div')
+  var messageTable // Shared by initial build and addMessageFromBindings
 
-    var mention = function mention(message, style){
-        var pre = dom.createElement("pre");
-        pre.setAttribute('style', style ? style :'color: grey');
-        div.appendChild(pre);
-        pre.appendChild(dom.createTextNode(message));
-        return pre
-    } 
-    
-    var console = {
-        log: function(message) {mention(message, 'color: #111;')},
-        warn: function(message) {mention(message, 'color: #880;')},
-        error: function(message) {mention(message, 'color: #800;')}
-    };
+  var me_uri = tabulator.preferences.get('me')
+  var me = me_uri ? kb.sym(me_uri) : null
 
-    
-    //       Form for a new message
-    //
-    var newMessageForm = function() {
-        var form = dom.createElement('tr');
-        var lhs = dom.createElement('td');
-        var middle = dom.createElement('td');
-        var rhs = dom.createElement('td');
-        form.appendChild(lhs);
-        form.appendChild(middle);
-        form.appendChild(rhs);
-        form.AJAR_date = "9999-01-01T00:00:00Z"; // ISO format for field sort
-        
-        var sendMessage = function() {
-            // titlefield.setAttribute('class','pendingedit');
-            // titlefield.disabled = true;
-            field.setAttribute('class','pendingedit');
-            field.disabled = true;
-            sts = [];
-            
-            var now = new Date();
-            var timestamp = ''+ now.getTime();
-            var dateStamp = $rdf.term(now);
-            // http://www.w3schools.com/jsref/jsref_obj_date.asp
-            var message = kb.sym(messageStore.uri + '#' + 'Msg'+timestamp);
-            sts.push(new $rdf.Statement(subject, ns.wf('message'), message, messageStore));
-            // sts.push(new $rdf.Statement(message, ns.dc('title'), kb.literal(titlefield.value), messageStore))
-            sts.push(new $rdf.Statement(message, ns.sioc('content'), kb.literal(field.value), messageStore))
-            sts.push(new $rdf.Statement(message, DCT('created'), dateStamp, messageStore));
-            if (me) sts.push(new $rdf.Statement(message, ns.foaf('maker'), me, messageStore));
+  var updater = tabulator.updater || tabulator.updater || new tabulator.rdf.UpdateManager(kb)
 
-            var sendComplete = function(uri, success, body) {
-                if (!success) {
-                    form.appendChild(tabulator.panes.utils.errorMessageBlock(
-                            dom, "Error writing message: "+ body));
-                } else {
-                    var bindings = { '?msg': message,
-                                    '?content': kb.literal(field.value),
-                                    '?date':  dateStamp,
-                                    '?creator': me};
-                    addMessageFromBindings(bindings);
-                    
-                    field.value = ''; // clear from out for reuse
-                    field.setAttribute('class','');
-                    field.disabled = false;
-                }
-            }
-            updater.update([], sts, sendComplete);
-        }
-        // form.addEventListener('submit', sendMessage, false)
-        // form.setAttribute('onsubmit', "function xx(){return false;}");
-        form.appendChild(dom.createElement('br'));
-
-        var field = dom.createElement('textarea');
-        middle.appendChild(field);
-        field.rows = 3;
-        // field.cols = 40;
-        field.setAttribute('style', messageBodyStyle)
-
-        submit = dom.createElement('button');
-        //submit.disabled = true; // until the filled has been modified
-        submit.textContent = "send"; //@@ I18n
-        submit.setAttribute('style', 'float: right;');
-        submit.addEventListener('click', sendMessage, false);
-        rhs.appendChild(submit);
-
-        return form;
-    };
-    
-    var nick = function(person) {
-        var s = tabulator.kb.any(person, tabulator.ns.foaf('nick'));
-        if (s) return ''+s.value
-        return ''+tabulator.Util.label(person);
+  var anchor = function (text, term) { // If there is no link return an element anyway
+    var a = dom.createElement('a')
+    if (term.uri) {
+      a.setAttribute('href', term.uri)
+      a.addEventListener('click', tabulator.panes.utils.openHrefInOutlineMode, true)
+      a.setAttribute('style', 'color: #3B5998; text-decoration: none; ') // font-weight: bold
     }
+    a.textContent = text
+    return a
+  }
 
-/////////////////////////////////////////////////////////////////////////
-    
-    var syncMessages = function(about, messageTable) {
-        var displayed = {};
-        for (var ele = messageTable.firstChild; ele ;ele = ele.nextSibling) {
-            if (ele.AJAR_subject) {
-                displayed[ele.AJAR_subject.uri] = true;
-            };
-        }
-        var messages = kb.each(about, ns.wf('message'));
-        var stored = {};
-        messages.map(function(m){
-            stored[m.uri] = true;
-            if (!displayed[m.uri]) {
-                addMessage(m);
-            };
-        });
+  var mention = function mention (message, style) {
+    var pre = dom.createElement('pre')
+    pre.setAttribute('style', style || 'color: grey')
+    div.appendChild(pre)
+    pre.appendChild(dom.createTextNode(message))
+    return pre
+  }
 
-        for (var ele = messageTable.firstChild; ele;) {
-            var ele2 = ele.nextSibling;
-            if (ele.AJAR_subject && !stored[ele.AJAR_subject.uri]) {
-                messageTable.removeChild(ele);
-            }
-            ele = ele2;
-        }
+  var announce = {
+    log: function (message) { mention(message, 'color: #111;') },
+    warn: function (message) { mention(message, 'color: #880;') },
+    error: function (message) { mention(message, 'color: #800;') }
+  }
 
+  //       Form for a new message
+  //
+  var newMessageForm = function () {
+    var form = dom.createElement('tr')
+    var lhs = dom.createElement('td')
+    var middle = dom.createElement('td')
+    var rhs = dom.createElement('td')
+    form.appendChild(lhs)
+    form.appendChild(middle)
+    form.appendChild(rhs)
+    form.AJAR_date = '9999-01-01T00:00:00Z' // ISO format for field sort
 
-    }
+    var sendMessage = function () {
+      // titlefield.setAttribute('class','pendingedit')
+      // titlefield.disabled = true
+      field.setAttribute('class', 'pendingedit')
+      field.disabled = true
+      var sts = []
+      var now = new Date()
+      var timestamp = '' + now.getTime()
+      var dateStamp = $rdf.term(now)
+      // http://www.w3schools.com/jsref/jsref_obj_date.asp
+      var message = kb.sym(messageStore.uri + '#' + 'Msg' + timestamp)
 
-    var addMessageFromBindings = function(bindings) {
-        return addMessage(bindings['?msg']);            
-    }
-    
-    var deleteMessage = function(message) {
-        deletions = kb.statementsMatching(message).concat(
-                kb.statementsMatching(undefined, undefined, message));
-        updater.update(deletions, [], function(uri, ok, body){
-            if (!ok) {
-                console.log("Cant delete messages:" + body);
-            } else {
-                syncMessages(subject, messageTable);
-            };
-        });
-    };
-    
-    var addMessage = function(message) {
-        var tr = dom.createElement('tr');
-        var date = kb.any(message,  DCT('created'));
-        var dateString = date.value;
-        tr.AJAR_date = dateString;
-        tr.AJAR_subject = message;
+      sts.push(new $rdf.Statement(subject, ns.wf('message'), message, messageStore))
+      // sts.push(new $rdf.Statement(message, ns.dc('title'), kb.literal(titlefield.value), messageStore))
+      sts.push(new $rdf.Statement(message, ns.sioc('content'), kb.literal(field.value), messageStore))
+      sts.push(new $rdf.Statement(message, DCT('created'), dateStamp, messageStore))
+      if (me) sts.push(new $rdf.Statement(message, ns.foaf('maker'), me, messageStore))
 
-        var done = false;
-        for (var ele = messageTable.firstChild;;ele = ele.nextSibling) {
-            if (!ele)  { // empty
-                break;
-            };
-            if (((dateString > ele.AJAR_date) && newestFirst) ||
-                        ((dateString < ele.AJAR_date) && !newestFirst)) {
-                messageTable.insertBefore(tr, ele);
-                done = true;
-                break;
-            }
-        }
-        if (!done) {
-            messageTable.appendChild(tr);
-        }
-        
-        var  td1 = dom.createElement('td');
-        tr.appendChild(td1);
-        
-        var creator = kb.any(message, ns.foaf('maker'));
-        var nickAnchor = td1.appendChild(anchor(nick(creator), creator));
-        tabulator.fetcher.nowOrWhenFetched($rdf.uri.docpart(creator.uri), undefined, function(ok, body){
-            nickAnchor.textContent = nick(creator);
-        });
-        td1.appendChild(dom.createElement('br'));
-        td1.appendChild(anchor(tabulator.panes.utils.shortDate(dateString), message));
-        
-        var  td2 = dom.createElement('td');
-        tr.appendChild(td2);
-        var pre = dom.createElement('p')            
-        pre.setAttribute('style', messageBodyStyle)
-        td2.appendChild(pre);
-        pre.textContent = kb.any(message, ns.sioc('content')).value;  
-        
-        var td3 = dom.createElement('td');
-        tr.appendChild(td3);
-        
-        var delButton = dom.createElement('button');
-        td3.appendChild(delButton);
-        delButton.textContent = "-";
-        
-        tr.setAttribute('class', 'hoverControl'); // See tabbedtab.css (sigh global CSS)
-        delButton.setAttribute('class', 'hoverControlHide');
-        delButton.setAttribute('style', 'color: red;');
-        delButton.addEventListener('click', function(e) {
-            td3.removeChild(delButton);  // Ask -- are you sure?
-            var cancelButton = dom.createElement('button');
-            cancelButton.textContent = "cancel";
-            td3.appendChild(cancelButton).addEventListener('click', function(e) {
-                td3.removeChild(sureButton);
-                td3.removeChild(cancelButton);
-                td3.appendChild(delButton);
-            }, false);
-            var sureButton = dom.createElement('button');
-            sureButton.textContent = "Delete message";
-            td3.appendChild(sureButton).addEventListener('click', function(e) {
-                td3.removeChild(sureButton);
-                td3.removeChild(cancelButton);
-                deleteMessage(message);   
-            }, false);
-        }, false);
-    };
-
-
-    // Messages with date, author etc
-
-    messageTable = dom.createElement('table');
-    div.appendChild(messageTable);
-    messageTable.setAttribute('style', 'width: 100%;'); // fill that div!
-
-    if (tabulator.preferences.get('me')) {
-        var tr = newMessageForm();
-        if (newestFirst) {
-            messageTable.insertBefore(tr, messageTable.firstChild); // If newestFirst
+      var sendComplete = function (uri, success, body) {
+        if (!success) {
+          form.appendChild(tabulator.panes.utils.errorMessageBlock(
+            dom, 'Error writing message: ' + body))
         } else {
-            messageTable.appendChild(tr); // not newestFirst
+          var bindings = { '?msg': message,
+            '?content': kb.literal(field.value),
+            '?date': dateStamp,
+          '?creator': me}
+          renderMessage(bindings)
+
+          field.value = '' // clear from out for reuse
+          field.setAttribute('class', '')
+          field.disabled = false
         }
-    };
-    
-    var msg = kb.any(subject, WF('message'));
-    if (msg != undefined) {
-        var str = ''
-        // Do this with a live query to pull in messages from web
-        var query = new $rdf.Query('Messages');
-        var v = {};
-        ['msg', 'title', 'date', 'creator', 'content'].map(function(x){
-             query.vars.push(v[x]=$rdf.variable(x))});
-        query.pat.add(subject, WF('message'), v['msg']);
-//                    query.pat.add(v['msg'], ns.dc('title'), v['title']);
-        query.pat.add(v['msg'], ns.dct('created'), v['date']);
-        query.pat.add(v['msg'], ns.foaf('maker'), v['creator']);
-        query.pat.add(v['msg'], ns.sioc('content'), v['content']);
-        var esc = tabulator.Util.escapeForXML;
-        // dump("\nquery.pat = "+query.pat+"\n");
-
-        kb.query(query, addMessageFromBindings);
+      }
+      updater.update([], sts, sendComplete)
     }
-/*
-    var refreshButton = dom.createElement('button');
-    refreshButton.textContent = "refresh";
-    refreshButton.addEventListener('click', function(e) {
-        tabulator.fetcher.unload(messageStore);
-        tabulator.fetcher.nowOrWhenFetched(messageStore.uri, undefined, function(ok, body){
-            if (!ok) {
-                console.log("Cant refresh messages" + body);
-            } else {
-                syncMessages(subject, messageTable);
-            };
-        });
-    }, false);
-    div.appendChild(refreshButton);
-*/    
-    div.refresh = function() {
-        syncMessages(subject, messageTable);
-    };
-    
+    // form.addEventListener('submit', sendMessage, false)
+    // form.setAttribute('onsubmit', "function xx(){return false;}")
+    form.appendChild(dom.createElement('br'))
 
-    return div;
-};
+    var field = dom.createElement('textarea')
+    middle.appendChild(field)
+    field.rows = 3
+    // field.cols = 40
+    field.setAttribute('style', messageBodyStyle)
 
+    var submit = dom.createElement('button')
+    // submit.disabled = true // until the filled has been modified
+    submit.textContent = 'send' // @@ I18n
+    submit.setAttribute('style', 'float: right;')
+    submit.addEventListener('click', sendMessage, false)
+    rhs.appendChild(submit)
 
+    return form
+  }
 
+  var nick = function (person) {
+    var s = tabulator.kb.any(person, tabulator.ns.foaf('nick'))
+    if (s) return '' + s.value
+    return '' + tabulator.Util.label(person)
+  }
+
+  // ///////////////////////////////////////////////////////////////////////
+
+  var syncMessages = function (about, messageTable) {
+    var displayed = {}
+    var ele, ele2
+    for (ele = messageTable.firstChild; ele; ele = ele.nextSibling) {
+      if (ele.AJAR_subject) {
+        displayed[ele.AJAR_subject.uri] = true
+      }
+    }
+    var messages = kb.each(about, ns.wf('message'))
+    var stored = {}
+    messages.map(function (m) {
+      stored[m.uri] = true
+      if (!displayed[m.uri]) {
+        addMessage(m)
+      }
+    })
+
+    for (ele = messageTable.firstChild; ele;) {
+      ele2 = ele.nextSibling
+      if (ele.AJAR_subject && !stored[ele.AJAR_subject.uri]) {
+        messageTable.removeChild(ele)
+      }
+      ele = ele2
+    }
+  }
+
+  var deleteMessage = function (message) {
+    var deletions = kb.statementsMatching(message).concat(
+      kb.statementsMatching(undefined, undefined, message))
+    updater.update(deletions, [], function (uri, ok, body) {
+      if (!ok) {
+        announce.error('Cant delete messages:' + body)
+      } else {
+        syncMessages(subject, messageTable)
+      }
+    })
+  }
+
+  var addMessage = function (message) {
+    var bindings = {
+      '?msg': message,
+      '?creator': kb.any(message, ns.foaf('maker')),
+      '?date': kb.any(message, DCT('created')),
+      '?content': kb.any(message, ns.sioc('content'))
+    }
+    renderMessage(bindings)
+  }
+
+  var renderMessage = function (bindings) {
+    var creator = bindings['?creator']
+    var message = bindings['?msg']
+    var date = bindings['?date']
+    var content = bindings['?content']
+
+    var dateString = date.value
+    var tr = dom.createElement('tr')
+    tr.AJAR_date = dateString
+    tr.AJAR_subject = message
+
+    var done = false
+    for (var ele = messageTable.firstChild; ; ele = ele.nextSibling) {
+      if (!ele) { // empty
+        break
+      }
+      if (((dateString > ele.AJAR_date) && newestFirst) ||
+        ((dateString < ele.AJAR_date) && !newestFirst)) {
+        messageTable.insertBefore(tr, ele)
+        done = true
+        break
+      }
+    }
+    if (!done) {
+      messageTable.appendChild(tr)
+    }
+
+    var td1 = dom.createElement('td')
+    tr.appendChild(td1)
+
+    var nickAnchor = td1.appendChild(anchor(nick(creator), creator))
+    if (creator.uri) {
+      tabulator.fetcher.nowOrWhenFetched(creator.doc(), undefined, function (ok, body) {
+        nickAnchor.textContent = nick(creator)
+      })
+    }
+    td1.appendChild(dom.createElement('br'))
+    td1.appendChild(anchor(tabulator.panes.utils.shortDate(dateString), message))
+
+    var td2 = dom.createElement('td')
+    tr.appendChild(td2)
+    var pre = dom.createElement('p')
+    pre.setAttribute('style', messageBodyStyle)
+    td2.appendChild(pre)
+    pre.textContent = content.value
+
+    var td3 = dom.createElement('td')
+    tr.appendChild(td3)
+
+    var delButton = dom.createElement('button')
+    td3.appendChild(delButton)
+    delButton.textContent = '-'
+
+    tr.setAttribute('class', 'hoverControl') // See tabbedtab.css (sigh global CSS)
+    delButton.setAttribute('class', 'hoverControlHide')
+    delButton.setAttribute('style', 'color: red;')
+    delButton.addEventListener('click', function (e) {
+      td3.removeChild(delButton) // Ask -- are you sure?
+      var cancelButton = dom.createElement('button')
+      cancelButton.textContent = 'cancel'
+      td3.appendChild(cancelButton).addEventListener('click', function (e) {
+        td3.removeChild(sureButton)
+        td3.removeChild(cancelButton)
+        td3.appendChild(delButton)
+      }, false)
+      var sureButton = dom.createElement('button')
+      sureButton.textContent = 'Delete message'
+      td3.appendChild(sureButton).addEventListener('click', function (e) {
+        td3.removeChild(sureButton)
+        td3.removeChild(cancelButton)
+        deleteMessage(message)
+      }, false)
+    }, false)
+  }
+
+  // Messages with date, author etc
+
+  messageTable = dom.createElement('table')
+  div.appendChild(messageTable)
+  messageTable.setAttribute('style', 'width: 100%;') // fill that div!
+
+  if (tabulator.preferences.get('me')) {
+    var tr = newMessageForm()
+    if (newestFirst) {
+      messageTable.insertBefore(tr, messageTable.firstChild) // If newestFirst
+    } else {
+      messageTable.appendChild(tr) // not newestFirst
+    }
+  }
+
+  var query
+  // Do this with a live query to pull in messages from web
+  if (options.query) {
+    query = options.query
+  } else {
+    query = new $rdf.Query('Messages')
+    var v = ['msg', 'date', 'creator', 'content'].map(function (x) {
+      query.vars.push(v[x] = $rdf.variable(x))
+    })
+    query.pat.add(subject, WF('message'), v['msg'])
+    query.pat.add(v['msg'], ns.dct('created'), v['date'])
+    query.pat.add(v['msg'], ns.foaf('maker'), v['creator'])
+    query.pat.add(v['msg'], ns.sioc('content'), v['content'])
+  }
+
+  kb.query(query, renderMessage)
+  div.refresh = function () {
+    syncMessages(subject, messageTable)
+  }
+  return div
+}
+
+if (typeof tabulator !== 'undefined' && tabulator.panes && tabulator.panes.utils) {
+  tabulator.panes.utils.messageArea = messageArea
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = messageArea
+}
 
 // ###### Finished expanding js/panes/common/discussion.js ##############
 
@@ -37977,7 +38112,7 @@ if (tabulator.audioContext) {
         return function (duration, frequency, type, finishedCallback) {
 
             duration = + (duration | 0.3);
-            
+
             // Only 0-4 are valid types.
             type = type || 'sine'; // sine, square, sawtooth, triangle
 
@@ -38013,23 +38148,23 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
     var table = dom.createElement('table');
     var kb = tabulator.kb;
     // var mainRow = table.appendChild(dom.createElement('tr'));
-    
+
     var fetcher = tabulator.sf;
     var ns = tabulator.ns;
-    
-    tabulator.updater = tabulator.updater || new tabulator.rdf.sparqlUpdate(kb);
+
+    tabulator.updater = tabulator.updater || new tabulator.rdf.UpdateManager(kb);
     var updater = tabulator.updater;
 
     var waitingForLogin = false;
 
     var PAD = $rdf.Namespace('http://www.w3.org/ns/pim/pad#');
-    
+
     var currentNode, currentOffset;
-    
+
     table.setAttribute('style', 'padding: 1em; width:100%;');
 
     var upstreamStatus = null, downstreamStatus = null;
-    
+
     if (options.statusArea) {
         var t = options.statusArea.appendChild(dom.createElement('table'));
         var tr = t.appendChild(dom.createElement('tr'));
@@ -38038,7 +38173,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
         upstreamStatus.setAttribute('style', 'width:50%');
         downstreamStatus.setAttribute('style', 'width:50%');
     }
-    
+
     var complain = function(message, upstream) {
         console.log(message);
         if (options.statusArea) {
@@ -38046,14 +38181,14 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             tabulator.panes.utils.errorMessageBlock(dom, message, 'pink'));
         }
     }
-    
+
     var clearStatus = function(upsteam) {
         if (options.statusArea) {
             options.statusArea.innerHTML = '';
         }
     };
 
-    
+
     var setPartStyle = function(part, colors, pending) {
         var chunk = part.subject;
         colors = colors || '';
@@ -38071,15 +38206,15 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
         }
 
         var indent = kb.any(chunk, PAD('indent'));
-        
+
         indent = indent ? indent.value : 0;
-        var style =  (indent >= 0) ? // 
+        var style =  (indent >= 0) ? //
             // baseStyle + 'padding-left: ' + (indent * 3) + 'em;'
             baseStyle + 'text-indent: ' + (indent * 3) + 'em;'
-            :   headingCore + headingStyle[ -1 - indent ]; 
+            :   headingCore + headingStyle[ -1 - indent ];
         part.setAttribute('style', style + colors);
     }
-    
+
 
     var removePart = function(part) {
         var chunk = part.subject;
@@ -38090,7 +38225,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             console.log("You can't delete the only line.")
             return;
         }
-        
+
         var del = kb.statementsMatching(chunk, undefined, undefined, padDoc)
                 .concat(kb.statementsMatching(undefined, undefined, chunk, padDoc));
         var ins = [ $rdf.st(prev, PAD('next'), next, padDoc) ];
@@ -38122,7 +38257,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             };
         })
     }// removePart
-    
+
     var changeIndent = function(part, chunk, delta) {
         var del = kb.statementsMatching(chunk, PAD('indent'));
         var current =  del.length? Number(del[0].object.value) : 0;
@@ -38139,7 +38274,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             }
         });
     }
-    
+
     // Use this sort of code to split the line when return pressed in the middle @@
     var doGetCaretPosition =function doGetCaretPosition (oField) {
         var iCaretPos = 0;
@@ -38168,7 +38303,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
         return (iCaretPos);
     }
 
-    
+
     var addListeners = function(part, chunk) {
 
         part.addEventListener('keydown', function(event){
@@ -38193,16 +38328,16 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
                 console.log("    go ahead line before " + queue[queueProperty]);
                 newChunk(part, before); // was document.activeElement
                 break;
-                
+
             case 8: // Delete
                 if (part.value.length === 0 ) {
                     console.log("Delete key line " + chunk.uri.slice(-4) + " state " + part.state)
-                    
+
                     switch (part.state) {
                     case 1: // contents being sent
                     case 2: // contents need to be sent again
                         part.state = 4; // delete me
-                        return; 
+                        return;
                     case 3: // being deleted already
                     case 4: // already deleme state
                         return;
@@ -38227,7 +38362,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
                 updater.requestDownstreamAction(padDoc, reloadAndSync);
                 event.preventDefault();
                 break;
-                
+
             case 38: // Up
                 if (part.parentNode.previousSibling) {
                     part.parentNode.previousSibling.firstChild.focus();
@@ -38253,7 +38388,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             del = [ $rdf.st(chunk, ns.sioc('content'), old, padDoc)];
             ins = [ $rdf.st(chunk, ns.sioc('content'), part.value, padDoc)];
             var newOne = part.value;
-            
+
             // DEBUGGING ONLY
             if (part.lastSent) {
                 if (old != part.lastSent)  {
@@ -38261,25 +38396,25 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
                 }
             }
             part.lastSent = newOne;
-            
-            
+
+
             console.log(" Patch proposed to " + chunk.uri.slice(-4) + " '"  + old + "' -> '" + newOne + "' ");
             updater.update(del, ins, function(uri, ok, error_body, xhr){
                 if (!ok) {
                     // alert("clash " + error_body);
                     console.log("    patch FAILED " + xhr.status + " for '" + old + "' -> '" + newOne + "': " + error_body);
                     if (xhr.status === 409) { // Conflict -  @@ we assume someone else
-                        setPartStyle(part,'color: black;  background-color: #fdd;'); 
+                        setPartStyle(part,'color: black;  background-color: #fdd;');
                         part.state = 0; // Needs downstream refresh
                         tabulator.panes.utils.beep(0.5, 512); // Ooops clash with other person
                         setTimeout(function(){
                             updater.requestDownstreamAction(padDoc, reloadAndSync);
                         }, 1000);
-                        
+
                     } else {
                         setPartStyle(part,'color: black;  background-color: #fdd;'); // failed pink
                         part.state = 0;
-                        complain("    Error " + xhr.status + " sending data: " + error_body, true);   
+                        complain("    Error " + xhr.status + " sending data: " + error_body, true);
                         tabulator.panes.utils.beep(1.0, 128); // Other
                         // @@@   Do soemthing more serious with other errors eg auth, etc
                     }
@@ -38287,7 +38422,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
                     clearStatus(true);// upstream
                     setPartStyle(part); // synced
                     console.log("    Patch ok '"  + old + "' -> '" + newOne + "' ");
-                    
+
                     if (part.state === 4) { //  delete me
                         part.state = 3;
                         removePart(part);
@@ -38323,7 +38458,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
                 updateStore(part);
             }
         }); // listener
-        
+
     } // addlisteners
 
 
@@ -38349,8 +38484,8 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
         return part
     };
 
-    
-           
+
+
     var newChunk = function(ele, before) { // element of chunk being split
         var kb = tabulator.kb, tr1;
 
@@ -38389,7 +38524,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
                 $rdf.st(chunk, PAD('next'), next, padDoc),
                 $rdf.st(chunk, ns.dc('author'), me, padDoc),
                 $rdf.st(chunk, ns.sioc('content'), '', padDoc)];
-        if (indent > 0) { // Do not inherit 
+        if (indent > 0) { // Do not inherit
             ins.push($rdf.st(chunk, PAD('indent'), indent, padDoc));
         }
 
@@ -38420,12 +38555,12 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             complain(msg);
             failed++;
         }
-    
+
         if (!kb.the(subject, PAD('next'))) {
             complain2("No initial next pointer");
             return false; // can't do linked list
         }
-        for (var chunk = kb.the(subject, PAD('next'));  
+        for (var chunk = kb.the(subject, PAD('next'));
             !chunk.sameTerm(subject);
             chunk = kb.the(chunk, PAD('next'))) {
             var label = chunk.uri.split('#')[1];
@@ -38443,10 +38578,10 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
 
             var k = kb.each(chunk, ns.sioc('content')).length
             if (k !== 1) complain2("Should be 1 not "+k+" contents for " + label);
-        
+
             var k = kb.each(chunk, ns.dc('author')).length
             if (k !== 1) complain2("Should be 1 not "+k+" author for " + label);
-            
+
             var sts = kb.statementsMatching(undefined, ns.sioc('contents'));
             sts.map(function(st){ if (!found[st.subject.uri]) {
                     complain2("Loose chunk! " + st.subject.uri);
@@ -38470,11 +38605,11 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
         var last = kb.the(undefined, PAD('previous'), subject);
         var chunk = first; //  = kb.the(subject, PAD('next'));
         var row;
-            
+
         // First see which of the logical chunks have existing physical manifestations
         var manif = [];
         // Find which lines correspond to existing chunks
-        for (var chunk = kb.the(subject, PAD('next'));  
+        for (var chunk = kb.the(subject, PAD('next'));
             !chunk.sameTerm(subject);
             chunk = kb.the(chunk, PAD('next'))) {
             for (var i=0; i< table.children.length; i++) {
@@ -38484,7 +38619,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
                 }
             }
         }
-        
+
         // Remove any deleted lines
         for (var i = table.children.length -1; i >= 0 ; i--) {
             row = table.children[i];
@@ -38494,13 +38629,13 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
         }
         // Insert any new lines and update old ones
         row = table.firstChild; // might be null
-        for (var chunk = kb.the(subject, PAD('next'));  
+        for (var chunk = kb.the(subject, PAD('next'));
             !chunk.sameTerm(subject);
             chunk = kb.the(chunk, PAD('next'))) {
             var text = kb.any(chunk, ns.sioc('content')).value;
             // superstitious -- don't mess with unchanged input fields
             // which may be selected by the user
-            if (row && manif[chunk.uri]) { 
+            if (row && manif[chunk.uri]) {
                 var part = row.firstChild;
                 if (text !== part.value) {
                     part.value = text;
@@ -38514,10 +38649,10 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             }
         };
     };
-    
-    
+
+
     // Refresh the DOM tree
-  
+
     var refreshTree = function(root) {
         if (root.refresh) {
             root.refresh();
@@ -38539,7 +38674,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             refreshTree(table);
         }
     };
-    
+
     var reloadAndSync = function() {
         if (reloading) {
             console.log("   Already reloading - stop")
@@ -38571,10 +38706,10 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
         }
         tryReload();
     }
-    
+
     table.refresh = sync; // Catch downward propagating refresh events
     table.reloadAndSync = reloadAndSync;
-    
+
     if (exists) {
         console.log("Existing pad.");
         if (consistencyCheck()) {
@@ -38584,7 +38719,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             }
         } else {
             console.log(table.textContent = "Inconsistent data. Abort");
-        } 
+        }
     } else { // Make new pad
         console.log("No pad exists - making new one.");
         var insertables = [
@@ -38592,7 +38727,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             $rdf.st(subject, ns.dc('author'), me, padDoc),
             $rdf.st(subject, ns.dc('created'), new Date(), padDoc),
             $rdf.st(subject, PAD('next'), subject, padDoc)];
-        
+
         updater.update([], insertables, function(uri,ok,error_body){
             if (!ok) {
                 complainIfBad(ok, error_body);
@@ -38631,17 +38766,17 @@ if (typeof console == 'undefined') { // e.g. firefox extension. Node and browser
 }
 
 
-    
+
 // These used to be in js/init/icons.js but are better in the pane.
-tabulator.Icon.src.icon_bug = iconPrefix + 'js/panes/issue/tbl-bug-22.png';
+tabulator.Icon.src.icon_bug = tabulator.iconPrefix + 'js/panes/issue/tbl-bug-22.png';
 tabulator.Icon.tooltips[tabulator.Icon.src.icon_bug] = 'Track issue'
 
 tabulator.panes.register( {
 
     icon: tabulator.Icon.src.icon_bug,
-    
+
     name: 'issue',
-    
+
     // Does the subject deserve an issue pane?
     label: function(subject) {
         var kb = tabulator.kb;
@@ -38663,11 +38798,11 @@ tabulator.panes.register( {
         div.setAttribute('class', 'issuePane');
 
         var commentFlter = function(pred, inverse) {
-            if (!inverse && pred.uri == 
+            if (!inverse && pred.uri ==
                 'http://www.w3.org/2000/01/rdf-schema#comment') return true;
             return false
         }
-        
+
         var setModifiedDate = function(subj, kb, doc) {
             if (!getOption(tracker, 'trackLastModified')) return;
             var deletions = kb.statementsMatching(subject, DCT('modified'));
@@ -38683,7 +38818,7 @@ tabulator.panes.register( {
             div.appendChild(pre);
             pre.appendChild(dom.createTextNode(message));
             return pre
-        } 
+        }
 
         var complainIfBad = function(ok,body){
             if (ok) {
@@ -38721,12 +38856,12 @@ tabulator.panes.register( {
                 titlefield.setAttribute('class','pendingedit');
                 titlefield.disabled = true;
                 sts = [];
-                
+
                 var issue = kb.sym(stateStore.uri + '#' + 'Iss'+timestring());
                 sts.push(new $rdf.Statement(issue, WF('tracker'), tracker, stateStore));
                 var title = kb.literal(titlefield.value);
                 sts.push(new $rdf.Statement(issue, DC('title'), title, stateStore))
-                
+
                 // sts.push(new $rdf.Statement(issue, ns.rdfs('comment'), "", stateStore))
                 sts.push(new $rdf.Statement(issue, DCT('created'), new Date(), stateStore));
 
@@ -38752,13 +38887,13 @@ tabulator.panes.register( {
             }
             //form.addEventListener('submit', function() {try {sendNewIssue} catch(e){console.log('sendNewIssue: '+e)}}, false)
             //form.setAttribute('onsubmit', "function xx(){return false;}");
-            
-            
-            
+
+
+
             tabulator.fetcher.removeCallback('done','expand'); // @@ experimental -- does this kill the re-paint? no
             tabulator.fetcher.removeCallback('fail','expand');
 
-            
+
             var states = kb.any(tracker, WF('issueClass'));
             classLabel = tabulator.Util.label(states);
             form.innerHTML = "<h2>Add new "+ (superIssue?"sub ":"")+
@@ -38776,27 +38911,27 @@ tabulator.panes.register( {
             form.appendChild(titlefield);
             return form;
         };
-        
-        
 
-                                                  
+
+
+
         /////////////////////// Reproduction: Spawn a new instance of this app
-        
+
         var newTrackerButton = function(thisTracker) {
 	    var button = tabulator.panes.utils.newAppInstance(dom, "Start your own new tracker", function(ws){
-        
-                var appPathSegment = 'issuetracker.w3.org'; // how to allocate this string and connect to 
+
+                var appPathSegment = 'issuetracker.w3.org'; // how to allocate this string and connect to
 
                 // console.log("Ready to make new instance at "+ws);
                 var sp = tabulator.ns.space;
                 var kb = tabulator.kb;
-                
+
                 var base = kb.any(ws, sp('uriPrefix')).value;
                 if (base.slice(-1) !== '/') {
                     $rdf.log.error(appPathSegment + ": No / at end of uriPrefix " + base );
                     base = base + '/';
                 }
-                base += appPathSegment + '/' + timestring() + '/'; // unique id 
+                base += appPathSegment + '/' + timestring() + '/'; // unique id
 
                 var documentOf = function(x) {
                     return kb.sym($rdf.uri.docpart(x.uri));
@@ -38821,20 +38956,20 @@ tabulator.panes.register( {
                     return kb.sym(u);
                 }
                 var there = morph(here);
-                var newTracker = morph(thisTracker); 
-                
+                var newTracker = morph(thisTracker);
+
                 var myConfig = kb.statementsMatching(undefined, undefined, undefined, here);
                 for (var i=0; i < myConfig.length; i++) {
                     st = myConfig[i];
                     kb.add(morph(st.subject), morph(st.predicate), morph(st.object), there);
                 }
-                
+
                 // Keep a paper trail   @@ Revisit when we have non-public ones @@ Privacy
                 //
                 kb.add(newTracker, tabulator.ns.space('inspiration'), thisTracker, stateStore);
-                
+
                 kb.add(newTracker, tabulator.ns.space('inspiration'), thisTracker, there);
-                
+
                 // $rdf.log.debug("\n Ready to put " + kb.statementsMatching(undefined, undefined, undefined, there)); //@@
 
 
@@ -38857,29 +38992,29 @@ tabulator.panes.register( {
                         };
                     }
                 );
-                
+
                 // Created new data files.
                 // @@ Now create initial files - html skin, (Copy of mashlib, css?)
                 // @@ Now create form to edit configuation parameters
                 // @@ Optionally link new instance to list of instances -- both ways? and to child/parent?
-                // @@ Set up access control for new config and store. 
-                
+                // @@ Set up access control for new config and store.
+
             }); // callback to newAppInstance
-			 
+
 	    button.setAttribute('style', 'margin: 0.5em 1em;');
 	    return button;
-            
+
         }; // newTrackerButton
 
- 
- 
+
+
 ///////////////////////////////////////////////////////////////////////////////
-        
-        
-        tabulator.updater = tabulator.updater || new tabulator.rdf.sparqlUpdate(kb);
+
+
+        tabulator.updater = tabulator.updater || new tabulator.rdf.UpdateManager(kb);
         var updater = tabulator.updater;
 
- 
+
         var plist = kb.statementsMatching(subject)
         var qlist = kb.statementsMatching(undefined, undefined, subject)
 
@@ -38890,7 +39025,7 @@ tabulator.panes.register( {
 
 
         // Reload resorce then
-        
+
         var reloadStore = function(store, callBack) {
             tabulator.fetcher.unload(store);
             tabulator.fetcher.nowOrWhenFetched(store.uri, undefined, function(ok, body){
@@ -38905,7 +39040,7 @@ tabulator.panes.register( {
 
 
         // Refresh the DOM tree
-      
+
         var refreshTree = function(root) {
             if (root.refresh) {
                 root.refresh();
@@ -38915,11 +39050,11 @@ tabulator.panes.register( {
                 refreshTree(root.children[i]);
             }
         }
-        
+
         // All the UI for a single issue, without store load or listening for changes
         //
         var singleIssueUI = function(subject, div) {
-        
+
             var ns = tabulator.ns
             var predicateURIsDone = {};
             var donePredicate = function(pred) {predicateURIsDone[pred.uri]=true};
@@ -38940,7 +39075,7 @@ tabulator.panes.register( {
                 div.setAttribute('style', mystyle);
             }
             setPaneStyle();
-            
+
             var stateStore = kb.any(tracker, WF('stateStore'));
             var store = kb.sym(subject.uri.split('#')[0]);
 
@@ -38957,7 +39092,7 @@ tabulator.panes.register( {
 
             tabulator.panes.utils.checkUserSetMe(stateStore);
 
-            
+
             var states = kb.any(tracker, WF('issueClass'));
             if (!states) throw 'This tracker '+tracker+' has no issueClass';
             var select = tabulator.panes.utils.makeSelectForCategory(dom, kb, subject, states, store, function(ok,body){
@@ -38972,7 +39107,7 @@ tabulator.panes.register( {
 
             var cats = kb.each(tracker, WF('issueCategory')); // zero or more
             for (var i=0; i<cats.length; i++) {
-                div.appendChild(tabulator.panes.utils.makeSelectForCategory(dom, 
+                div.appendChild(tabulator.panes.utils.makeSelectForCategory(dom,
                         kb, subject, cats[i], store, function(ok,body){
                     if (ok) {
                         setModifiedDate(store, kb, store);
@@ -38981,7 +39116,7 @@ tabulator.panes.register( {
                     else console.log("Failed to change category:\n"+body);
                 }));
             }
-            
+
             var a = dom.createElement('a');
             a.setAttribute('href',tracker.uri);
             a.setAttribute('style', 'float:right');
@@ -39000,7 +39135,7 @@ tabulator.panes.register( {
 
 
             // Assigned to whom?
-            
+
             var assignments = kb.statementsMatching(subject, ns.wf('assignee'));
             if (assignments.length > 1) {
                 say("Weird, was assigned to more than one person. Fixing ..");
@@ -39015,7 +39150,7 @@ tabulator.panes.register( {
 
                 // throw "Error:"+subject+"has "+assignees.length+" > 1 assignee.";
             }
-            
+
             var assignee = assignments.length ? assignments[0].object : null;
             // Who could be assigned to this?
             // Anyone assigned to any issue we know about  @@ should be just for this tracker
@@ -39084,14 +39219,14 @@ tabulator.panes.register( {
                         donePredicate(p); // Check that one off
                     }
                 });
-                
+
             };
-            
+
             //   Comment/discussion area
-            
+
             var spacer = div.appendChild(dom.createElement('tr'));
 	    spacer.setAttribute('style','height: 1em');  // spacer and placeHolder
-			
+
             var messageStore = kb.any(tracker, ns.wf('messageStore'));
             if (!messageStore) messageStore = kb.any(tracker, WF('stateStore'));
 	    kb.fetcher.nowOrWhenFetched(messageStore, function(ok, body, xhr){
@@ -39106,8 +39241,8 @@ tabulator.panes.register( {
 		}
 	    })
 	    donePredicate(ns.wf('message'));
-			 
-			 
+
+
             // Remaining properties
 	    var plist = kb.statementsMatching(subject)
 	    var qlist = kb.statementsMatching(undefined, undefined, subject)
@@ -39120,7 +39255,7 @@ tabulator.panes.register( {
                 function(pred, inverse) {
                     return !(pred.uri in predicateURIsDone)
                 });
-                
+
             var refreshButton = dom.createElement('button');
             refreshButton.textContent = "refresh";
             refreshButton.addEventListener('click', function(e) {
@@ -39141,12 +39276,12 @@ tabulator.panes.register( {
 
 
         //              Render a single issue
-        
+
         if (t["http://www.w3.org/2005/01/wf/flow#Task"]) {
 
             var tracker = kb.any(subject, WF('tracker'));
             if (!tracker) throw 'This issue '+subject+'has no tracker';
-            
+
             var trackerURI = tracker.uri.split('#')[0];
             // Much data is in the tracker instance, so wait for the data from it
             tabulator.fetcher.nowOrWhenFetched(trackerURI, subject, function drawIssuePane1(ok, body) {
@@ -39155,29 +39290,29 @@ tabulator.panes.register( {
 
                 tabulator.fetcher.nowOrWhenFetched(stateStore, subject, function drawIssuePane2(ok, body) {
                     if (!ok) return console.log("Failed to load state " + stateStore + ' '+body);
-                    
+
                     singleIssueUI(subject, div);
                     updater.addDownstreamChangeListener(stateStore, function() {refreshTree(div)}); // Live update
                 });
-                    
+
             });  // End nowOrWhenFetched tracker
 
     ///////////////////////////////////////////////////////////
 
         //          Render a Tracker instance
-        
+
         } else if (t['http://www.w3.org/2005/01/wf/flow#Tracker']) {
             var tracker = subject;
-            
+
             var states = kb.any(subject, WF('issueClass'));
             if (!states) throw 'This tracker has no issueClass';
             var stateStore = kb.any(subject, WF('stateStore'));
             if (!stateStore) throw 'This tracker has no stateStore';
-            
+
             tabulator.panes.utils.checkUserSetMe(stateStore);
-            
+
             var cats = kb.each(subject, WF('issueCategory')); // zero or more
-            
+
             var h = dom.createElement('h2');
             h.setAttribute('style', 'font-size: 150%');
             div.appendChild(h);
@@ -39196,7 +39331,7 @@ tabulator.panes.register( {
                     b.setAttribute('disabled', 'true');
                     container.appendChild(newIssueForm(dom, kb, subject));
                 }, false);
-            
+
             // Table of issues - when we have the main issue list
             tabulator.fetcher.nowOrWhenFetched(stateStore.uri, subject, function(ok, body) {
                 if (!ok) return console.log("Cannot load state store "+body);
@@ -39215,9 +39350,9 @@ tabulator.panes.register( {
                     query.pat.add(v['issue'], ns.rdf('type'), v['_cat_'+i]);
                     query.pat.add(v['_cat_'+i], ns.rdfs('subClassOf'), cats[i]);
                 }
-                
+
                 query.pat.optional = [];
-                
+
                 var propertyList = kb.any(tracker, WF('propertyList')); // List of extra properties
                 // console.log('Property list: '+propertyList); //
                 if (propertyList) {
@@ -39234,11 +39369,11 @@ tabulator.panes.register( {
                         oneOpt.add(v['issue'], prop, v[vname]);
                     }
                 }
-                
-            
+
+
                 // console.log('Query pattern is:\n'+query.pat);
-                // console.log('Query pattern optional is:\n'+opts); 
-            
+                // console.log('Query pattern optional is:\n'+opts);
+
                 var selectedStates = {};
                 var possible = kb.each(undefined, ns.rdfs('subClassOf'), states);
                 possible.map(function(s){
@@ -39247,9 +39382,9 @@ tabulator.panes.register( {
                         // console.log('on '+s.uri); // @@
                     };
                 });
-                
+
                 var overlay, overlayTable;
-                
+
                 var bringUpInOverlay = function(href) {
                     overlayPane.innerHTML = ''; // clear existing
                     var button = overlayPane.appendChild(dom.createElement('button'))
@@ -39259,7 +39394,7 @@ tabulator.panes.register( {
                     })
                     singleIssueUI(kb.sym(href), overlayPane);
                 }
-                        
+
                 var tableDiv = tabulator.panes.utils.renderTableViewPane(dom, {
                     query: query,
                     keyVariable: '?issue', // Charactersic of row
@@ -39268,7 +39403,7 @@ tabulator.panes.register( {
                         '?created': { cellFormat: 'shortDate'},
                         '?state': { initialSelection: selectedStates }}} );
                 div.appendChild(tableDiv);
-                
+
                 overlay = div.appendChild(dom.createElement('div'));
                 overlay.setAttribute('style', ' position: absolute; top: 100px; right: 20px; margin: 1em white;');
                 overlayPane = overlay.appendChild(dom.createElement('div')); // avoid stomping on style by pane
@@ -39290,28 +39425,28 @@ tabulator.panes.register( {
                 } else {
                     console.log('No refresh function?!');
                 }
-                            
+
                 updater.addDownstreamChangeListener(stateStore, tableDiv.refresh); // Live update
-                
-                
+
+
             });
-            
-            
+
+
             div.appendChild(dom.createElement('hr'));
             div.appendChild(newTrackerButton(subject));
             // end of Tracker instance
 
 
-        } else { 
+        } else {
             console.log("Error: Issue pane: No evidence that "+subject+" is either a bug or a tracker.")
-        }         
+        }
         if (!tabulator.preferences.get('me')) {
             console.log("(You do not have your Web Id set. Sign in or sign up to make changes.)");
         } else {
             // console.log("(Your webid is "+ tabulator.preferences.get('me')+")");
         };
-        
-        
+
+
         var loginOutButton = tabulator.panes.utils.loginStatusBox(dom, function(webid){
             // sayt.parent.removeChild(sayt);
             if (webid) {
@@ -39323,18 +39458,16 @@ tabulator.panes.register( {
                 console.log("(Logged out)")
                 me = null;
             }
-        });        
-        loginOutButton.setAttribute('style', 'margin: 0.5em 1em;'); 
+        });
+        loginOutButton.setAttribute('style', 'margin: 0.5em 1em;');
         div.appendChild(loginOutButton);
-        
+
         return div;
 
     }
 }, true);
 
 //ends
-
-
 
 // ###### Finished expanding js/panes/issue/pane.js ##############
 // ###### Expanding js/panes/contact/contactPane.js ##############
@@ -39363,7 +39496,7 @@ if (typeof console == 'undefined') { // e.g. firefox extension. Node and browser
 
 
 // These used to be in js/init/icons.js but are better in the pane.
-tabulator.Icon.src.icon_contactCard = iconPrefix + 'js/panes/contact/card.png';
+tabulator.Icon.src.icon_contactCard = tabulator.iconPrefix + 'js/panes/contact/card.png';
 tabulator.Icon.tooltips[tabulator.Icon.src.icon_contactCard] = 'Contact'
 
 tabulator.panes.register( {
@@ -39385,11 +39518,10 @@ tabulator.panes.register( {
     },
 
 
-    clone: function(thisInstance, newBase, context) {
+    mintNew: function(newBase, context) {
 
         var dom = context.dom, me = context.me, div = context.div;
         var appInstanceNoun = 'address book';
-        var base = thisInstance.uri.slice(0, thisInstance.uri.lastIndexOf('/')+1);
 
         var complain = function(message) {
             div.appendChild(tabulator.panes.utils.errorMessageBlock(dom, message, 'pink'));
@@ -39469,6 +39601,7 @@ tabulator.panes.register( {
                 } else if ('existing' in task) {
                     checkOKSetACL(true, dest);
                 } else {
+                    throw "copy not expected"
                     var from = task.from || task.to; // default source to be same as dest
                     tabulator.panes.utils.webCopy(base + from, dest, task.contentType, checkOKSetACL);
                 }
@@ -39594,7 +39727,7 @@ tabulator.panes.register( {
 
 
 
-        var updater = new tabulator.rdf.sparqlUpdate(kb);
+        var updater = new tabulator.rdf.UpdateManager(kb);
         tabulator.panes.utils.preventBrowserDropEvents(dom);
 
         var plist = kb.statementsMatching(subject)
@@ -39604,6 +39737,10 @@ tabulator.panes.register( {
 
         var me_uri = tabulator.preferences.get('me');
         var me = me_uri? kb.sym(me_uri) : null;
+
+        var context = { target: subject, me: me, noun: "address book",
+            div: div, dom: dom}; // missing: statusRegion
+
 
 
         // Reload resorce then
@@ -39619,8 +39756,6 @@ tabulator.panes.register( {
             });
         };
 
-
-
         // Refresh the DOM tree
 
         var refreshTree = function(root) {
@@ -39634,8 +39769,775 @@ tabulator.panes.register( {
         }
 
 
+        //    Render a 3-column browser for an address book or a group
+        //
+        var renderThreeColumnBrowser = function(books, context, options){
+          kb.fetcher.load(books).then(function(xhr){
+            renderThreeColumnBrowser2(books, context, options)
+          }).catch(function(err){complain(err)})
+        }
+        var renderThreeColumnBrowser2 = function(books, context, options){
+
+          classLabel = tabulator.Util.label(ns.vcard('AddressBook'));
+          IndividualClassLabel = tabulator.Util.label(ns.vcard('Individual'));
+
+          var book = books[0] // for now
+          var groupIndex = kb.any(book, ns.vcard('groupIndex'));
+          var selectedGroups = {};
+
+          var title = kb.any(book, ns.dc('title'));
+          if (title && typeof window !== 'undefined' && window.title ){
+            window.title = title.value; // @@ only when the outermmost pane
+          }
+          title = title ? title.value : classLabel;
+
+          var doGroupsForBook = function(book){
+            kb.load(book).then(function(xhr){
+              var nameEmailIndex = kb.any(book, ns.vcard('nameEmailIndex'));
+              var groupIndex = kb.any(book, ns.vcard('groupIndex'));
+              var selectedGroups = {};
+              var title = kb.any(book, ns.dc('title'));
+              title = title ? title.value : classLabel;
+              // @@ Todo
+            })
+            .catch(function(err){tabulator.panes.utils.complain(context, err)})
+          }
+
+          //var cats = kb.each(book, ns.wf('contactCategory')); // zero or more
 
 
+          //  Write a new contact to the web
+          //
+          var createNewContact = function(book, name, selectedGroups, callback) {
+              var nameEmailIndex = kb.any(book, ns.vcard('nameEmailIndex'));
+
+              var uuid = gen_uuid();
+              var x = book.uri.split('#')[0]
+              var doc  = kb.sym(x.slice(0, x.lastIndexOf('/')+1) + 'Person/' + uuid + '.ttl');
+              var person = kb.sym(doc.uri + '#this');
+
+              // Sets of statements to different files
+              agenda = [    // Patch the main index to add the person
+
+                  [   $rdf.st(person, ns.vcard('inAddressBook'), book, nameEmailIndex), // The people index
+                      $rdf.st(person, ns.vcard('fn'), name, nameEmailIndex) ]
+              ];
+
+              //@@ May be missing email - sync that differently
+
+              // sts.push(new $rdf.Statement(person, DCT('created'), new Date(), doc));  ??? include this?
+              for (gu in selectedGroups) {
+                  var g = kb.sym(gu);
+                  var gd = g.doc();
+                  agenda.push( [  $rdf.st(g, ns.vcard('hasMember'), person, gd),
+                                  $rdf.st(person, ns.vcard('fn'), name, gd)
+                  ]);
+              }
+
+              var updateCallback = function(uri, success, body){
+                  if (!success) {
+                      dump("Error: can\'t update " + uri + " for new contact:" + body + '\n' );
+                      callback(false, "Error: can\'t update " + uri + " for new contact:" + body);
+                  } else {
+                      if (agenda.length > 0) {
+                          dump("Patching " + agenda[0] + '\n')
+                          updater.update([], agenda.shift(), updateCallback);
+                      } else { // done!
+                          dump("Done patching. Now reading back in.\n")
+                          tabulator.fetcher.nowOrWhenFetched(doc, undefined, function(ok, body){
+                              if (ok) {
+                                  dump("Read back in OK.\n")
+                                  callback(true, person);
+                              } else {
+                                  dump("Read back in FAILED: " + body + "\n")
+                                  callback(false, body);
+                              }
+                          });
+                      }
+                  }
+              };
+
+              tabulator.fetcher.nowOrWhenFetched(nameEmailIndex, undefined, function(ok, message) {
+                  if (ok) {
+                      dump(" People index must be loaded\n");
+                      updater.put(doc, [
+                              $rdf.st(person, ns.vcard('fn'), name, doc),
+                              $rdf.st(person, ns.rdf('type'), ns.vcard('Individual'), doc) ],
+                          'text/turtle', updateCallback);
+                  } else {
+                      dump("Error loading people index!" + uri + ": " + message);
+                      callback(false, "Error loading people index!" + uri + ": " + message + '\n');
+                  }
+              });
+
+          };
+
+         // Write new group to web
+         // Creates an empty new group file and adds it to the index
+         //
+         var saveNewGroup = function(book, name, callback) {
+              var gix = kb.any(book, ns.vcard('groupIndex'));
+
+              var x = book.uri.split('#')[0]
+              var gname = name.replace(' ', '_');
+              var doc  = kb.sym(x.slice(0, x.lastIndexOf('/')+1) + 'Group/' + gname + '.ttl');
+              var group = kb.sym(doc.uri + '#this');
+              dump(" New group will be: "+ group + '\n');
+
+              tabulator.fetcher.nowOrWhenFetched(gix, undefined, function(ok, message) {
+                  if (ok) {
+                      dump(" Group index must be loaded\n");
+                      updater.update([],
+                          [   $rdf.st(book, ns.vcard('includesGroup'), group, gix),
+                              $rdf.st(group, ns.rdf('type'), ns.vcard('Group'), gix) ,
+                              $rdf.st(group, ns.vcard('fn'), name, gix) ], function(uri, success, body){
+                                  if (ok) {
+                                      updater.put(doc, [], 'text/turtle', function(uri, ok, body){
+                                          callback(ok, ok? group : "Can't save new group file " + doc + body);
+                                      });
+                                  } else {
+                                      callback(ok, "Could not update group index "+ body); // fail
+                                  }
+                          });
+                  } else {
+                      dump("Error loading people index!" + uri + ": " + message);
+                      callback(false, "Error loading people index!" + uri + ": " + message + '\n');
+                  }
+              });
+
+          };
+
+          // Form to get the name of a new thing before we create it
+          var getNameForm = function(dom, kb, classLabel, selectedGroups, gotNameCallback) {
+              var form = dom.createElement('div');  // form is broken as HTML behaviour can resurface on js error
+
+              tabulator.fetcher.removeCallback('done','expand'); // @@ experimental -- does this kill the re-paint? no
+              tabulator.fetcher.removeCallback('fail','expand'); // @@ ??
+
+              // classLabel = tabulator.Util.label(ns.vcard('Individual'));
+              form.innerHTML = "<h2>Add new "+
+                      classLabel+"</h2><p>name of new "+classLabel+":</p>";
+              var namefield = dom.createElement('input')
+              namefield.setAttribute('type','text');
+              namefield.setAttribute('size','100');
+              namefield.setAttribute('maxLength','2048');// No arbitrary limits
+              namefield.select() // focus next user input
+
+              var gotName = function() {
+                  namefield.setAttribute('class','pendingedit');
+                  namefield.disabled = true;
+                  gotNameCallback(true, book, namefield.value, selectedGroups);
+              }
+
+              namefield.addEventListener('keyup', function(e) {
+                  if(e.keyCode == 13) {
+                      gotName();
+                  }
+              }, false);
+              form.appendChild(namefield);
+
+              var br = form.appendChild(dom.createElement("br"));
+
+              var cancel = form.appendChild(dom.createElement("button"));
+              cancel.setAttribute("type", "button");
+              cancel.innerHTML = "Cancel";
+              cancel.addEventListener('click', function(e) {
+                  form.parentNode.removeChild(form);
+                  gotNameCallback(false);
+              }, false);
+
+              var b = form.appendChild(dom.createElement("button"));
+              b.setAttribute("type", "button");
+              b.innerHTML = "Continue";
+              b.addEventListener('click', function(e) {
+                  gotName();
+              }, false);
+
+              return form;
+          };
+
+
+
+
+
+          ////////////////////////////// Three-column Contact Browser
+
+          tabulator.fetcher.nowOrWhenFetched(groupIndex.uri, book, function(ok, body) {
+
+              if (!ok) return console.log("Cannot load group index: "+body);
+
+              // organization-name is a hack for Mac records with no FN which is mandatory.
+              var nameFor = function(x) {
+                  var name = kb.any(x, ns.vcard('fn')) ||
+                      kb.any(x, ns.foaf('name')) || kb.any(x, ns.vcard('organization-name'));
+                  return name ? name.value : '???';
+              }
+
+              var filterName = function(name) {
+                  var filter = searchInput.value.trim().toLowerCase();
+                  if (filter.length === 0) return true;
+                  var parts = filter.split(' '); // Each name part must be somewhere
+                  for (var j=0; j< parts.length; j++) {
+                      word = parts[j];
+                      if (name.toLowerCase().indexOf(word) <0 ) return false;
+                  }
+                  return true;
+              }
+
+              var searchFilterNames = function() {
+                  for (var i=0; i < peopleMainTable.children.length; i++) {
+                      row = peopleMainTable.children[i]
+                      row.setAttribute('style',
+                          filterName(nameFor(row.subject)) ? '' : 'display: none;');
+                  }
+              }
+
+
+              var selectAllGroups = function(selectedGroups, groupsMainTable, callback) {
+                  var todo = groupsMainTable.children.length;
+                  var badness = [];
+                  for (var k=0; k < groupsMainTable.children.length; k++) {
+                      var groupRow = groupsMainTable.children[k];
+                      var group = groupRow.subject;
+
+                      var groupList = kb.sym(group.uri.split('#')[0]);
+                      selectedGroups[group.uri] = true;
+
+                      kb.fetcher.nowOrWhenFetched(groupList.uri, undefined, function(ok, message){
+                          if (!ok) {
+                              var  msg = "Can't load group file: " +  groupList + ": " + message;
+                              badness.push(msg)
+                              return complainIfBad(ok,msg);
+                          }
+                          groupRow.setAttribute('style', 'background-color: #cce;');
+                          refreshNames(); // @@ every time??
+                          todo -= 1;
+                          if (!todo) {
+                              if (callback) callback(badness.length === 0, badness);
+                          }
+                      });
+                  } // for each row
+              }
+
+              var toolsPane = function(selectedGroups, groupsMainTable) {
+                  var kb = tabulator.kb, ns = tabulator.ns;
+                  var updater = new tabulator.rdf.UpdateManager(kb);
+                  var ACL = tabulator.ns.acl, VCARD = tabulator.ns.vcard;
+                  var doc = $rdf.sym(book.uri.split('#')[0]); // The ACL is actually to the doc describing the thing
+
+                  var pane = dom.createElement('div');
+                  var table = pane.appendChild(dom.createElement('table'));
+                  table.setAttribute('style', 'font-size:120%; margin: 1em; border: 0.1em #ccc ;');
+                  var headerRow = table.appendChild(dom.createElement('tr'));
+                  headerRow.textContent =  tabulator.Util.label(book) + " - tools";
+                  headerRow.setAttribute('style', 'min-width: 20em; padding: 1em; font-size: 150%; border-bottom: 0.1em solid red; margin-bottom: 2em;');
+
+                  var statusRow = table.appendChild(dom.createElement('tr'));
+                  var statusBlock = statusRow.appendChild(dom.createElement('div'));
+                  statusBlock.setAttribute('style', 'padding: 2em;');
+                  var MainRow = table.appendChild(dom.createElement('tr'));
+                  var box = MainRow.appendChild(dom.createElement('table'));
+                  var bottomRow = table.appendChild(dom.createElement('tr'));
+
+
+                  context = { target: book, me: me, noun: "address book",
+                      div: pane, dom: dom, statusRegion: statusBlock };
+
+                  box.appendChild(tabulator.panes.utils.ACLControlBox(book, dom, "book", function(ok, body){
+                      if (!ok) box.innerHTML = "ACL control box Failed: " + body;
+                  }));
+
+
+                  //
+                  tabulator.panes.utils.registrationControl(
+                      context, book, ns.vcard('AddressBook'))
+                  .then(function(box){
+                          pane.appendChild(box)
+                  }).catch(function(e){tabulator.panes.utils.complain(context, e)});
+
+
+                  //  Output stats in line mode form
+                  var p = MainRow.appendChild(dom.createElement('pre'));
+                  var log = function(message) {
+                      p.textContent += message + '\n';
+                  };
+
+                  var stats = function() {
+                      var totalCards = kb.each(undefined, VCARD('inAddressBook'), book).length;
+                      log("" + totalCards + " cards loaded. ");
+                      var groups = kb.each(book, VCARD('includesGroup'));
+                      log('' + groups.length + " total groups. " );
+                      var gg = [], g;
+                      for (g in selectedGroups) {
+                          gg.push(g);
+                      }
+                      log('' + gg.length + " selected groups. " );
+                  }
+
+                  var statButton = pane.appendChild(dom.createElement('button'));
+                  statButton.textContent = "Statistics";
+                  statButton.addEventListener('click', stats);
+
+
+
+                  var loadIndexButton = pane.appendChild(dom.createElement('button'));
+                  loadIndexButton.textContent = "Load main index";
+                  loadIndexButton.addEventListener('click', function(e) {
+                      loadIndexButton.setAttribute('style', 'background-color: #ffc;');
+
+                      var nameEmailIndex = kb.any(book, ns.vcard('nameEmailIndex'));
+                      tabulator.fetcher.nowOrWhenFetched(nameEmailIndex, undefined, function(ok, message) {
+                          if (ok) {
+                              loadIndexButton.setAttribute('style', 'background-color: #cfc;');
+                              log(" People index has been loaded\n");
+                          } else {
+                              loadIndexButton.setAttribute('style', 'background-color: #fcc;');
+                              log("Error: People index has NOT been loaded" + message + "\n");
+                          };
+                      });
+                  });
+
+
+
+                  var check = MainRow.appendChild(dom.createElement('button'));
+                  check.textContent = "Check inidividual card access of selected groups";
+                  check.addEventListener('click', function(event){
+                      for (var i = 0; i< gg.length; i++) {
+                          g = kb.sym(gg[i]);
+                          var a = kb.each(g, ns.vcard('hasMember'));
+                          log(tabulator.Util.label(g)+ ': ' + a.length + " members");
+                          for (var j=0; j < a.length; j++) {
+                              var card = a[j];
+                              log(tabulator.Util.label(card));
+                              function doCard(card) {
+                                  tabulator.panes.utils.fixIndividualCardACL(card, log, function(ok, message) {
+                                      if (ok) {
+                                          log("Sucess for "+tabulator.Util.label(card));
+                                      } else {
+                                          log("Failure for "+tabulator.Util.label(card) + ": " + message);
+                                      }
+                                  });
+                              }
+                              doCard(card);
+                          }
+                      }
+                  });
+
+                  var checkGroupless = MainRow.appendChild(dom.createElement('button'));
+                  checkGroupless.textContent = "Find inidividuals with no group";
+                  checkGroupless.addEventListener('click', function(event){
+                      log("Loading groups...");
+                      selectAllGroups(selectedGroups, groupsMainTable, function(ok, message){
+                          if (!ok) {
+                              log("Failed: " + message)
+                              return;
+                          }
+                          tabulator.fetcher.nowOrWhenFetched(nameEmailIndex, undefined,
+                              function(ok, message) {
+
+                                  log("Loaded groups and name index.");
+                                  var reverseIndex = {}, groupless = [];
+                                  for (var i = 0; i< groups.length; i++) {
+                                      g = groups[i];
+                                      var a = kb.each(g, ns.vcard('hasMember'));
+                                      log(tabulator.Util.label(g)+ ': ' + a.length + " members");
+                                      for (var j=0; j<a.length; j++) {
+                                          reverseIndex[a[j].uri] = true;
+                                      }
+                                  }
+
+
+                                  var cards = kb.each(undefined, VCARD('inAddressBook'), book);
+                                  log("" + cards.length + " total cards");
+                                  var c, card;
+                                  for (var c=0; c < cards.length; c++) {
+                                      if (!reverseIndex[cards[c].uri]) {
+                                          groupless.push(cards[c]);
+                                          log("   groupless " + tabulator.Util.label(cards[c]));
+                                      }
+                                  }
+                                  log("" + groupless.length + " groupless cards.");
+                          });
+                      })
+                  });
+
+                  return pane;
+              }
+
+              ////////////////////   Body of 3-column browser
+
+              var bookTable = dom.createElement('table');
+              bookTable.setAttribute('style', 'border-collapse: collapse; margin-right: 0;')
+              div.appendChild(bookTable);
+              var bookHeader = bookTable.appendChild(dom.createElement('tr'));
+              var bookMain = bookTable.appendChild(dom.createElement('tr'));
+              var bookFooter = bookTable.appendChild(dom.createElement('tr'));
+              var groupsHeader =  bookHeader.appendChild(dom.createElement('td'));
+              var peopleHeader =  bookHeader.appendChild(dom.createElement('td'));
+              var cardHeader =  bookHeader.appendChild(dom.createElement('td'));
+              var groupsMain = bookMain.appendChild(dom.createElement('td'));
+              var groupsMainTable = groupsMain.appendChild(dom.createElement('table'));
+              var peopleMain = bookMain.appendChild(dom.createElement('td'));
+              var peopleMainTable = peopleMain.appendChild(dom.createElement('table'));
+
+              var groupsFooter =  bookFooter.appendChild(dom.createElement('td'));
+              var peopleFooter =  bookFooter.appendChild(dom.createElement('td'));
+              var cardFooter =  bookFooter.appendChild(dom.createElement('td'));
+
+              var  searchDiv = cardHeader.appendChild(dom.createElement('div'));
+              // searchDiv.setAttribute('style', 'border: 0.1em solid #888; border-radius: 0.5em');
+              searchInput = cardHeader.appendChild(dom.createElement('input'));
+              searchInput.setAttribute('type', 'text');
+              searchInput.setAttribute('style', 'border: 0.1em solid #444; border-radius: 0.5em; width: 100%;');
+              // searchInput.addEventListener('input', searchFilterNames);
+              searchInput.addEventListener('input', function(e){
+                  searchFilterNames();
+              });
+
+              var cardMain = bookMain.appendChild(dom.createElement('td'));
+              cardMain.setAttribute('style', 'margin: 0;'); // fill space available
+              var dataCellStyle =  'padding: 0.1em;'
+
+              groupsHeader.textContent = "groups";
+              groupsHeader.setAttribute('style', 'min-width: 10em; padding-bottom 0.2em;');
+
+              var allGroups = groupsHeader.appendChild(dom.createElement('button'));
+              allGroups.textContent = "All";
+              allGroups.setAttribute('style', 'margin-left: 1em; font-size: 80%');
+              allGroups.addEventListener('click', function(event){
+                  allGroups.state = allGroups.state ? 0 : 1;
+                  peopleMainTable.innerHTML = ''; // clear in case refreshNames doesn't work for unknown reason
+                  if (allGroups.state) {
+                      selectAllGroups(selectedGroups, groupsMainTable);
+                  } else {
+                      selectedGroups = {};
+                      refreshGroupsSelected();
+                  }
+              }); // on button click
+
+
+              peopleHeader.textContent = "name";
+              peopleHeader.setAttribute('style', 'min-width: 18em;');
+              peopleMain.setAttribute('style','overflow:scroll;');
+
+              var groups;
+
+              var sortGroups = function() {
+                  var gs = []
+                  groups = []
+                  if (options.foreignGroup) {
+                    groups.push(['',  kb.any(options.foreignGroup, ns.vcard('fn')), options.foreignGroup]);
+                  }
+                  books.map(function(book){
+                    var gs = book ? kb.each(book, ns.vcard('includesGroup')) : []
+                    var gs2 = gs.map(function(g){return [ book, kb.any(g, ns.vcard('fn')), g] })
+                    groups = groups.concat(groups)
+                  })
+                  groups.sort();
+              }
+
+              var cardPane = function(dom, subject, paneName) {
+                  var p = tabulator.panes.byName(paneName);
+                  var d = p.render(subject, dom);
+                  d.setAttribute('style', 'border: 0.1em solid #444; border-radius: 0.5em')
+                  return d;
+              };
+
+              var compareForSort = function(self, other) {
+                  var s = nameFor(self) ;
+                  var o = nameFor(other);
+                  if (s && o) {
+                      s = s.toLowerCase();
+                      o = o.toLowerCase();
+                      if (s > o) return 1;
+                      if (s < o) return -1;
+                  }
+                  if (self.uri > other.uri) return 1;
+                  if (self.uri < other.uri) return -1;
+                  return 0;
+              }
+
+              // In a LDP work, deletes the whole document describing a thing
+              // plus patch out ALL mentiosn of it!    Use with care!
+              // beware of other dta picked up from other places being smushed
+              // together and then deleted.
+
+              var deleteThing = function(x) {
+                  var ds = kb.statementsMatching(x).concat(kb.statementsMatching(undefined, undefined, x));
+                  var targets = {};
+                  ds.map(function(st){targets[st.why.uri] = st;});
+                  agenda = []; // sets of statements of same dcoument to delete;
+                  for (target in targets) {
+                      agenda.push(ds.filter(function(st){ return st.why.uri = target}));
+                      dump('Deleting '+ agenda[agenda.length -1].length + ' from ' + target)
+                  }
+                  function nextOne() {
+                      if (agenda.length > 0) {
+                          updater.update(agenda.shift(), [], function(uri, ok, body) {
+                              nextOne();
+                          });
+                      } else {
+                          var doc = kb.sym(x.uri.split('#')[0]);
+                          dump('Deleting resoure ' + doc)
+                          updater.deleteResource(doc);
+                      }
+                  }
+                  nextOne();
+              };
+
+              var refreshNames = function() {
+                  var cards = [], ng = 0;
+                  for (var u in selectedGroups) {
+                      if (selectedGroups[u]) {
+                          var a = kb.each(kb.sym(u), ns.vcard('hasMember'));
+                          // dump('Adding '+ a.length + ' people from ' + u + '\n')
+                          cards = cards.concat(a);
+                          ng += 1;
+                      }
+                  }
+                  cards.sort(compareForSort); // @@ sort by name not UID later
+                  for (var k=0; k < cards.length - 1;) {
+                      if (cards[k].uri === cards[k+1].uri) {
+                          cards.splice(k,1);
+                      } else {
+                          k++;
+                      }
+                  }
+
+                  peopleMainTable.innerHTML = ''; // clear
+                  peopleHeader.textContent = (cards.length > 5 ? '' + cards.length + " contacts" : "contact");
+
+                  for (var j =0; j < cards.length; j++) {
+                      var personRow = peopleMainTable.appendChild(dom.createElement('tr'));
+                      var personLeft = personRow.appendChild(dom.createElement('td'));
+                      var personRight = personRow.appendChild(dom.createElement('td'));
+                      personLeft.setAttribute('style', dataCellStyle);
+                      var person = cards[j];
+                      var name = nameFor(person);
+                      personLeft.textContent = name;
+                      personRow.subject = person;
+
+                      var setPersonListener = function toggle(personLeft, person) {
+                          tabulator.panes.utils.deleteButtonWithCheck(dom, personRight, 'contact', function(){
+                              deleteThing(person);
+                              refreshNames();
+                              cardMain.innerHTML = '';
+                          });
+                          personRow.addEventListener('click', function(event){
+                              event.preventDefault();
+                              cardMain.innerHTML = 'loading...';
+                              var cardURI = person.uri.split('#')[0];
+                              tabulator.fetcher.nowOrWhenFetched(cardURI, undefined, function(ok, message){
+                                  cardMain.innerHTML = '';
+                                  if (!ok) return IfBad(ok, "Can't load card: " +  group.uri.split('#')[0] + ": " + message)
+                                  // dump("Loaded card " + cardURI + '\n')
+                                  cardMain.appendChild(cardPane(dom, person, 'contact'));
+                                  cardMain.appendChild(dom.createElement('br'));
+                                  var anchor = cardMain.appendChild(dom.createElement('a'));
+                                  anchor.setAttribute('href', person.uri);
+                                  anchor.textContent = '->';
+                              })
+                         });
+                      };
+                      setPersonListener(personRow, person);
+                  };
+                  searchFilterNames();
+
+              }
+
+              var refreshGroupsSelected = function() {
+                  for (i=0; i < groupsMainTable.children.length; i++) {
+                      var row = groupsMainTable.children[i];
+                      if (row.subject) {
+                          row.setAttribute('style', selectedGroups[row.subject.uri] ? 'background-color: #cce;' : '');
+                      }
+                  }
+              };
+
+              // Check every group is in the list and add it if not.
+
+              var syncGroupTable = function() {
+                  var foundOne;
+                  sortGroups();
+
+                  for (i=0; i < groupsMainTable.children.length; i++) {
+                      var row = groupsMainTable.children[i];
+                      row.trashMe = true;
+                  }
+
+
+                  for (var g = 0; g<groups.length; g++) {
+                      var book = groups[g][0]
+                      var name = groups[g][1]
+                      var group = groups[g][2]
+
+                      //selectedGroups[group.uri] = false;
+                      foundOne = false;
+
+                      for (var i=0; i < groupsMainTable.children.length; i++) {
+                          var row = groupsMainTable.children[i];
+                          if (row.subject && row.subject.sameTerm(group)) {
+                              row.trashMe = false;
+                              foundOne = true;
+                              break;
+                          }
+                      }
+                      if (!foundOne) {
+
+                          var groupRow = groupsMainTable.appendChild(dom.createElement('tr'));
+                          groupRow.subject = group;
+                          groupRow.setAttribute('style', dataCellStyle);
+                          groupRow.textContent = name;
+                          var foo = function toggle(groupRow, group, name) {
+                              tabulator.panes.utils.deleteButtonWithCheck(dom, groupRow, "group " + name, function(){
+                                  deleteThing(group);
+                                  syncGroupTable();
+                              });
+                              groupRow.addEventListener('click', function(event){
+                                  event.preventDefault();
+                                  var groupList = kb.sym(group.uri.split('#')[0]);
+                                  if (!event.altKey) {
+                                      selectedGroups = {}; // If alt key pressed, accumulate multiple
+                                  }
+                                  selectedGroups[group.uri] = selectedGroups[group.uri] ? false : true;
+                                  refreshGroupsSelected();
+                                  peopleMainTable.innerHTML = ''; // clear in case refreshNames doesn't work for unknown reason
+
+                                  kb.fetcher.nowOrWhenFetched(groupList.uri, undefined, function(ok, message){
+                                      if (!ok) return complainIfBad(ok, "Can't load group file: " +  groupList + ": " + message);
+                                      refreshNames();
+
+                                      if (!event.altKey) { // If only one group has beeen selected show ACL
+                                          cardMain.innerHTML = '';
+                                          cardMain.appendChild(tabulator.panes.utils.ACLControlBox(group, dom, "group", function(ok, body){
+                                              if (!ok) cardMain.innerHTML = "Failed: " + body;
+                                          }));
+                                      }
+                                  })
+                              }, true);
+                          };
+                          foo(groupRow, group, name);
+                      } // if not foundOne
+                  } // loop g
+
+                  for (i=0; i < groupsMainTable.children.length; i++) {
+                      var row = groupsMainTable.children[i];
+                      if (row.trashMe) {
+                          groupsMainTable.removeChild(row);
+                      }
+                  }
+                  refreshGroupsSelected();
+              } // syncGroupTable
+
+              syncGroupTable();
+
+              // New Contact button
+              var newContactButton = dom.createElement("button");
+              var container = dom.createElement("div");
+              newContactButton.setAttribute("type", "button");
+              if (!me) newContactButton.setAttribute('disabled', 'true')
+              tabulator.panes.utils.checkUser(book.doc(), function(uri){
+                   newContactButton.removeAttribute('disabled');
+              });
+              container.appendChild(newContactButton);
+              newContactButton.innerHTML = "New Contact" // + IndividualClassLabel;
+              peopleFooter.appendChild(container);
+
+              var createdNewContactCallback1 = function(ok, person) {
+                  dump("createdNewContactCallback1 "+ok+" - "+person +"\n");
+                  cardMain.innerHTML = '';
+                  if (ok) {
+                      cardMain.appendChild(cardPane(dom, person, 'contact'));
+                  } // else no harm done delete form
+              };
+
+              newContactButton.addEventListener('click', function(e) {
+                  // b.setAttribute('disabled', 'true');  (do we need o do this?)
+                  cardMain.innerHTML = '';
+
+                  var nameEmailIndex = kb.any(book, ns.vcard('nameEmailIndex'));
+                  tabulator.fetcher.nowOrWhenFetched(nameEmailIndex, undefined, function(ok, message) {
+                      if (ok) {
+                          dump(" People index has been loaded\n");
+                      } else {
+                          dump("Error: People index has NOT been loaded" + message + "\n");
+                      };
+                      // Just a heads up, actually used later.
+                  });
+                  // cardMain.appendChild(newContactForm(dom, kb, selectedGroups, createdNewContactCallback1));
+                  cardMain.appendChild(getNameForm(dom, kb, "Contact", selectedGroups,
+                      function(ok, subject, name, selectedGroups) {
+                          if (!ok) return; // cancelled by user
+                          createNewContact(subject, name, selectedGroups, function(success, body) {
+                              if (!success) {
+                                   console.log("Error: can't save new contact:" + body);
+                              } else {
+                                  cardMain.innerHTML = '';
+                                  refreshNames(); // Add name to list of group
+                                  cardMain.appendChild(cardPane(dom, body, 'contact'));
+                              }
+                          });
+                      }));
+              }, false);
+
+              // New Group button
+              var newGroupButton = groupsFooter.appendChild(dom.createElement("button"));
+              newGroupButton.setAttribute("type", "button");
+              newGroupButton.innerHTML = "New Group" // + IndividualClassLabel;
+              newGroupButton.addEventListener('click', function(e) {
+                  // b.setAttribute('disabled', 'true');  (do we need o do this?)
+                  cardMain.innerHTML = '';
+                  var groupIndex = kb.any(book, ns.vcard('groupIndex'));
+                  tabulator.fetcher.nowOrWhenFetched(groupIndex, undefined, function(ok, message) {
+                      if (ok) {
+                          dump(" Group index has been loaded\n");
+                      } else {
+                          dump("Error: Group index has NOT been loaded" + message + "\n");
+                      };
+                  });
+                  // cardMain.appendChild(newContactForm(dom, kb, selectedGroups, createdNewContactCallback1));
+                  cardMain.appendChild(getNameForm(dom, kb, "Group", selectedGroups,
+                      function(ok, book, name, selectedGroups) {
+                          if (!ok) return; // cancelled by user
+                          saveNewGroup(book, name, function(success, body) {
+                              if (!success) {
+                                   console.log("Error: can\'t save new group:" + body);
+                                   cardMain.innerHTML = "Failed to save group" + body
+                              } else {
+                                  selectedGroups = {};
+                                  selectedGroups[body.uri] = true
+                                  syncGroupTable(); // Refresh list of groups
+
+                                  cardMain.innerHTML = '';
+                                  cardMain.appendChild(tabulator.panes.utils.ACLControlBox(body, dom, "group", function(ok, body){
+                                      if (!ok) cardMain.innerHTML = "Group sharing setup failed: " + body;
+                                  }));
+                              }
+                          });
+                      }));
+              }, false);
+
+
+
+              // Tools button
+              var toolsButton = cardFooter.appendChild(dom.createElement("button"));
+              toolsButton.setAttribute("type", "button");
+              toolsButton.innerHTML = "Tools";
+              toolsButton.addEventListener('click', function(e) {
+                  cardMain.innerHTML = '';
+                  cardMain.appendChild(toolsPane(selectedGroups, groupsMainTable));
+              });
+
+              cardFooter.appendChild(newAddressBookButton(book));
+
+
+
+          });
+
+          div.appendChild(dom.createElement('hr'));
+          //  div.appendChild(newAddressBookButton(book));       // later
+          // end of AddressBook instance
+        } // renderThreeColumnBrowser
 
 
 
@@ -39643,7 +40545,7 @@ tabulator.panes.register( {
 
         if (t[ns.vcard('Individual').uri]|| t[ns.vcard('Organization').uri]) { // https://timbl.rww.io/Apps/Contactator/individualForm.ttl
 
-            var individualFormDoc = kb.sym(iconPrefix + 'js/panes/contact/individualForm.ttl');
+            var individualFormDoc = kb.sym(tabulator.iconPrefix + 'js/panes/contact/individualForm.ttl');
             // var individualFormDoc = kb.sym('https://timbl.rww.io/Apps/Contactator/individualForm.ttl');
             var individualForm = kb.sym(individualFormDoc.uri + '#form1')
 
@@ -39679,6 +40581,11 @@ tabulator.panes.register( {
 
                 tabulator.panes.utils.checkUserSetMe(cardDoc);
 
+                var img = div.appendChild(dom.createElement('img'));
+                img.setAttribute('style', 'max-height: 10em; border-radius: 1em; margin: 0.7em;')
+                tabulator.panes.utils.setImage(img, subject);
+
+
                 tabulator.panes.utils.appendForm(dom, div, {}, subject, individualForm, cardDoc, complainIfBad);
 
 
@@ -39711,751 +40618,31 @@ tabulator.panes.register( {
 
         ///////////////////////////////////////////////////////////
 
+        //          Render a Group instance
+
+      } else if (t[ns.vcard('Group').uri]) {
+
+        // If we have a main address book, then render this group as a guest group withn it
+        tabulator.panes.utils.findAppInstances(context, ns.vcard('AddressBook'))
+        .then(function(context){
+            addressBooks = context.instances;
+            if (addressBooks.length > 0) {
+              var book = addressBooks[0];
+              var options = { foreignGroup: subject}
+              renderThreeColumnBrowser(addressBooks, context, options);
+            } else {
+              renderThreeColumnBrowser([], context, options);
+              // @@ button to Make a new addressBook
+            }
+        }).catch(function(e){
+          tabulator.panes.utils.complain(context, e)
+        })
+
         //          Render a AddressBook instance
-
         } else if (t[ns.vcard('AddressBook').uri]) {
-            var tracker = subject;
-
-            var nameEmailIndex = kb.any(subject, ns.vcard('nameEmailIndex'));
-
-            var groupIndex = kb.any(subject, ns.vcard('groupIndex'));
-            var selectedGroups = {};
-
-
-            //var cats = kb.each(subject, ns.wf('contactCategory')); // zero or more
-
-            classLabel = tabulator.Util.label(ns.vcard('AddressBook'));
-            IndividualClassLabel = tabulator.Util.label(ns.vcard('Individual'));
-
-            var title = kb.any(subject, ns.dc('title'));
-            title = title ? title.value : classLabel;
-
-            //  Write a new contact to the web
-            //
-            var createNewContact = function(book, name, selectedGroups, callback) {
-                var nameEmailIndex = kb.any(book, ns.vcard('nameEmailIndex'));
-
-                var uuid = gen_uuid();
-                var x = subject.uri.split('#')[0]
-                var doc  = kb.sym(x.slice(0, x.lastIndexOf('/')+1) + 'Person/' + uuid + '.ttl');
-                var person = kb.sym(doc.uri + '#this');
-
-                // Sets of statements to different files
-                agenda = [    // Patch the main index to add the person
-
-                    [   $rdf.st(person, ns.vcard('inAddressBook'), book, nameEmailIndex), // The people index
-                        $rdf.st(person, ns.vcard('fn'), name, nameEmailIndex) ]
-                ];
-
-                //@@ May be missing email - sync that differently
-
-                // sts.push(new $rdf.Statement(person, DCT('created'), new Date(), doc));  ??? include this?
-                for (gu in selectedGroups) {
-                    var g = kb.sym(gu);
-                    var gd = g.doc();
-                    agenda.push( [  $rdf.st(g, ns.vcard('hasMember'), person, gd),
-                                    $rdf.st(person, ns.vcard('fn'), name, gd)
-                    ]);
-                }
-
-                var updateCallback = function(uri, success, body){
-                    if (!success) {
-                        dump("Error: can\'t update " + uri + " for new contact:" + body + '\n' );
-                        callback(false, "Error: can\'t update " + uri + " for new contact:" + body);
-                    } else {
-                        if (agenda.length > 0) {
-                            dump("Patching " + agenda[0] + '\n')
-                            updater.update([], agenda.shift(), updateCallback);
-                        } else { // done!
-                            dump("Done patching. Now reading back in.\n")
-                            tabulator.fetcher.nowOrWhenFetched(doc, undefined, function(ok, body){
-                                if (ok) {
-                                    dump("Read back in OK.\n")
-                                    callback(true, person);
-                                } else {
-                                    dump("Read back in FAILED: " + body + "\n")
-                                    callback(false, body);
-                                }
-                            });
-                        }
-                    }
-                };
-
-                tabulator.fetcher.nowOrWhenFetched(nameEmailIndex, undefined, function(ok, message) {
-                    if (ok) {
-                        dump(" People index must be loaded\n");
-                        updater.put(doc, [
-                                $rdf.st(person, ns.vcard('fn'), name, doc),
-                                $rdf.st(person, ns.rdf('type'), ns.vcard('Individual'), doc) ],
-                            'text/turtle', updateCallback);
-                    } else {
-                        dump("Error loading people index!" + uri + ": " + message);
-                        callback(false, "Error loading people index!" + uri + ": " + message + '\n');
-                    }
-                });
-
-            };
-
-           // Write new group to web
-           // Creates an empty new group file and adds it to the index
-           //
-           var saveNewGroup = function(book, name, callback) {
-                var gix = kb.any(book, ns.vcard('groupIndex'));
-
-                var x = subject.uri.split('#')[0]
-                var gname = name.replace(' ', '_');
-                var doc  = kb.sym(x.slice(0, x.lastIndexOf('/')+1) + 'Group/' + gname + '.ttl');
-                var group = kb.sym(doc.uri + '#this');
-                dump(" New group will be: "+ group + '\n');
-
-                tabulator.fetcher.nowOrWhenFetched(gix, undefined, function(ok, message) {
-                    if (ok) {
-                        dump(" Group index must be loaded\n");
-                        updater.update([],
-                            [   $rdf.st(subject, ns.vcard('includesGroup'), group, gix),
-                                $rdf.st(group, ns.rdf('type'), ns.vcard('Group'), gix) ,
-                                $rdf.st(group, ns.vcard('fn'), name, gix) ], function(uri, success, body){
-                                    if (ok) {
-                                        updater.put(doc, [], 'text/turtle', function(uri, ok, body){
-                                            callback(ok, ok? group : "Can't save new group file " + doc + body);
-                                        });
-                                    } else {
-                                        callback(ok, "Could not update group index "+ body); // fail
-                                    }
-                            });
-                    } else {
-                        dump("Error loading people index!" + uri + ": " + message);
-                        callback(false, "Error loading people index!" + uri + ": " + message + '\n');
-                    }
-                });
-
-            };
-
-            // Form to get the name of a new thing before we create it
-            var getNameForm = function(dom, kb, classLabel, selectedGroups, gotNameCallback) {
-                var form = dom.createElement('div');  // form is broken as HTML behaviour can resurface on js error
-
-                tabulator.fetcher.removeCallback('done','expand'); // @@ experimental -- does this kill the re-paint? no
-                tabulator.fetcher.removeCallback('fail','expand'); // @@ ??
-
-                // classLabel = tabulator.Util.label(ns.vcard('Individual'));
-                form.innerHTML = "<h2>Add new "+
-                        classLabel+"</h2><p>name of new "+classLabel+":</p>";
-                var namefield = dom.createElement('input')
-                namefield.setAttribute('type','text');
-                namefield.setAttribute('size','100');
-                namefield.setAttribute('maxLength','2048');// No arbitrary limits
-                namefield.select() // focus next user input
-
-                var gotName = function() {
-                    namefield.setAttribute('class','pendingedit');
-                    namefield.disabled = true;
-                    gotNameCallback(true, subject, namefield.value, selectedGroups);
-                }
-
-                namefield.addEventListener('keyup', function(e) {
-                    if(e.keyCode == 13) {
-                        gotName();
-                    }
-                }, false);
-                form.appendChild(namefield);
-
-                var br = form.appendChild(dom.createElement("br"));
-
-                var cancel = form.appendChild(dom.createElement("button"));
-                cancel.setAttribute("type", "button");
-                cancel.innerHTML = "Cancel";
-                cancel.addEventListener('click', function(e) {
-                    form.parentNode.removeChild(form);
-                    gotNameCallback(false);
-                }, false);
-
-                var b = form.appendChild(dom.createElement("button"));
-                b.setAttribute("type", "button");
-                b.innerHTML = "Continue";
-                b.addEventListener('click', function(e) {
-                    gotName();
-                }, false);
-
-                return form;
-            };
-
-
-
-
-
-            ////////////////////////////// Three-column Contact Browser
-
-            tabulator.fetcher.nowOrWhenFetched(groupIndex.uri, subject, function(ok, body) {
-
-                if (!ok) return console.log("Cannot load group index: "+body);
-
-                // organization-name is a hack for Mac records with no FN which is mandatory.
-                var nameFor = function(x) {
-                    var name = kb.any(x, ns.vcard('fn')) ||
-                        kb.any(x, ns.foaf('name')) || kb.any(x, ns.vcard('organization-name'));
-                    return name ? name.value : '???';
-                }
-
-                var filterName = function(name) {
-                    var filter = searchInput.value.trim().toLowerCase();
-                    if (filter.length === 0) return true;
-                    var parts = filter.split(' '); // Each name part must be somewhere
-                    for (var j=0; j< parts.length; j++) {
-                        word = parts[j];
-                        if (name.toLowerCase().indexOf(word) <0 ) return false;
-                    }
-                    return true;
-                }
-
-                var searchFilterNames = function() {
-                    for (var i=0; i < peopleMainTable.children.length; i++) {
-                        row = peopleMainTable.children[i]
-                        row.setAttribute('style',
-                            filterName(nameFor(row.subject)) ? '' : 'display: none;');
-                    }
-                }
-
-
-                var selectAllGroups = function(selectedGroups, groupsMainTable, callback) {
-                    var todo = groupsMainTable.children.length;
-                    var badness = [];
-                    for (var k=0; k < groupsMainTable.children.length; k++) {
-                        var groupRow = groupsMainTable.children[k];
-                        var group = groupRow.subject;
-
-                        var groupList = kb.sym(group.uri.split('#')[0]);
-                        selectedGroups[group.uri] = true;
-
-                        kb.fetcher.nowOrWhenFetched(groupList.uri, undefined, function(ok, message){
-                            if (!ok) {
-                                var  msg = "Can't load group file: " +  groupList + ": " + message;
-                                badness.push(msg)
-                                return complainIfBad(ok,msg);
-                            }
-                            groupRow.setAttribute('style', 'background-color: #cce;');
-                            refreshNames(); // @@ every time??
-                            todo -= 1;
-                            if (!todo) {
-                                if (callback) callback(badness.length === 0, badness);
-                            }
-                        });
-                    } // for each row
-                }
-
-                var toolsPane = function(selectedGroups, groupsMainTable) {
-                    var kb = tabulator.kb, ns = tabulator.ns;
-                    var updater = new tabulator.rdf.sparqlUpdate(kb);
-                    var ACL = tabulator.ns.acl, VCARD = tabulator.ns.vcard;
-                    var doc = $rdf.sym(subject.uri.split('#')[0]); // The ACL is actually to the doc describing the thing
-
-                    var pane = dom.createElement('div');
-                    var table = pane.appendChild(dom.createElement('table'));
-                    table.setAttribute('style', 'font-size:120%; margin: 1em; border: 0.1em #ccc ;');
-                    var headerRow = table.appendChild(dom.createElement('tr'));
-                    headerRow.textContent =  tabulator.Util.label(subject) + " - tools";
-                    headerRow.setAttribute('style', 'min-width: 20em; padding: 1em; font-size: 150%; border-bottom: 0.1em solid red; margin-bottom: 2em;');
-
-                    var statusRow = table.appendChild(dom.createElement('tr'));
-                    var statusBlock = statusRow.appendChild(dom.createElement('div'));
-                    statusBlock.setAttribute('style', 'padding: 2em;');
-                    var MainRow = table.appendChild(dom.createElement('tr'));
-                    var box = MainRow.appendChild(dom.createElement('table'));
-                    var bottomRow = table.appendChild(dom.createElement('tr'));
-
-
-                    context = { target: subject, me: me, noun: "address book",
-                        div: pane, dom: dom, statusRegion: statusBlock };
-
-                    box.appendChild(tabulator.panes.utils.ACLControlBox(subject, dom, "book", function(ok, body){
-                        if (!ok) box.innerHTML = "ACL control box Failed: " + body;
-                    }));
-
-
-                    //
-                    tabulator.panes.utils.registrationControl(
-                        context, subject, ns.vcard('AddressBook'))
-                    .then(function(box){
-                            pane.appendChild(box)
-                    }).catch(function(e){tabulator.panes.utils.complain(context, e)});
-
-
-                    //  Output stats in line mode form
-                    var p = MainRow.appendChild(dom.createElement('pre'));
-                    var log = function(message) {
-                        p.textContent += message + '\n';
-                    };
-
-                    var stats = function() {
-                        var totalCards = kb.each(undefined, VCARD('inAddressBook'), subject).length;
-                        log("" + totalCards + " cards loaded. ");
-                        var groups = kb.each(subject, VCARD('includesGroup'));
-                        log('' + groups.length + " total groups. " );
-                        var gg = [], g;
-                        for (g in selectedGroups) {
-                            gg.push(g);
-                        }
-                        log('' + gg.length + " selected groups. " );
-                    }
-
-                    var statButton = pane.appendChild(dom.createElement('button'));
-                    statButton.textContent = "Statistics";
-                    statButton.addEventListener('click', stats);
-
-
-
-                    var loadIndexButton = pane.appendChild(dom.createElement('button'));
-                    loadIndexButton.textContent = "Load main index";
-                    loadIndexButton.addEventListener('click', function(e) {
-                        loadIndexButton.setAttribute('style', 'background-color: #ffc;');
-
-                        var nameEmailIndex = kb.any(subject, ns.vcard('nameEmailIndex'));
-                        tabulator.fetcher.nowOrWhenFetched(nameEmailIndex, undefined, function(ok, message) {
-                            if (ok) {
-                                loadIndexButton.setAttribute('style', 'background-color: #cfc;');
-                                log(" People index has been loaded\n");
-                            } else {
-                                loadIndexButton.setAttribute('style', 'background-color: #fcc;');
-                                log("Error: People index has NOT been loaded" + message + "\n");
-                            };
-                        });
-                    });
-
-
-
-                    var check = MainRow.appendChild(dom.createElement('button'));
-                    check.textContent = "Check inidividual card access of selected groups";
-                    check.addEventListener('click', function(event){
-                        for (var i = 0; i< gg.length; i++) {
-                            g = kb.sym(gg[i]);
-                            var a = kb.each(g, ns.vcard('hasMember'));
-                            log(tabulator.Util.label(g)+ ': ' + a.length + " members");
-                            for (var j=0; j < a.length; j++) {
-                                var card = a[j];
-                                log(tabulator.Util.label(card));
-                                function doCard(card) {
-                                    tabulator.panes.utils.fixIndividualCardACL(card, log, function(ok, message) {
-                                        if (ok) {
-                                            log("Sucess for "+tabulator.Util.label(card));
-                                        } else {
-                                            log("Failure for "+tabulator.Util.label(card) + ": " + message);
-                                        }
-                                    });
-                                }
-                                doCard(card);
-                            }
-                        }
-                    });
-
-                    var checkGroupless = MainRow.appendChild(dom.createElement('button'));
-                    checkGroupless.textContent = "Find inidividuals with no group";
-                    checkGroupless.addEventListener('click', function(event){
-                        log("Loading groups...");
-                        selectAllGroups(selectedGroups, groupsMainTable, function(ok, message){
-                            if (!ok) {
-                                log("Failed: " + message)
-                                return;
-                            }
-                            tabulator.fetcher.nowOrWhenFetched(nameEmailIndex, undefined,
-                                function(ok, message) {
-
-                                    log("Loaded groups and name index.");
-                                    var reverseIndex = {}, groupless = [];
-                                    for (var i = 0; i< groups.length; i++) {
-                                        g = groups[i];
-                                        var a = kb.each(g, ns.vcard('hasMember'));
-                                        log(tabulator.Util.label(g)+ ': ' + a.length + " members");
-                                        for (var j=0; j<a.length; j++) {
-                                            reverseIndex[a[j].uri] = true;
-                                        }
-                                    }
-
-
-                                    var cards = kb.each(undefined, VCARD('inAddressBook'), subject);
-                                    log("" + cards.length + " total cards");
-                                    var c, card;
-                                    for (var c=0; c < cards.length; c++) {
-                                        if (!reverseIndex[cards[c].uri]) {
-                                            groupless.push(cards[c]);
-                                            log("   groupless " + tabulator.Util.label(cards[c]));
-                                        }
-                                    }
-                                    log("" + groupless.length + " groupless cards.");
-                            });
-                        })
-                    });
-
-                    return pane;
-                }
-
-                ////////////////////   Body of 3-column browser
-
-                var bookTable = dom.createElement('table');
-                bookTable.setAttribute('style', 'border-collapse: collapse; margin-right: 0;')
-                div.appendChild(bookTable);
-                var bookHeader = bookTable.appendChild(dom.createElement('tr'));
-                var bookMain = bookTable.appendChild(dom.createElement('tr'));
-                var bookFooter = bookTable.appendChild(dom.createElement('tr'));
-                var groupsHeader =  bookHeader.appendChild(dom.createElement('td'));
-                var peopleHeader =  bookHeader.appendChild(dom.createElement('td'));
-                var cardHeader =  bookHeader.appendChild(dom.createElement('td'));
-                var groupsMain = bookMain.appendChild(dom.createElement('td'));
-                var groupsMainTable = groupsMain.appendChild(dom.createElement('table'));
-                var peopleMain = bookMain.appendChild(dom.createElement('td'));
-                var peopleMainTable = peopleMain.appendChild(dom.createElement('table'));
-
-                var groupsFooter =  bookFooter.appendChild(dom.createElement('td'));
-                var peopleFooter =  bookFooter.appendChild(dom.createElement('td'));
-                var cardFooter =  bookFooter.appendChild(dom.createElement('td'));
-
-                var  searchDiv = cardHeader.appendChild(dom.createElement('div'));
-                // searchDiv.setAttribute('style', 'border: 0.1em solid #888; border-radius: 0.5em');
-                searchInput = cardHeader.appendChild(dom.createElement('input'));
-                searchInput.setAttribute('type', 'text');
-                searchInput.setAttribute('style', 'border: 0.1em solid #444; border-radius: 0.5em; width: 100%;');
-                // searchInput.addEventListener('input', searchFilterNames);
-                searchInput.addEventListener('input', function(e){
-                    searchFilterNames();
-                });
-
-                var cardMain = bookMain.appendChild(dom.createElement('td'));
-                cardMain.setAttribute('style', 'margin: 0;'); // fill space available
-                var dataCellStyle =  'padding: 0.1em;'
-
-                groupsHeader.textContent = "groups";
-                groupsHeader.setAttribute('style', 'min-width: 10em; padding-bottom 0.2em;');
-
-                var allGroups = groupsHeader.appendChild(dom.createElement('button'));
-                allGroups.textContent = "All";
-                allGroups.setAttribute('style', 'margin-left: 1em; font-size: 80%');
-                allGroups.addEventListener('click', function(event){
-                    allGroups.state = allGroups.state ? 0 : 1;
-                    peopleMainTable.innerHTML = ''; // clear in case refreshNames doesn't work for unknown reason
-                    if (allGroups.state) {
-                        selectAllGroups(selectedGroups, groupsMainTable);
-                    } else {
-                        selectedGroups = {};
-                        refreshGroupsSelected();
-                    }
-                }); // on button click
-
-
-                peopleHeader.textContent = "name";
-                peopleHeader.setAttribute('style', 'min-width: 18em;');
-                peopleMain.setAttribute('style','overflow:scroll;');
-
-                var groups;
-
-                var sortGroups = function() {
-                    var gs = kb.each(subject, ns.vcard('includesGroup'));
-                    groups = gs.map(function(g){return [ kb.any(g, ns.vcard('fn')), g] })
-                    groups.sort();
-                }
-
-                var cardPane = function(dom, subject, paneName) {
-                    var p = tabulator.panes.byName(paneName);
-                    var d = p.render(subject, dom);
-                    d.setAttribute('style', 'border: 0.1em solid #444; border-radius: 0.5em')
-                    return d;
-                };
-
-                var compareForSort = function(self, other) {
-                    var s = nameFor(self) ;
-                    var o = nameFor(other);
-                    if (s && o) {
-                        s = s.toLowerCase();
-                        o = o.toLowerCase();
-                        if (s > o) return 1;
-                        if (s < o) return -1;
-                    }
-                    if (self.uri > other.uri) return 1;
-                    if (self.uri < other.uri) return -1;
-                    return 0;
-                }
-
-                // In a LDP work, deletes the whole document describing a thing
-                // plus patch out ALL mentiosn of it!    Use with care!
-                // beware of other dta picked up from other places being smushed
-                // together and then deleted.
-
-                var deleteThing = function(x) {
-                    var ds = kb.statementsMatching(x).concat(kb.statementsMatching(undefined, undefined, x));
-                    var targets = {};
-                    ds.map(function(st){targets[st.why.uri] = st;});
-                    agenda = []; // sets of statements of same dcoument to delete;
-                    for (target in targets) {
-                        agenda.push(ds.filter(function(st){ return st.why.uri = target}));
-                        dump('Deleting '+ agenda[agenda.length -1].length + ' from ' + target)
-                    }
-                    function nextOne() {
-                        if (agenda.length > 0) {
-                            updater.update(agenda.shift(), [], function(uri, ok, body) {
-                                nextOne();
-                            });
-                        } else {
-                            var doc = kb.sym(x.uri.split('#')[0]);
-                            dump('Deleting resoure ' + doc)
-                            updater.deleteResource(doc);
-                        }
-                    }
-                    nextOne();
-                };
-
-                var refreshNames = function() {
-                    var cards = [], ng = 0;
-                    for (var u in selectedGroups) {
-                        if (selectedGroups[u]) {
-                            var a = kb.each(kb.sym(u), ns.vcard('hasMember'));
-                            // dump('Adding '+ a.length + ' people from ' + u + '\n')
-                            cards = cards.concat(a);
-                            ng += 1;
-                        }
-                    }
-                    cards.sort(compareForSort); // @@ sort by name not UID later
-                    for (var k=0; k < cards.length - 1;) {
-                        if (cards[k].uri === cards[k+1].uri) {
-                            cards.splice(k,1);
-                        } else {
-                            k++;
-                        }
-                    }
-
-                    peopleMainTable.innerHTML = ''; // clear
-                    peopleHeader.textContent = (cards.length > 5 ? '' + cards.length + " contacts" : "contact");
-
-                    for (var j =0; j < cards.length; j++) {
-                        var personRow = peopleMainTable.appendChild(dom.createElement('tr'));
-                        var personLeft = personRow.appendChild(dom.createElement('td'));
-                        var personRight = personRow.appendChild(dom.createElement('td'));
-                        personLeft.setAttribute('style', dataCellStyle);
-                        var person = cards[j];
-                        var name = nameFor(person);
-                        personLeft.textContent = name;
-                        personRow.subject = person;
-
-                        var setPersonListener = function toggle(personLeft, person) {
-                            tabulator.panes.utils.deleteButtonWithCheck(dom, personRight, 'contact', function(){
-                                deleteThing(person);
-                                refreshNames();
-                                cardMain.innerHTML = '';
-                            });
-                            personRow.addEventListener('click', function(event){
-                                event.preventDefault();
-                                cardMain.innerHTML = 'loading...';
-                                var cardURI = person.uri.split('#')[0];
-                                tabulator.fetcher.nowOrWhenFetched(cardURI, undefined, function(ok, message){
-                                    cardMain.innerHTML = '';
-                                    if (!ok) return complainIfBad(ok, "Can't load card: " +  group.uri.split('#')[0] + ": " + message)
-                                    // dump("Loaded card " + cardURI + '\n')
-                                    cardMain.appendChild(cardPane(dom, person, 'contact'));
-                                    cardMain.appendChild(dom.createElement('br'));
-                                    var anchor = cardMain.appendChild(dom.createElement('a'));
-                                    anchor.setAttribute('href', person.uri);
-                                    anchor.textContent = '->';
-                                })
-                           });
-                        };
-                        setPersonListener(personRow, person);
-                    };
-                    searchFilterNames();
-
-                }
-
-                var refreshGroupsSelected = function() {
-                    for (i=0; i < groupsMainTable.children.length; i++) {
-                        var row = groupsMainTable.children[i];
-                        if (row.subject) {
-                            row.setAttribute('style', selectedGroups[row.subject.uri] ? 'background-color: #cce;' : '');
-                        }
-                    }
-                };
-
-                // Check every group is in the list and add it if not.
-
-                var syncGroupTable = function() {
-                    var foundOne;
-                    sortGroups();
-
-                    for (i=0; i < groupsMainTable.children.length; i++) {
-                        var row = groupsMainTable.children[i];
-                        row.trashMe = true;
-                    }
-
-
-                    for (var g = 0; g<groups.length; g++) {
-                        var name = groups[g][0];
-                        var group = groups[g][1];
-
-                        //selectedGroups[group.uri] = false;
-                        foundOne = false;
-
-                        for (var i=0; i < groupsMainTable.children.length; i++) {
-                            var row = groupsMainTable.children[i];
-                            if (row.subject && row.subject.sameTerm(group)) {
-                                row.trashMe = false;
-                                foundOne = true;
-                                break;
-                            }
-                        }
-                        if (!foundOne) {
-
-                            var groupRow = groupsMainTable.appendChild(dom.createElement('tr'));
-                            groupRow.subject = group;
-                            groupRow.setAttribute('style', dataCellStyle);
-                            groupRow.textContent = name;
-                            var foo = function toggle(groupRow, group, name) {
-                                tabulator.panes.utils.deleteButtonWithCheck(dom, groupRow, "group " + name, function(){
-                                    deleteThing(group);
-                                    syncGroupTable();
-                                });
-                                groupRow.addEventListener('click', function(event){
-                                    event.preventDefault();
-                                    var groupList = kb.sym(group.uri.split('#')[0]);
-                                    if (!event.altKey) {
-                                        selectedGroups = {}; // If alt key pressed, accumulate multiple
-                                    }
-                                    selectedGroups[group.uri] = selectedGroups[group.uri] ? false : true;
-                                    refreshGroupsSelected();
-                                    peopleMainTable.innerHTML = ''; // clear in case refreshNames doesn't work for unknown reason
-
-                                    kb.fetcher.nowOrWhenFetched(groupList.uri, undefined, function(ok, message){
-                                        if (!ok) return complainIfBad(ok, "Can't load group file: " +  groupList + ": " + message);
-                                        refreshNames();
-
-                                        if (!event.altKey) { // If only one group has beeen selected show ACL
-                                            cardMain.innerHTML = '';
-                                            cardMain.appendChild(tabulator.panes.utils.ACLControlBox(group, dom, "group", function(ok, body){
-                                                if (!ok) cardMain.innerHTML = "Failed: " + body;
-                                            }));
-                                        }
-                                    })
-                                }, true);
-                            };
-                            foo(groupRow, group, name);
-                        } // if not foundOne
-                    } // loop g
-
-                    for (i=0; i < groupsMainTable.children.length; i++) {
-                        var row = groupsMainTable.children[i];
-                        if (row.trashMe) {
-                            groupsMainTable.removeChild(row);
-                        }
-                    }
-                    refreshGroupsSelected();
-                } // syncGroupTable
-
-                syncGroupTable();
-
-                // New Contact button
-                var newContactButton = dom.createElement("button");
-                var container = dom.createElement("div");
-                newContactButton.setAttribute("type", "button");
-                if (!me) newContactButton.setAttribute('disabled', 'true')
-                tabulator.panes.utils.checkUser(subject.doc(), function(uri){
-                     newContactButton.removeAttribute('disabled');
-                });
-                container.appendChild(newContactButton);
-                newContactButton.innerHTML = "New Contact" // + IndividualClassLabel;
-                peopleFooter.appendChild(container);
-
-                var createdNewContactCallback1 = function(ok, person) {
-                    dump("createdNewContactCallback1 "+ok+" - "+person +"\n");
-                    cardMain.innerHTML = '';
-                    if (ok) {
-                        cardMain.appendChild(cardPane(dom, person, 'contact'));
-                    } // else no harm done delete form
-                };
-
-                newContactButton.addEventListener('click', function(e) {
-                    // b.setAttribute('disabled', 'true');  (do we need o do this?)
-                    cardMain.innerHTML = '';
-
-                    var nameEmailIndex = kb.any(subject, ns.vcard('nameEmailIndex'));
-                    tabulator.fetcher.nowOrWhenFetched(nameEmailIndex, undefined, function(ok, message) {
-                        if (ok) {
-                            dump(" People index has been loaded\n");
-                        } else {
-                            dump("Error: People index has NOT been loaded" + message + "\n");
-                        };
-                        // Just a heads up, actually used later.
-                    });
-                    // cardMain.appendChild(newContactForm(dom, kb, selectedGroups, createdNewContactCallback1));
-                    cardMain.appendChild(getNameForm(dom, kb, "Contact", selectedGroups,
-                        function(ok, subject, name, selectedGroups) {
-                            if (!ok) return; // cancelled by user
-                            createNewContact(subject, name, selectedGroups, function(success, body) {
-                                if (!success) {
-                                     console.log("Error: can't save new contact:" + body);
-                                } else {
-                                    cardMain.innerHTML = '';
-                                    refreshNames(); // Add name to list of group
-                                    cardMain.appendChild(cardPane(dom, body, 'contact'));
-                                }
-                            });
-                        }));
-                }, false);
-
-                // New Group button
-                var newGroupButton = groupsFooter.appendChild(dom.createElement("button"));
-                newGroupButton.setAttribute("type", "button");
-                newGroupButton.innerHTML = "New Group" // + IndividualClassLabel;
-                newGroupButton.addEventListener('click', function(e) {
-                    // b.setAttribute('disabled', 'true');  (do we need o do this?)
-                    cardMain.innerHTML = '';
-                    var groupIndex = kb.any(subject, ns.vcard('groupIndex'));
-                    tabulator.fetcher.nowOrWhenFetched(groupIndex, undefined, function(ok, message) {
-                        if (ok) {
-                            dump(" Group index has been loaded\n");
-                        } else {
-                            dump("Error: Group index has NOT been loaded" + message + "\n");
-                        };
-                    });
-                    // cardMain.appendChild(newContactForm(dom, kb, selectedGroups, createdNewContactCallback1));
-                    cardMain.appendChild(getNameForm(dom, kb, "Group", selectedGroups,
-                        function(ok, subject, name, selectedGroups) {
-                            if (!ok) return; // cancelled by user
-                            saveNewGroup(subject, name, function(success, body) {
-                                if (!success) {
-                                     console.log("Error: can\'t save new group:" + body);
-                                     cardMain.innerHTML = "Failed to save group" + body
-                                } else {
-                                    selectedGroups = {};
-                                    selectedGroups[body.uri] = true
-                                    syncGroupTable(); // Refresh list of groups
-
-                                    cardMain.innerHTML = '';
-                                    cardMain.appendChild(tabulator.panes.utils.ACLControlBox(body, dom, "group", function(ok, body){
-                                        if (!ok) cardMain.innerHTML = "Group sharing setup failed: " + body;
-                                    }));
-                                }
-                            });
-                        }));
-                }, false);
-
-
-
-                // Tools button
-                var toolsButton = cardFooter.appendChild(dom.createElement("button"));
-                toolsButton.setAttribute("type", "button");
-                toolsButton.innerHTML = "Tools";
-                toolsButton.addEventListener('click', function(e) {
-                    cardMain.innerHTML = '';
-                    cardMain.appendChild(toolsPane(selectedGroups, groupsMainTable));
-                });
-
-                cardFooter.appendChild(newAddressBookButton(subject));
-
-
-
-            });
-
-            div.appendChild(dom.createElement('hr'));
-            //  div.appendChild(newAddressBookButton(subject));       // later
-            // end of AddressBook instance
-
-
+            renderThreeColumnBrowser([subject], context, {});
         } else {
-            console.log("Error: Contact pane: No evidence that "+subject+" is either a bug or a tracker.");
+            console.log("Error: Contact pane: No evidence that "+subject+" is anything to do with contacts.");
         }
         if (!tabulator.preferences.get('me')) {
             console.log("(You do not have your Web Id set. Sign in or sign up to make changes.)");
@@ -40490,7 +40677,7 @@ tabulator.panes.register( {
 // load also js/panes/pad/better-simple-pad/css/simple-pad-styles.css
 
 // These used to be in js/init/icons.js but are better in the pane.
-tabulator.Icon.src.icon_pad = iconPrefix + 'js/panes/pad/images/ColourOn.png';
+tabulator.Icon.src.icon_pad = tabulator.iconPrefix + 'js/panes/pad/images/ColourOn.png';
 tabulator.Icon.tooltips[tabulator.Icon.src.icon_pad] = 'notepad'
 
 tabulator.panes.register( {
@@ -40901,7 +41088,7 @@ tabulator.panes.register( {
     var showResults = function(exists) {
         console.log("showResults()");
 
-        whoAmI(); // Set me  even if on a plane
+        whoAmI(); // Set 'me'  even if on a plane
 
         var title = kb.any(subject, ns.dc('title'))
         if (typeof window  !== 'undefined' && title) {
@@ -40911,7 +41098,7 @@ tabulator.panes.register( {
         padEle = (tabulator.panes.utils.notepad(dom, padDoc, subject, me, options));
         naviMain.appendChild(padEle);
 
-        var initiated = tabulator.sparql.setRefreshHandler(padDoc, padEle.reloadAndSync);
+        var initiated = tabulator.updater.setRefreshHandler(padDoc, tabulator.kb, padEle.reloadAndSync);
     };
 
     var showSignon = function showSignon() {
@@ -40974,7 +41161,7 @@ tabulator.panes.register( {
     var fetcher = tabulator.sf;
     var ns = tabulator.ns;
     var me;
-    var updater = new $rdf.sparqlUpdate(kb);
+    var updater = new $rdf.UpdateManager(kb);
     var waitingForLogin = false;
 
     var PAD = $rdf.Namespace('http://www.w3.org/ns/pim/pad#');
@@ -41115,17 +41302,17 @@ tabulator.panes.register(tabulator.panes.argumentPane, false);
 ** trips, etc
 */
 
-    
-tabulator.Icon.src.icon_money = iconPrefix +
+
+tabulator.Icon.src.icon_money = tabulator.iconPrefix +
     'js/panes/transaction/22-pixel-068010-3d-transparent-glass-icon-alphanumeric-dollar-sign.png';
 tabulator.Icon.tooltips[tabulator.Icon.src.icon_money] = 'Transaction'
 
 tabulator.panes.register( {
 
     icon: tabulator.Icon.src.icon_money,
-    
+
     name: 'transaction',
-    
+
     // Does the subject deserve this pane?
     label: function(subject) {
         var Q = $rdf.Namespace('http://www.w3.org/2000/10/swap/pim/qif#');
@@ -41133,10 +41320,10 @@ tabulator.panes.register( {
         var t = kb.findTypeURIs(subject);
         if (t['http://www.w3.org/2000/10/swap/pim/qif#Transaction']) return "$$";
         if(kb.any(subject, Q('amount'))) return "$$$"; // In case schema not picked up
-        if (t['http://www.w3.org/2000/10/swap/pim/qif#Period']) return "period $";        
+        if (t['http://www.w3.org/2000/10/swap/pim/qif#Period']) return "period $";
 
         if (t['http://www.w3.org/ns/pim/trip#Trip']) return "Trip $";
-        
+
         return null; // No under other circumstances (while testing at least!)
     },
 
@@ -41149,7 +41336,7 @@ tabulator.panes.register( {
         var UI = $rdf.Namespace('http://www.w3.org/ns/ui#');
         var Q = $rdf.Namespace('http://www.w3.org/2000/10/swap/pim/qif#');
         var TRIP = $rdf.Namespace('http://www.w3.org/ns/pim/trip#');
-        
+
         var div = dom.createElement('div')
         div.setAttribute('class', 'transactionPane');
 
@@ -41170,11 +41357,11 @@ tabulator.panes.register( {
         };
         var happy = function happy(message){
             return mention('✓ ' + message, 'color: #010; background-color: #efe');
-        }; 
+        };
         var complain = function complain(message){
             return mention(message, 'color: #100; background-color: #fee');
-        }; 
- 
+        };
+
         var thisPane = this;
         var rerender = function(div) {
             var parent  = div.parentNode;
@@ -41183,13 +41370,13 @@ tabulator.panes.register( {
         };
 
 
- // //////////////////////////////////////////////////////////////////////////////       
-        
-        
-        
-        var sparqlService = new tabulator.rdf.sparqlUpdate(kb);
+ // //////////////////////////////////////////////////////////////////////////////
 
- 
+
+
+        var sparqlService = tabulator.updater = tabulator.updater || new tabulator.rdf.UpdateManager(kb);
+
+
         var plist = kb.statementsMatching(subject)
         var qlist = kb.statementsMatching(undefined, undefined, subject)
 
@@ -41225,23 +41412,23 @@ tabulator.panes.register( {
             }
             return s + '.00'
         }
-        
+
         var numericCell = function numericCell(amount, suppressZero) {
             var td = dom.createElement('td');
-            if (!(0.0 + amount === 0.0 && suppressZero)) { 
+            if (!(0.0 + amount === 0.0 && suppressZero)) {
                 td.textContent = d2(amount);
             }
             td.setAttribute('style', 'width: 6em; text-align: right; ')
             return td;
         };
-        
+
         var headerCell = function headerCell(str) {
             var td = dom.createElement('th');
             td.textContent = str;
             td.setAttribute('style', 'text-align: right; ')
             return td;
         };
-        
+
         var oderByDate = function(x, y) {
             dx = tabulator.kb.any(x, ns.qu('date'));
             dy = tabulator.kb.any(y, ns.qu('date'));
@@ -41253,15 +41440,15 @@ tabulator.panes.register( {
             if (x.uri > y.uri) return 1;
             return 0;
         }
-        
-        
+
+
         var insertedPane = function(dom, subject, paneName) {
             var p = tabulator.panes.byName(paneName);
             var d = p.render(subject, dom);
             d.setAttribute('style', 'border: 0.1em solid green;')
             return d;
         };
-        
+
         var expandAfterRow = function(dom, row, subject, paneName, solo) {
             var siblings = row.parentNode.children;
             if (solo) {
@@ -41283,9 +41470,9 @@ tabulator.panes.register( {
             }
             row.expanded = tr;
             td.setAttribute('colspan', '' + cols)
-            td.appendChild(insertedPane(dom, subject, paneName));            
+            td.appendChild(insertedPane(dom, subject, paneName));
         };
-        
+
         var expandAfterRowOrCollapse = function(dom, row, subject, paneName, solo) {
             if (row.expanded) {
                 row.parentNode.removeChild(row.expanded);
@@ -41296,7 +41483,7 @@ tabulator.panes.register( {
         };
 
         var transactionTable = function(dom, list, filter) {
-        
+
             var table = dom.createElement('table');
             table.setAttribute('style', 'padding-left: 0.5em; padding-right: 0.5em; font-size: 9pt; width: 85%;');
             var transactionRow = function(dom, x) {
@@ -41312,15 +41499,15 @@ tabulator.panes.register( {
                     }
                     tr.setAttribute('style', mystyle);
                 }
-            
+
                 var account = kb.any(x, ns.qu('toAccount'));
                 setTRStyle(tr, account);
-                
+
                 var c0 = tr.appendChild(dom.createElement('td'));
                 var date = kb.any(x, ns.qu('date'));
                 c0.textContent = date ? date.value.slice(0,10) : '???';
                 c0.setAttribute('style',  'width: 7em;');
-                
+
                 var c1 = tr.appendChild(dom.createElement('td'));
                 c1.setAttribute('style',  'width: 36em;');
                 var payee = kb.any(x, ns.qu('payee'));
@@ -41336,13 +41523,13 @@ tabulator.panes.register( {
                 tr.addEventListener('click', function(e) { // solo unless shift key
                     expandAfterRowOrCollapse(dom, tr, x, 'transaction', !e.shiftKey);
                 }, false);
-                
+
                 return tr;
-            }; 
+            };
 
             var list2 = filter ? list.filter(filter) : list.slice(); // don't sort a paramater passed in place
             list2.sort(oderByDate);
-             
+
              for (var i=0; i < list2.length; i++) {
                 table.appendChild(transactionRow(dom, list2[i]));
              }
@@ -41358,7 +41545,7 @@ tabulator.panes.register( {
 
 
         //              Render a single transaction
-        
+
         // This works only if enough metadata about the properties can drive the RDFS
         // (or actual type statements whichtypically are NOT there on)
         if (t['http://www.w3.org/2000/10/swap/pim/qif#Transaction']) {
@@ -41366,7 +41553,7 @@ tabulator.panes.register( {
             var trip = kb.any(subject, WF('trip'));
             var ns = tabulator.ns
             donePredicate(ns.rdf('type'));
-            
+
             var setPaneStyle = function(account) {
                 var mystyle = "padding: 0.5em 1.5em 1em 1.5em; ";
                 if (account) {
@@ -41376,14 +41563,14 @@ tabulator.panes.register( {
                 }
                 div.setAttribute('style', mystyle);
             }
-            
+
             var account = kb.any(subject, Q('toAccount'));
             setPaneStyle(account);
             if (account == undefined) {
                 complain('(Error: There is no bank account known for this transaction <'
                         +subject.uri+'>,\n -- every transaction needs one.)')
             };
-	    
+
 	    var store = null;
             var statement = kb.any(subject, Q('accordingTo'));
             if (statement == undefined) {
@@ -41414,7 +41601,7 @@ tabulator.panes.register( {
             navLink(Q('toAccount'));
             navLink(Q('accordingTo'), "Statement");
             navLink(TRIP('trip'));
-            
+
             // Basic data:
             var table = dom.createElement('table');
             div.appendChild(table);
@@ -41437,7 +41624,7 @@ tabulator.panes.register( {
             }
 
             // What trips do we know about?
-            
+
             // Classify:
             if (store) {
                 kb.fetcher.nowOrWhenFetched(store.uri, subject, function(ok, body){
@@ -41452,21 +41639,21 @@ tabulator.panes.register( {
                     var trips = kb.statementsMatching(undefined, TRIP('trip'), undefined, store)
                                 .map(function(st){return st.object}); // @@ Use rdfs
                     var trips2 = kb.each(undefined, tabulator.ns.rdf('type'),  TRIP('Trip'));
-                    trips = trips.concat(trips2).sort(); // @@ Unique 
-                    
+                    trips = trips.concat(trips2).sort(); // @@ Unique
+
                     var sortedBy = function(kb, list, pred, reverse) {
                         l2 = list.map(function(x) {
                             var key = kb.any(x, pred);
                             key = key ? key.value : "9999-12-31";
-                            return [ key, x ]; 
+                            return [ key, x ];
                         });
                         l2.sort();
                         if (reverse) l2.reverse();
                         return l2.map(function(pair){return pair[1]});
                     }
-                    
+
                     trips = sortedBy(kb, trips, tabulator.ns.cal('dtstart'), true); // Reverse chron
-                    
+
                     if (trips.length > 1) div.appendChild(tabulator.panes.utils.makeSelectForOptions(
                         dom, kb, subject, TRIP('trip'), trips,
                             { 'multiple': false, 'nullLabel': "-- what trip? --", 'mint': "New Trip *",
@@ -41480,7 +41667,7 @@ tabulator.panes.register( {
                 });
             }
 
-            
+
 
             div.appendChild(dom.createElement('br'));
 
@@ -41490,14 +41677,14 @@ tabulator.panes.register( {
             donePredicate(ns.rdfs('comment')); // Done above
 /*            tabulator.outline.appendPropertyTRs(div, plist, false,
                 function(pred, inverse) {
-                    if (!inverse && pred.uri == 
+                    if (!inverse && pred.uri ==
                         "http://www.w3.org/2000/01/rdf-schema#comment") return true;
                     return false
                 });
 */
             div.appendChild(dom.createElement('tr'))
                         .setAttribute('style','height: 1em'); // spacer
-            
+
             // Remaining properties
             tabulator.outline.appendPropertyTRs(div, plist, false,
                 function(pred, inverse) {
@@ -41521,13 +41708,13 @@ tabulator.panes.register( {
             var v = {};
             vars.map(function(x){query.vars.push(v[x]=$rdf.variable(x))}); // Only used by UI
             query.pat.add(v['transaction'], TRIP('trip'), subject);
-            
+
             var opt = kb.formula();
             opt.add(v['transaction'], ns.rdf('type'), v['type']); // Issue: this will get stored supertypes too
             query.pat.optional.push(opt);
-            
+
             query.pat.add(v['transaction'], Q('date'), v['date']);
-            
+
             var opt = kb.formula();
             opt.add(v['transaction'], ns.rdfs('comment'), v['comment']);
             query.pat.optional.push(opt);
@@ -41558,7 +41745,7 @@ tabulator.panes.register( {
                         if (!yearCategoryTotal[year]) yearCategoryTotal[year] = {};
                         if (!total[tyuri]) total[tyuri] = 0.0;
                         if (!yearCategoryTotal[year][tyuri]) yearCategoryTotal[year][tyuri] = 0.0;
-                        
+
                         var lit = kb.any(t, Q('in_USD'));
                         if (!lit) {
                             complain("@@ No amount in USD: "+lit+" for " + t);
@@ -41575,7 +41762,7 @@ tabulator.panes.register( {
                 var types = [];
                 var grandTotal = 0.0;
                 var years = [], i;
-                
+
                 for (var y in yearCategoryTotal) {
                     if (yearCategoryTotal.hasOwnProperty(y)) {
                         years.push(y);
@@ -41584,10 +41771,10 @@ tabulator.panes.register( {
                 years.sort();
                 var ny = years.length, cell;
                 // happy('years: '+ ny); // @@
-                
+
                 var table = div.appendChild(dom.createElement('table'));
                 table.setAttribute('style', 'font-size: 120%; margin-left:auto; margin-right:1em; margin-top: 1em; border: 0.05em solid gray; padding: 1em;')
-                
+
                 if (ny > 1) {
                     var header = table.appendChild(dom.createElement('tr'));
                     header.appendChild(headerCell(''));
@@ -41600,7 +41787,7 @@ tabulator.panes.register( {
                 for (var uri in total) if (total.hasOwnProperty(uri)) {
                     types.push(uri);
                     grandTotal += total[uri];
-                } 
+                }
                 types.sort();
                 // happy('types: '+ types.length); // @@
                 var row, label, z;
@@ -41634,22 +41821,22 @@ tabulator.panes.register( {
 
                 // happy("Overall net: "+grandTotal, 'font-weight: bold;') // @@
             }
-            
+
             var trans = kb.each(undefined, TRIP('trip'), subject);
             var tab = transactionTable(dom, trans);
             tab.setAttribute('style', 'margin-left:auto; margin-right:1em; margin-top: 1em; border: padding: 1em;')
             div.appendChild(tab);
             calculations();
-            
 
 
-            
- 
+
+
+
         //              Render a single Period
-        
+
         // This works only if enough metadata about the properties can drive the RDFS
         // (or actual type statements which typically are NOT there on)
-        
+
         } else if (t['http://www.w3.org/2000/10/swap/pim/qif#Period']) {
 
             var dtstart = kb.any(subject, ns.cal('dtstart'));
@@ -41657,7 +41844,7 @@ tabulator.panes.register( {
                 complain('(Error: There is no start date known for this period <'
                         +subject.uri+'>,\n -- every period needs one.)')
             };
-            
+
             var dtend = kb.any(subject, ns.cal('dtend'));
             if (dtend === undefined) {
                 complain('(Error: There is no end date known for this period <'
@@ -41665,33 +41852,33 @@ tabulator.panes.register( {
             };
 
             var store = kb.any(subject, Q('annotationStore')) || null;
-            
+
             var needed = kb.each(subject, ns.rdfs('seeAlso'));
-            
+
             donePredicate(ns.rdf('type'));
-            
+
             var inPeriod = function(date) {
                 return !!(date && date >= dtstart && date < dtend);
             };
-            
+
             var transactionInPeriod = function(x) {
                 return inPeriod(kb.any(x, ns.qu('date')));
             };
-            
+
             var h2 = div.appendChild(dom.createElement('p'));
             h2.textContent = "Period " + dtstart.value.slice(0,10) + ' - ' + dtend.value.slice(0,10);
-        
-            
-            // List unclassified transactions
-            
 
-            var dummies = { 
+
+            // List unclassified transactions
+
+
+            var dummies = {
                 'http://www.w3.org/2000/10/swap/pim/qif#Transaction': true, // (we knew)
                 'http://www.w3.org/2000/10/swap/pim/qif#Unclassified': true, // pseudo classifications we may phase out
                 'http://www.w3.org/2000/10/swap/pim/qif#UnclassifiedOutgoing': true,
                 'http://www.w3.org/2000/10/swap/pim/qif#UnclassifiedIncome': true,
             };
-            var xURIs = kb.findMemberURIs(ns.qu('Transaction')); 
+            var xURIs = kb.findMemberURIs(ns.qu('Transaction'));
             var unc_in = [], unc_out = [], usd, z, tt, t, j;
             for (var y in xURIs) { // For each thing which can be inferred to be a transaction
                 if (xURIs.hasOwnProperty(y)) {
@@ -41730,7 +41917,7 @@ tabulator.panes.register( {
             if (unc_out.length) {
                 tab = transactionTable(dom, unc_out, transactionInPeriod);
                 count = tab.children.length;
-                div.appendChild(dom.createElement('h3')).textContent = "Unclassified Outgoings" + 
+                div.appendChild(dom.createElement('h3')).textContent = "Unclassified Outgoings" +
                     ( count < 4 ? '' : ' (' + count+ ')' );
                 div.appendChild(tab);
             } else {
@@ -41738,7 +41925,7 @@ tabulator.panes.register( {
             }
 
             /////////////////  Check some categories of transaction for having given fields
-            
+
             var catSymbol = function(catTail) {
                 var cat, cats = kb.findSubClassesNT(ns.qu('Transaction'));
                 for (cat in cats) {
@@ -41775,7 +41962,7 @@ tabulator.panes.register( {
                 }
                 return count;
             }
-            
+
             // @@ In future could load these params dynamically as properties of period
             if (checkCatHasField('Reimbursables', ns.trip('trip')) === 0) {
                 happy("Reimbursables all have trips")
@@ -41786,10 +41973,10 @@ tabulator.panes.register( {
             if (checkCatHasField('Vacation', ns.trip('trip')) === 0) {
                 happy("Vacation all has trips")
             };
-			 
+
 	    ///////////////   Check Internal transactions balance
-			 
-			 
+
+
             var checkInternals = function() {
 		var catTail = 'Internal';
 		var pred = ns.qu('in_USD');
@@ -41837,13 +42024,13 @@ tabulator.panes.register( {
                 }
                 return count;
             }
-            
+
             if (checkInternals() === 0) {
                 happy("Intenral transactions all pair up")
             };
 
 
-			 
+
         // end of render period instance
 
         }; // if
@@ -41852,13 +42039,11 @@ tabulator.panes.register( {
 
         return div;
     }
-        
+
 
 }, true);
 
 //ends
-
-
 
 // ###### Finished expanding js/panes/transaction/pane.js ##############
 // ###### Expanding js/panes/transaction/period.js ##############
@@ -41869,23 +42054,23 @@ tabulator.panes.register( {
 ** trips, etc
 */
 
-/*    
-tabulator.Icon.src.icon_money = iconPrefix +
+/*
+tabulator.Icon.src.icon_money = tabulator.iconPrefix +
     'js/panes/transaction/22-pixel-068010-3d-transparent-glass-icon-alphanumeric-dollar-sign.png';
 tabulator.Icon.tooltips[tabulator.Icon.src.icon_money] = 'Period'
 
 tabulator.panes.register( {
 
     icon: tabulator.Icon.src.icon_money,
-    
+
     name: 'period',
-    
+
     // Does the subject deserve this pane?
     label: function(subject) {
         var Q = $rdf.Namespace('http://www.w3.org/2000/10/swap/pim/qif#');
         var kb = tabulator.kb;
         var t = kb.findTypeURIs(subject);
-        if (t['http://www.w3.org/2000/10/swap/pim/qif#Period']) return "period";        
+        if (t['http://www.w3.org/2000/10/swap/pim/qif#Period']) return "period";
         return null; // No under other circumstances (while testing at least!)
     },
 
@@ -41898,7 +42083,7 @@ tabulator.panes.register( {
         var UI = $rdf.Namespace('http://www.w3.org/ns/ui#');
         var Q = $rdf.Namespace('http://www.w3.org/2000/10/swap/pim/qif#');
         var TRIP = $rdf.Namespace('http://www.w3.org/ns/pim/trip#');
-        
+
         var div = dom.createElement('div')
         div.setAttribute('class', 'periodPane');
         div.innerHTML='<h1>Period</h1><table><tbody><tr>\
@@ -41906,11 +42091,11 @@ tabulator.panes.register( {
         <p>This is a pane under development.</p>';
 
         var commentFlter = function(pred, inverse) {
-            if (!inverse && pred.uri == 
+            if (!inverse && pred.uri ==
                 'http://www.w3.org/2000/01/rdf-schema#comment') return true;
             return false
         }
-        
+
 
         var mention = function mention(message, style){
             if (style == undefined) style = 'color: grey';
@@ -41918,13 +42103,13 @@ tabulator.panes.register( {
             pre.setAttribute('style', style);
             div.appendChild(pre);
             pre.appendChild(dom.createTextNode(message));
-        } 
+        }
         var happy = function happy(message){
             return mention('✓ ' + message, 'color: #010; background-color: #efe');
-        } 
+        }
         var complain = function complain(message){
             return mention(message, 'color: #100; background-color: #fee');
-        } 
+        }
         var thisPane = this;
         var rerender = function(div) {
             var parent  = div.parentNode;
@@ -41933,13 +42118,13 @@ tabulator.panes.register( {
         };
 
 
- // //////////////////////////////////////////////////////////////////////////////       
-        
-        
-        
-        var sparqlService = new tabulator.rdf.sparqlUpdate(kb);
+ // //////////////////////////////////////////////////////////////////////////////
 
- 
+
+
+        var sparqlService = new tabulator.rdf.UpdateManager(kb);
+
+
         var plist = kb.statementsMatching(subject)
         var qlist = kb.statementsMatching(undefined, undefined, subject)
 
@@ -41950,7 +42135,7 @@ tabulator.panes.register( {
 
 
         //              Render a single Period
-        
+
         // This works only if enough metadata about the properties can drive the RDFS
         // (or actual type statements whichtypically are NOT there on)
         if (t['http://www.w3.org/2000/10/swap/pim/qif#Period']) {
@@ -41960,7 +42145,7 @@ tabulator.panes.register( {
                 complain('(Error: There is no start date known for this period <'
                         +subject.uri+'>,\n -- every period needs one.)')
             };
-            
+
             var dtend = kb.any(subject, ns.cal('dtend'));
             if (dtend === undefined) {
                 complain('(Error: There is no end date known for this period <'
@@ -41968,18 +42153,18 @@ tabulator.panes.register( {
             };
 
             var store = kb.any(subject, Q('annotationStore')) || null;
-            
+
             var needed = kb.each(subject, ns.rdfs('seeAlso'));
-            
-            
+
+
             var predicateURIsDone = {};
             var donePredicate = function(pred) {predicateURIsDone[pred.uri]=true};
             donePredicate(ns.rdf('type'));
-            
+
             var inPeriod = function(date) {
                 return !!(date && date >= dtstart && date < dtend);
             };
-            
+
             var d2 = function(n) {
                 var s = '' + n
                 if (s.indexOf('.') >= 0) {
@@ -41987,11 +42172,11 @@ tabulator.panes.register( {
                 }
                 return s + '.00'
             }
-            
+
             var transactionInPeriod = function(x) {
                 return inPeriod(kb.any(x, ns.qu('date')));
             };
-            
+
             var oderByDate = function(x, y) {
                 dx = tabulator.kb.any(x, ns.qu('date'));
                 dy = tabulator.kb.any(y, ns.qu('date'));
@@ -42003,7 +42188,7 @@ tabulator.panes.register( {
                 if (x.uri > y.uri) return 1;
                 return 0;
             }
-            
+
             var setPaneStyle = function() {
                 var mystyle = "padding: 0.5em 1.5em 1em 1.5em; ";
                 if (account) {
@@ -42014,17 +42199,17 @@ tabulator.panes.register( {
                 div.setAttribute('style', mystyle);
             }
             // setPaneStyle();
-            
+
             var h2 = div.appendChild(dom.createElement('h2'));
             h2.textContent = "Period " + dtstart.value.slice(0,10) + ' - ' + dtend.value.slice(0,10);
-            
+
             var insertedPane = function(dom, subject, paneName) {
                 var p = tabulator.panes.byName(paneName);
                 var d = p.render(subject, dom);
                 d.setAttribute('style', 'border: 0.1em solid green;')
                 return d;
             };
-            
+
             var expandAfterRow = function(dom, row, subject, paneName, solo) {
                 var siblings = row.parentNode.children;
                 if (solo) {
@@ -42046,9 +42231,9 @@ tabulator.panes.register( {
                 }
                 row.expanded = tr;
                 td.setAttribute('colspan', '' + cols)
-                td.appendChild(insertedPane(dom, subject, paneName));            
+                td.appendChild(insertedPane(dom, subject, paneName));
             };
-            
+
             var expandAfterRowOrCollapse = function(dom, row, subject, paneName, solo) {
                 if (row.expanded) {
                     row.parentNode.removeChild(row.expanded);
@@ -42059,7 +42244,7 @@ tabulator.panes.register( {
             };
 
             var transactionTable = function(dom, list) {
-            
+
                 var table = dom.createElement('table');
                 table.setAttribute('style', 'margin-left: 100; font-size: 9pt; width: 85%;');
                 var transactionRow = function(dom, x) {
@@ -42075,15 +42260,15 @@ tabulator.panes.register( {
                         }
                         tr.setAttribute('style', mystyle);
                     }
-                
+
                     var account = kb.any(x, ns.qu('toAccount'));
                     setTRStyle(tr, account);
-                    
+
                     var c0 = tr.appendChild(dom.createElement('td'));
                     var date = kb.any(x, ns.qu('date'));
                     c0.textContent = date ? date.value.slice(0,10) : '???';
                     c0.setAttribute('style',  'width: 7em;');
-                    
+
                     var c1 = tr.appendChild(dom.createElement('td'));
                     c1.setAttribute('style',  'width: 36em;');
                     var payee = kb.any(x, ns.qu('payee'));
@@ -42099,30 +42284,30 @@ tabulator.panes.register( {
                     tr.addEventListener('click', function(e) { // solo unless shift key
                         expandAfterRowOrCollapse(dom, tr, x, 'transaction', !e.shiftKey);
                     }, false);
-                    
+
                     return tr;
-                 }; 
-                 
+                 };
+
                  var list2 = list.filter(transactionInPeriod);
                  list2.sort(oderByDate);
-                 
+
                  for (var i=0; i < list2.length; i++) {
                     table.appendChild(transactionRow(dom, list2[i]));
                  }
                  return table;
             };
-            
-            
-            // List unclassified transactions
-            
 
-            var dummies = { 
+
+            // List unclassified transactions
+
+
+            var dummies = {
                 'http://www.w3.org/2000/10/swap/pim/qif#Transaction': true, // (we knew)
                 'http://www.w3.org/2000/10/swap/pim/qif#Unclassified': true, // pseudo classifications we may phase out
                 'http://www.w3.org/2000/10/swap/pim/qif#UnclassifiedOutgoing': true,
                 'http://www.w3.org/2000/10/swap/pim/qif#UnclassifiedIncome': true,
             };
-            var xURIs = kb.findMemberURIs(ns.qu('Transaction')); 
+            var xURIs = kb.findMemberURIs(ns.qu('Transaction'));
             var unc_in = [], unc_out = [], usd, z, tt, t, j;
             for (var y in xURIs) { // For each thing which can be inferred to be a transaction
                 if (xURIs.hasOwnProperty(y)) {
@@ -42161,7 +42346,7 @@ tabulator.panes.register( {
             if (unc_out.length) {
                 tab = transactionTable(dom, unc_out);
                 count = tab.children.length;
-                div.appendChild(dom.createElement('h3')).textContent = "Unclassified Outgoings" + 
+                div.appendChild(dom.createElement('h3')).textContent = "Unclassified Outgoings" +
                     ( count < 4 ? '' : ' (' + count+ ')' );
                 div.appendChild(tab);
             } else {
@@ -42169,7 +42354,7 @@ tabulator.panes.register( {
             }
 
             /////////////////  Check some categories of transaction for having given fields
-            
+
             var catSymbol = function(catTail) {
                 var cat, cats = kb.findSubClassesNT(ns.qu('Transaction'));
                 for (cat in cats) {
@@ -42205,35 +42390,132 @@ tabulator.panes.register( {
                 }
                 return count;
             }
-            
-            // Load dynamically as properties of period 
+
+            // Load dynamically as properties of period
             if (checkCatHasField('Reimbursables', ns.trip('trip')) === 0) {
                 happy("Reimbursables all have trips")
             };
             if (checkCatHasField('Other_Inc_Speaking', ns.trip('trip')) === 0) {
                 happy("Speaking income all has trips")
             };
-            
+
         // end of render period instance
 
         };
 
 
-        
+
         //if (!me) complain("You do not have your Web Id set. Set your Web ID to make changes.");
 
         return div;
     }
-        
+
 
 }, true);
 
 */
 //ends
 
-
-
 // ###### Finished expanding js/panes/transaction/period.js ##############
+// ###### Expanding js/panes/chat/chatPane.js ##############
+/*   Chat Pane
+**
+**  Plan is to support a finte number of chat graph shapes
+** and investigate the interop between them.
+*/
+
+tabulator.Icon.src.icon_chat = tabulator.iconPrefix + 'js/panes/common/icons/noun_346319.svg';
+tabulator.Icon.tooltips[tabulator.Icon.src.icon_chat] = 'chat'
+
+tabulator.panes.register( {
+
+    icon: tabulator.Icon.src.icon_chat,
+
+    name: 'chat',
+
+/*   AN RRSAgent IRC log:
+
+<irc://localhost:6667/&mit>
+    a    foaf:ChatChannel;
+    foaf:chatEventList
+            [ rdf:_100
+               <#T19-10-58>;
+            rdf:_101
+               <#T19-10-58-1>;
+            rdf:_102
+..
+<#T19-28-47-1>
+    dc:creator
+       [ a wn:Person; foaf:nick "timbl" ];
+    dc:date
+       "2016-03-15T19:28:47Z";
+    dc:description
+       "timbl has joined &mit";
+    a    foaf:chatEvent.
+
+*/
+
+
+
+    label: function(subject) {
+      var kb = tabulator.kb, ns = tabulator.ns
+      var n = tabulator.kb.each(subject, ns.wf( 'message')).length;
+      if (n > 0) return "Chat (" + n + ")";  // Show how many in hover text
+
+      if (kb.holds(undefined, ns.rdf('type'), ns.foaf('ChatChannel'), subject)) { // subject is the file
+        return "IRC log"
+      }
+      return null;     // Suppress pane otherwise
+    },
+
+    render: function(subject, dom) {
+        var kb = tabulator.kb, ns = tabulator.ns
+        var complain = function complain(message, color){
+            var pre = dom.createElement("pre");
+            pre.setAttribute('style', 'background-color: '+ color || '#eed' +';');
+            div.appendChild(pre);
+            pre.appendChild(dom.createTextNode(message));
+        }
+
+        var div = dom.createElement("div")
+        div.setAttribute('class', 'chatPane');
+        options = {}  // Like newestFirst
+        var messageStore
+
+        if (kb.any(subject, tabulator.ns.wf( 'message'))){
+          messageStore = tabulator.kb.any(subject, tabulator.ns.wf('message')).doc()
+
+        } else if (kb.holds(undefined, ns.rdf('type'), ns.foaf('ChatChannel'), subject)) { // subject is the file
+
+          var ircLogQuery = function(){
+            var query = new $rdf.Query('IRC log entries');
+            var v = {};
+            ['chan', 'msg', 'date', 'list', 'pred', 'creator', 'content'].map(function(x){
+                 query.vars.push(v[x]=$rdf.variable(x))});
+                 query.pat.add(v['chan'], ns.foaf('chatEventList'), v['list']); // chatEventList
+                 query.pat.add( v['list'], v['pred'], v['msg']); //
+            query.pat.add(v['msg'], ns.dc('date'), v['date']);
+            query.pat.add(v['msg'], ns.dc('creator'), v['creator']);
+            query.pat.add(v['msg'], ns.dc('description'), v['content']);
+            return query
+          }
+          messageStore = subject
+          options.query = ircLogQuery()
+
+        } else {
+          complain('Unknown chat type')
+        }
+
+        div.appendChild(tabulator.panes.utils.messageArea(dom, kb, subject, messageStore, options))
+
+        return div;
+    }
+}, true);
+
+//ends
+
+// ###### Finished expanding js/panes/chat/chatPane.js ##############
+
 
 // ###### Expanding js/panes/trip/tripPane.js ##############
 /*   Trip Pane
@@ -42246,30 +42528,30 @@ tabulator.panes.register( {
 **  trips, etc
 */
 
-    
-tabulator.Icon.src.icon_trip = iconPrefix +
+
+tabulator.Icon.src.icon_trip = tabulator.iconPrefix +
     'js/panes/transaction/22-pixel-068010-3d-transparent-glass-icon-alphanumeric-dollar-sign.png'; // @@
 tabulator.Icon.tooltips[tabulator.Icon.src.icon_trip] = 'travel expenses'
 
 tabulator.panes.register( {
 
     icon: tabulator.Icon.src.icon_trip,
-    
+
     name: 'travel expenses',
-    
+
     // Does the subject deserve this pane?
     label: function(subject) {
         var Q = $rdf.Namespace('http://www.w3.org/2000/10/swap/pim/qif#');
         var kb = tabulator.kb;
         var t = kb.findTypeURIs(subject);
-        
+
         // if (t['http://www.w3.org/2000/10/swap/pim/qif#Transaction']) return "$$";
         //if(kb.any(subject, Q('amount'))) return "$$$"; // In case schema not picked up
 
 
         if (Q('Transaction') in kb.findSuperClassesNT(subject)) return "by Trip";
         if (t['http://www.w3.org/ns/pim/trip#Trip']) return "Trip $";
-        
+
         return null; // No under other circumstances (while testing at least!)
     },
 
@@ -42283,7 +42565,7 @@ tabulator.panes.register( {
         var UI = $rdf.Namespace('http://www.w3.org/ns/ui#');
         var Q = $rdf.Namespace('http://www.w3.org/2000/10/swap/pim/qif#');
         var TRIP = $rdf.Namespace('http://www.w3.org/ns/pim/trip#');
-        
+
         var div = myDocument.createElement('div')
         div.setAttribute('class', 'transactionPane');
         div.innerHTML='<h1>Transaction</h1><table><tbody><tr>\
@@ -42291,11 +42573,11 @@ tabulator.panes.register( {
         <p>This is a pane under development.</p>';
 
         var commentFlter = function(pred, inverse) {
-            if (!inverse && pred.uri == 
+            if (!inverse && pred.uri ==
                 'http://www.w3.org/2000/01/rdf-schema#comment') return true;
             return false
         }
-        
+
         var setModifiedDate = function(subj, kb, doc) {
             var deletions = kb.statementsMatching(subject, DCT('modified'));
             var deletions = deletions.concat(kb.statementsMatching(subject, WF('modifiedBy')));
@@ -42310,7 +42592,7 @@ tabulator.panes.register( {
             pre.setAttribute('style', style);
             div.appendChild(pre);
             pre.appendChild(myDocument.createTextNode(message));
-        } 
+        }
         var thisPane = this;
         var rerender = function(div) {
             var parent  = div.parentNode;
@@ -42319,13 +42601,13 @@ tabulator.panes.register( {
         };
 
 
- // //////////////////////////////////////////////////////////////////////////////       
-        
-        
-        
-        var sparqlService = new tabulator.rdf.sparqlUpdate(kb);
+ // //////////////////////////////////////////////////////////////////////////////
 
- 
+
+
+        var sparqlService = new tabulator.rdf.UpdateManager(kb);
+
+
         var plist = kb.statementsMatching(subject)
         var qlist = kb.statementsMatching(undefined, undefined, subject)
 
@@ -42342,13 +42624,13 @@ tabulator.panes.register( {
             var v = {};
             vars.map(function(x){query.vars.push(v[x]=$rdf.variable(x))}); // Only used by UI
             query.pat.add(v['transaction'], TRIP('trip'), subject);
-            
+
             var opt = kb.formula();
             opt.add(v['transaction'], ns.rdf('type'), v['type']); // Issue: this will get stored supertypes too
             query.pat.optional.push(opt);
-            
+
             query.pat.add(v['transaction'], Q('date'), v['date']);
-            
+
             var opt = kb.formula();
             opt.add(v['transaction'], ns.rdfs('comment'), v['comment']);
             query.pat.optional.push(opt);
@@ -42375,7 +42657,7 @@ tabulator.panes.register( {
                         if (lit) {
                             total[tyuri] = total[tyuri] + parseFloat(lit.value);
                             //complain('      Trans type ='+ty+'; in_USD "' + lit
-                            //       +'; total[tyuri] = '+total[tyuri]+';') 
+                            //       +'; total[tyuri] = '+total[tyuri]+';')
                         }
                     }
                 });
@@ -42386,7 +42668,7 @@ tabulator.panes.register( {
                     str += tabulator.Util.label(kb.sym(uri)) + ': '+total[uri]+'; ';
                     types++;
                     grandTotal += total[uri];
-                } 
+                }
                 complain("Totals of "+trans.length+" transactions: " + str, ''); // @@@@@  yucky -- need 2 col table
                 if (types > 1) complain("Overall net: "+grandTotal, 'text-treatment: bold;')
             }
@@ -42396,7 +42678,7 @@ tabulator.panes.register( {
         }
 
         //          Render the set of trips which have transactions in this class
-        
+
         if (Q('Transaction') in kb.findSuperClassesNT(subject)) {
 
             ts = kb.each(undefined, ns.rdf('type'), subject);
@@ -42410,13 +42692,13 @@ tabulator.panes.register( {
                 } else {
                     if (!(trans in index)) index[trip] =  { total:0, transactions: [] };
                     var usd = kb.any(trans, Q('in_USD'));
-                    if (usd) index[trip]['total'] += usd; 
+                    if (usd) index[trip]['total'] += usd;
                     var date = kb.any(trans, Q('date'));
-                    index[trip.toNT()]['transactions'].push([date, trans]); 
+                    index[trip.toNT()]['transactions'].push([date, trans]);
                 }
             }
 /*            var byDate = function(a,b) {
-                return new Date(kb.any(a, CAL('dtstart'))) - 
+                return new Date(kb.any(a, CAL('dtstart'))) -
                         new Date(kb.any(b, CAL('dtstart')));
             }
 */
@@ -42437,28 +42719,26 @@ tabulator.panes.register( {
         } else if (t['http://www.w3.org/ns/pim/trip#Trip']) {
 
             renderTrip(subject, div);
-            
+
         }
 
 
-        
+
         //if (!me) complain("You do not have your Web Id set. Set your Web ID to make changes.");
 
         return div;
     }
-        
+
 
 }, true);
 
 //ends
 
-
-
 // ###### Finished expanding js/panes/trip/tripPane.js ##############
 // ###### Expanding js/panes/airPane.js ##############
  /** AIR (Amord in RDF) Pane
  *
- * This pane will display the justification trace of a when it encounters 
+ * This pane will display the justification trace of a when it encounters
  * air reasoner output
  * oshani@csail.mit.edu
  */
@@ -42466,7 +42746,7 @@ tabulator.panes.register( {
 
 
 
-	
+
 //These are horrible global vars. To minimize the chance of an unintended name collision
 //these are prefixed with 'ap_' (short for air pane) - Oshani
 // moved to airpane.js from paneutils.js 2014 tbl
@@ -42486,18 +42766,18 @@ var justificationsArr = [];
 
 
 
- 
+
 airPane = {};
 airPane.name = 'air';
 airPane.icon = tabulator.Icon.src.icon_airPane;
 
 airPane.label = function(subject) {
-  
+
     //Flush all the justification statements already found
     justificationsArr = [];
-    
+
 	//Find all the statements with air:justification in it
-	var stsJust = tabulator.kb.statementsMatching(undefined, ap_just, undefined, subject); 
+	var stsJust = tabulator.kb.statementsMatching(undefined, ap_just, undefined, subject);
 	//This will hold the string to display if the pane appears
 	var stringToDisplay = null
 	//Then make a registry of the compliant and non-compliant subjects
@@ -42505,7 +42785,7 @@ airPane.label = function(subject) {
 	//If the output changes, the parser will break.)
 	for (var j=0; j<stsJust.length; j++){
 		//The subject of the statements should be a quouted formula and
-		//the object should not be tms:premise (this corresponds to the final chunk of the output 
+		//the object should not be tms:premise (this corresponds to the final chunk of the output
 		//which has {some triples} tms:justification tms:premise)
 		if (stsJust[j].subject.termType == 'formula' && stsJust[j].object != ap_prem.toString()){
 			var sts = stsJust[j].subject.statements;
@@ -42529,13 +42809,13 @@ airPane.label = function(subject) {
 				justificationsArr.push(nonCompliantArr);
 
             }
-			stringToDisplay = "Justify" //Even with one relevant statement this method should return something 
-		}   
+			stringToDisplay = "Justify" //Even with one relevant statement this method should return something
+		}
 	}
 	//Make the subject list we will be exploring in the render function unique
 	//compliantStrings = tabulator.panes.utils.unique(compliantStrings);
-	//nonCompliantStrings = tabulator.panes.utils.unique(nonCompliantStrings); 
-    
+	//nonCompliantStrings = tabulator.panes.utils.unique(nonCompliantStrings);
+
    return stringToDisplay;
 }
 
@@ -42543,7 +42823,7 @@ airPane.label = function(subject) {
 airPane.render = function(subject, myDocument) {
 
 	//Variables specific to the UI
-	var statementsAsTables = tabulator.panes.dataContentPane.statementsAsTables;        
+	var statementsAsTables = tabulator.panes.dataContentPane.statementsAsTables;
 	var divClass;
 	var div = myDocument.createElement("div");
 
@@ -42557,23 +42837,23 @@ airPane.render = function(subject, myDocument) {
     //If there are multiple justifications show a dropdown box to select the correct one
     var selectEl = myDocument.createElement("select");
 
-    var divOutcome = myDocument.createElement("div"); //This is div to display the final outcome. 
+    var divOutcome = myDocument.createElement("div"); //This is div to display the final outcome.
     divOutcome.setAttribute('id', 'outcome'); //There can only be one outcome per selection from the drop down box
-  
+
     //Show the selected justification only
 	airPane.render.showSelected = function(){
-        
+
         //Clear the contents of the outcome div
         if (myDocument.getElementById('outcome') != null){
-            myDocument.getElementById('outcome').innerHTML = ''; 
+            myDocument.getElementById('outcome').innerHTML = '';
         }
-        
+
         //Function to hide the natural language description div and the premises div
         airPane.render.showSelected.hide = function(){
-        
+
             //Clear the outcome div
             if (myDocument.getElementById('outcome') != null){
-                myDocument.getElementById('outcome').innerHTML = ''; 
+                myDocument.getElementById('outcome').innerHTML = '';
             }
             //Remove the justification div from the pane
             var d = myDocument.getElementById('dataContentPane');
@@ -42601,42 +42881,44 @@ airPane.render = function(subject, myDocument) {
 
         //Clear the contents of the justification div
         airPane.render.showSelected.hide();
-        
+
         if (this.selectedIndex == 0)
             return;
-            
+
         selected = justificationsArr[this.selectedIndex - 1];
-        var stsJust = tabulator.kb.statementsMatching(undefined, ap_just, undefined, subject); 
-        
+        var stsJust = tabulator.kb.statementsMatching(undefined, ap_just, undefined, subject);
+
 
         for (var i=0; i<stsJust.length; i++){
-        
+
             //Find the statement maching the option selected from the drop down box
-            if (stsJust[i].subject.termType == 'formula' && 
-                stsJust[i].object != ap_prem.toString() && 
+            if (stsJust[i].subject.termType == 'formula' &&
+                stsJust[i].object != ap_prem.toString() &&
                 stsJust[i].subject.statements[0].object.toString() == selected[0].toString()){
-                
+
                 var stsFound = stsJust[i].subject.statements[0]; //We have only one statement - so no need to iterate
-                
-                //@@@@@@ Variables specific to the logic	
+
+                //@@@@@@ Variables specific to the logic
                 var ruleNameFound;
-                
+
                 //Display red or green depending on the compliant/non-compliant status
                 if (selected[1].toString() == ap_nonCompliant.toString()){
-                    divOutcome.setAttribute('class', 'nonCompliantPane');
+									divOutcome.setAttribute('class', 'nonCompliantPane');
+									divOutcome.setAttribute('style', 'border-top: solid 1px red; border-left: solid 1px red; border-bottom: solid 1px red; border-right: solid 1px red; padding: 0.5em; background-color: #fbf0f7; margin-top: 0.5em; margin-bottom: 0.5em; border-radius: 1em;');
                 }
                 else if (selected[1].toString() == ap_compliant.toString()){
-                    divOutcome.setAttribute('class', 'compliantPane');
+									divOutcome.setAttribute('class', 'compliantPane');
+									divOutcome.setAttribute('style', 'border-top: solid 1px green; border-left: solid 1px green; border-bottom: solid 1px green;border-right: solid 1px green;padding: 0.5em; background-color: #def8e0;margin-top: 0.5em; margin-bottom: 0.5em;border-radius: 1em;');
                 }
                 else{
                     alert("something went terribly wrong");
-                } 
-                
+                }
+
                 //Create a table and structure the final conclucsion appropriately
-                
+
                 var table = myDocument.createElement("table");
                 var tr = myDocument.createElement("tr");
-                
+
                 var td_s = myDocument.createElement("td");
                 var a_s = myDocument.createElement('a')
                 a_s.setAttribute('href', stsFound.subject.uri)
@@ -42664,14 +42946,14 @@ airPane.render = function(subject, myDocument) {
 
                 table.appendChild(tr);
                 divOutcome.appendChild(table);
-                
+
                 div.appendChild(divOutcome);
                 //End of the outcome sentences
-                
-                //Add the initial buttons 
+
+                //Add the initial buttons
                 airPane.render.showSelected.addInitialButtons = function(){ //Function Call 1
 
-                    //Create and append the 'Why?' button        
+                    //Create and append the 'Why?' button
                     //Check if it is visible in the DOM, if not add it.
                     if (myDocument.getElementById('whyButton') == null){
                         var becauseButton = myDocument.createElement('input');
@@ -42681,7 +42963,7 @@ airPane.render = function(subject, myDocument) {
                         div.appendChild(becauseButton);
                         becauseButton.addEventListener('click',airPane.render.showSelected.because,false);
                     }
-                                        
+
                     div.appendChild(myDocument.createTextNode('   '));//To leave some space between the 2 buttons, any better method?
                 }
                 //End of airPane.render.showSelected.addInitialButtons
@@ -42689,28 +42971,28 @@ airPane.render = function(subject, myDocument) {
 
                 //The following function is triggered, when the why button is clicked
                 airPane.render.showSelected.because = function(){ //Function Call 2
-                
-                
-                    //If the reasoner used closed-world-assumption, there are no interesting premises 
+
+
+                    //If the reasoner used closed-world-assumption, there are no interesting premises
                     var cwa = ap_air('closed-world-assumption');
                     var cwaStatements = tabulator.kb.statementsMatching(undefined, cwa, undefined, subject);
                     var noPremises = false;
                 /*    if (cwaStatements.length > 0){
                         noPremises = true;
                     }
-                 */   
-                    //Disable the 'why' button, otherwise clicking on that will keep adding the divs 
+                 */
+                    //Disable the 'why' button, otherwise clicking on that will keep adding the divs
                     var whyButton = myDocument.getElementById('whyButton');
                     var d = myDocument.getElementById('dataContentPane');
                     if (d != null && whyButton != null)
                         d.removeChild(whyButton);
-                
+
                     //Function to display the natural language description
                     airPane.render.showSelected.because.displayDesc = function(obj){
                         for (var i=0; i<obj.elements.length; i++) {
                                 dump(obj.elements[i]);
                                 dump("\n");
-                                
+
                                 if (obj.elements[i].termType == 'symbol') {
                                     var anchor = myDocument.createElement('a');
                                     anchor.setAttribute('href', obj.elements[i].uri);
@@ -42727,14 +43009,14 @@ airPane.render = function(subject, myDocument) {
                                     divDescription.appendChild(myDocument.createTextNode(obj.elements[i]));
                                     //@@@ Using statementsAsTables to render the result gives a very ugly result -- urgh!
                                     //divDescription.appendChild(statementsAsTables(obj.elements[i].statements,myDocument));
-                                }       
+                                }
                             }
                     }
                     //End of airPane.render.showSelected.because.displayDesc
 
                     //Function to display the inner most stuff from the proof-tree
                     airPane.render.showSelected.because.moreInfo = function(ruleToFollow){
-                        //Terminating condition: 
+                        //Terminating condition:
                         // if the rule has for example - "pol:MA_Disability_Rule_1 tms:justification tms:premise"
                         // there are no more information to follow
                         var terminatingCondition = tabulator.kb.statementsMatching(ruleToFollow, ap_just, ap_prem, subject);
@@ -42745,21 +43027,21 @@ airPane.render = function(subject, myDocument) {
                            divPremises.appendChild(myDocument.createTextNode("No more information available from the reasoner!"));
                            divPremises.appendChild(myDocument.createElement('br'));
                            divPremises.appendChild(myDocument.createElement('br'));
-                       
+
                         }
                         else{
-                            
+
                             //Update the description div with the description at the next level
                             var currentRule = tabulator.kb.statementsMatching(undefined, undefined, ruleToFollow, subject);
-                            
+
                             //Find the corresponding description matching the currenrRule
 
                             var currentRuleDescSts = tabulator.kb.statementsMatching(undefined, undefined, currentRule[0].object);
-                            
+
                             for (var i=0; i<currentRuleDescSts.length; i++){
                                 if (currentRuleDescSts[i].predicate == ap_instanceOf.toString()){
                                     var currentRuleDesc = tabulator.kb.statementsMatching(currentRuleDescSts[i].subject, undefined, undefined, subject);
-                                    
+
                                     for (var j=0; j<currentRuleDesc.length; j++){
                                         if (currentRuleDesc[j].predicate == ap_description.toString() &&
                                         currentRuleDesc[j].object.termType == 'collection'){
@@ -42768,7 +43050,7 @@ airPane.render = function(subject, myDocument) {
                                             divDescription.appendChild(myDocument.createElement('br'));
                                             divDescription.appendChild(myDocument.createElement('br'));
                                         }
-                                    }	
+                                    }
                                 }
                             }
 
@@ -42780,28 +43062,28 @@ airPane.render = function(subject, myDocument) {
                                     break;
                                 }
                             }
-                            
+
                             var currentRuleSts = tabulator.kb.statementsMatching(correctCurrentRule, ap_just, undefined, subject);
                             var nextRuleSts = tabulator.kb.statementsMatching(currentRuleSts[0].object, ap_ruleName, undefined, subject);
                             ruleNameFound = nextRuleSts[0].object;
 
                             var currentRuleAntc = tabulator.kb.statementsMatching(currentRuleSts[0].object, ap_antcExpr, undefined, subject);
-                            
+
                             var currentRuleSubExpr = tabulator.kb.statementsMatching(currentRuleAntc[0].object, ap_subExpr, undefined, subject);
-    
+
                             var formulaFound = false;
                             var bnodeFound = false;
                             for (var i=0; i<currentRuleSubExpr.length; i++){
                                 if(currentRuleSubExpr[i].object.termType == 'formula'){
-                                    divPremises.appendChild(statementsAsTables(currentRuleSubExpr[i].object.statements, myDocument)); 
+                                    divPremises.appendChild(statementsAsTables(currentRuleSubExpr[i].object.statements, myDocument));
                                     formulaFound = true;
                                 }
                                 else if (currentRuleSubExpr[i].object.termType == 'bnode'){
                                     bnodeFound = true;
-                            
+
                                 }
                             }
-                            
+
                             if (bnodeFound){
                                 divPremises.appendChild(myDocument.createElement("br"));
                                 divPremises.appendChild(myDocument.createTextNode("  No premises applicable."));
@@ -42813,13 +43095,13 @@ airPane.render = function(subject, myDocument) {
                         }
                     }
                     //End of airPane.render.showSelected.because.moreInfo
-                    
+
                     //Function to bootstrap the natural language description div and the premises div
                     airPane.render.showSelected.because.justify = function(){ //Function Call 3
-                    
+
                         //Clear the contents of the premises div
                         myDocument.getElementById('premises').innerHTML='';
-                        airPane.render.showSelected.because.moreInfo(ruleNameFound);   //@@@@ make sure this rul would be valid at all times!      	
+                        airPane.render.showSelected.because.moreInfo(ruleNameFound);   //@@@@ make sure this rul would be valid at all times!
 
                         divJustification.appendChild(divPremises);
                         div.appendChild(divJustification);
@@ -42834,8 +43116,8 @@ airPane.render = function(subject, myDocument) {
                     justifyButton.setAttribute('value','More Information');
                     justifyButton.addEventListener('click',airPane.render.showSelected.because.justify,false);
                     div.appendChild(justifyButton);
-                                    
-                    //Add 2 spaces to leave some space between the 2 buttons, any better method?                
+
+                    //Add 2 spaces to leave some space between the 2 buttons, any better method?
                     div.appendChild(myDocument.createTextNode('   '));
                     div.appendChild(myDocument.createTextNode('   '));
 
@@ -42859,44 +43141,44 @@ airPane.render = function(subject, myDocument) {
                     var divDescription = myDocument.createElement("div");
                     divDescription.setAttribute('class', 'description');
                     divDescription.setAttribute('id', 'description');
-                    
+
                     //Div for the premises
                     var divPremises = myDocument.createElement("div");
                     divPremises.setAttribute('class', 'premises');
                     divPremises.setAttribute('id', 'premises');
-                    
+
                     //@@@@ what is this for?
                     var justificationSts;
-                    
-                    //Get all the triples with a air:description as the predicate
-                    var stsDesc = tabulator.kb.statementsMatching(undefined, ap_description, undefined, subject); 
 
-                    //You are bound to have more than one such triple, 
+                    //Get all the triples with a air:description as the predicate
+                    var stsDesc = tabulator.kb.statementsMatching(undefined, ap_description, undefined, subject);
+
+                    //You are bound to have more than one such triple,
                     //so iterates through all of them and figure out which belongs to the one that's referred from the drop down box
                     for (var j=0; j<stsDesc.length; j++){
-                        if (stsDesc[j].subject.termType == 'formula' && 
+                        if (stsDesc[j].subject.termType == 'formula' &&
                             stsDesc[j].object.termType == 'collection' &&
                             stsDesc[j].subject.statements[0].object.toString() == selected[0].toString()){
-                            
+
                             divDescription.appendChild(myDocument.createElement('br'));
                             airPane.render.showSelected.because.displayDesc(stsDesc[j].object);
                             divDescription.appendChild(myDocument.createElement('br'));
                             divDescription.appendChild(myDocument.createElement('br'));
                         }
                         divJustification.appendChild(divDescription);
-                        
-                    }	
-                    
+
+                    }
+
                     //@@@@@@@@@ Why was this here???
                     //div.appendChild(divJustification);
-                    
+
                     //Leave spaces
                     divJustification.appendChild(myDocument.createElement('br'));
                     divJustification.appendChild(myDocument.createElement('br'));
-                    
+
                     //Yes, we are showing premises next...
                     divJustification.appendChild(myDocument.createElement('b').appendChild(myDocument.createTextNode('Premises:')));
-                    
+
                     //Leave spaces
                     divJustification.appendChild(myDocument.createElement('br'));
                     divJustification.appendChild(myDocument.createElement('br'));
@@ -42912,15 +43194,15 @@ airPane.render = function(subject, myDocument) {
                         divPremises.appendChild(a);
                         divPremises.appendChild(myDocument.createElement('br'));
                         divPremises.appendChild(myDocument.createElement('br'));
-                        
+
                     }
-                        
+
                     for (var j=0; j<stsJust.length; j++){
                         if (stsJust[j].subject.termType == 'formula' && stsJust[j].object.termType == 'bnode'){
-                        
+
                             var ruleNameSts = tabulator.kb.statementsMatching(stsJust[j].object, ap_ruleName, undefined, subject);
-                            ruleNameFound =	ruleNameSts[0].object; // This would be the initial rule name from the 
-                                                // statement containing the formula		
+                            ruleNameFound =	ruleNameSts[0].object; // This would be the initial rule name from the
+                                                // statement containing the formula
                             if (!noPremises){
                                 var t1 = tabulator.kb.statementsMatching(stsJust[j].object, ap_antcExpr, undefined, subject);
                                 for (var k=0; k<t1.length; k++){
@@ -42930,16 +43212,16 @@ airPane.render = function(subject, myDocument) {
                                             justificationSts = t2;
                                             divPremises.appendChild(myDocument.createElement('br'));
                                             //divPremises.appendChild(myDocument.createElement('br'));
-                                            divPremises.appendChild(statementsAsTables(t2[l].object.statements, myDocument)); 
-                                           
+                                            divPremises.appendChild(statementsAsTables(t2[l].object.statements, myDocument));
+
                                             //@@@@ The following piece of code corresponds to going one level of the justification proof to figure out
                                             // whether there are any premises
                                             //it is commented out, because, the user need not know that at each level there are no premises associated
                                             //that particular step
-                                            
+
                                             /*if (t2[l].object.statements.length == 0){
                                                 alert("here");
-                        
+
                                                 divPremises.appendChild(myDocument.createTextNode("Nothing interesting found in "));
                                                 var a = myDocument.createElement('a')
                                                 a.setAttribute('href', unescape(logFileURI));
@@ -42947,29 +43229,29 @@ airPane.render = function(subject, myDocument) {
                                                 divPremises.appendChild(a);
                                             }
                                             else{
-                                                     divPremises.appendChild(statementsAsTables(t2[l].object.statements, myDocument)); 
+                                                     divPremises.appendChild(statementsAsTables(t2[l].object.statements, myDocument));
                                             }
                                            */
                                             //divPremises.appendChild(myDocument.createElement('br'));
                                             divPremises.appendChild(myDocument.createElement('br'));
                                         }
-                                   }     
+                                   }
                                 }
                             }
                         }
                     }
-                    
-                    divJustification.appendChild(divPremises);   
-                    div.appendChild(divJustification); 
-                      
+
+                    divJustification.appendChild(divPremises);
+                    div.appendChild(divJustification);
+
                 }
                 //End of airPane.render.showSelected.because
-                
+
                 airPane.render.showSelected.addInitialButtons(); //Add the "Why Button"
              }
         }
     }
-    
+
 
     //First add a bogus element
     var optionElBogus = myDocument.createElement("option");
@@ -42984,12 +43266,12 @@ airPane.render = function(subject, myDocument) {
         optionEl.appendChild(optionText);
         selectEl.appendChild(optionEl);
     }
-    
+
     div.appendChild(selectEl);
     selectEl.addEventListener('change', airPane.render.showSelected, false);
     div.appendChild(myDocument.createElement('br'));
     div.appendChild(myDocument.createElement('br'));
-        
+
 	return div;
 };
 
@@ -43016,7 +43298,7 @@ airPane.renderReasonsForStatement = function renderReasonsForStatement(st,
 		divJustification.appendChild(divDescription);
                 //Make a copy of the orange box
 		divDescription = divDescription.cloneNode(false); //shallow:true
-            
+
             }
 	} else{
 	  airPane.render.because.displayDesc(stsDesc[0].object,
@@ -43024,7 +43306,7 @@ airPane.renderReasonsForStatement = function renderReasonsForStatement(st,
 	  divJustification.appendChild(divDescription);
 	}
 };
-    
+
 airPane.renderExplanationForStatement = function renderExplanationForStatement(st){
     var subject = undefined; //not restricted to a source, but kb
     var div = myDocument.createElement("div"); //the returned div
@@ -43032,35 +43314,11 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
     var stsCompliant;
     var stsNonCompliant;
     var stsFound;
-    var stsJust = tabulator.kb.statementsMatching(st, ap_just); 
-	
-    
+    var stsJust = tabulator.kb.statementsMatching(st, ap_just);
+
+
     var divOutcome = myDocument.createElement("div"); //To give the "yes/no" type answer indicating the concise reason
 
-        /*
-	for (var j=0; j<stsJust.length; j++){
-		if (stsJust[j].subject.termType == 'formula'){
-			var sts = stsJust[j].subject.statements;
-			for (var k=0; k<sts.length; k++){
-				if (sts[0].predicate.toString() == ap_compliant.toString()){
-					stsCompliant = sts[k];
-				} 
-				if (sts[0].predicate.toString() == ap_nonCompliant.toString()){
-					stsNonCompliant = sts[k];
-				}
-			}
-		}    
-	}
-
-	if (stsNonCompliant != undefined){
-		divClass = 'nonCompliantPane';
-		stsFound =  stsNonCompliant;
-	}
-	if (stsCompliant != undefined){
-		divClass = 'compliantPane';
-		stsFound =  stsCompliant;
-	}
-        */
 
     var divClass = 'compliantPane'; //a statement is natively good :)
     //stsFound = kb.anyStatementsMatching(st, ap_just);
@@ -43124,19 +43382,19 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 
     airPane.render.addInitialButtons = function(){ //Function Call 1
 
-        //Create and append the 'Why?' button        
+        //Create and append the 'Why?' button
         var becauseButton = myDocument.createElement('input');
         becauseButton.setAttribute('type','button');
         becauseButton.setAttribute('id','whyButton');
         becauseButton.setAttribute('value','Why?');
         div.appendChild(becauseButton);
         becauseButton.addEventListener('click',airPane.render.because,false);
-                            
+
         div.appendChild(myDocument.createTextNode('   '));//To leave some space between the 2 buttons, any better method?
     }
-    
+
     airPane.render.hide = function(){
-    
+
         //Remove the justification div from the pane
         var d = myDocument.getElementById('dataContentPane');
         var j = myDocument.getElementById('justification');
@@ -43151,26 +43409,26 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
         }
 
         airPane.render.addInitialButtons();
-                    
+
     }
 
     airPane.render.because = function(){ //Function Call 2
-    
+
         var cwa = ap_air('closed-world-assumption');
         var cwaStatements = tabulator.kb.statementsMatching(undefined, cwa, undefined, subject);
         var noPremises = false;
         if (cwaStatements.length > 0){
             noPremises = true;
         }
-        
-           //Disable the 'why' button, otherwise clicking on that will keep adding the divs 
+
+           //Disable the 'why' button, otherwise clicking on that will keep adding the divs
            var whyButton = myDocument.getElementById('whyButton');
         var d = myDocument.getElementById('dataContentPane');
         if (d != null && whyButton != null)
             d.removeChild(whyButton);
-    
+
         airPane.render.because.displayDesc = function(obj, divDescription){
-	  //@argument obj: most likely a [] that has 
+	  //@argument obj: most likely a [] that has
 	  //a tms:antecedent-expr and a tms:rule-name
 	  var aAnd_justification = tabulator.kb.the(obj, ap_antcExpr);
 	  var subExprs = tabulator.kb.each(aAnd_justification, ap_subExpr);
@@ -43179,14 +43437,14 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 	    premiseFormula = subExprs[0];
 	  else
 	    premiseFormula = subExprs[1];
-	  divDescription.waitingFor = []; //resources of more information 
+	  divDescription.waitingFor = []; //resources of more information
                                           //this reason is waiting for
-	  divDescription.informationFound = false; //true if an extra 
+	  divDescription.informationFound = false; //true if an extra
 	               //information is found and we can stop the throbber
 	  function dumpFormula(formula, firstLevel){
 	    for (var i=0;i<formula.statements.length;i++){
 	      var st = formula.statements[i];
-	      var elements_to_display = [st.subject, st.predicate, 
+	      var elements_to_display = [st.subject, st.predicate,
 					 st.object];
 	      var p = null; //the paragraph element the description is dumped to
 	      if (firstLevel){
@@ -43228,9 +43486,9 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 		  break;
 		case 'literal':
 		  //if (obj.elements[i].value != undefined)
-		  p.appendChild(myDocument.createTextNode(element.value)); 
-		  
-		}       
+		  p.appendChild(myDocument.createTextNode(element.value));
+
+		}
 	      }
 	      p.appendChild(myDocument.createTextNode(". "));
 	      if(firstLevel){
@@ -43257,7 +43515,7 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 						      click_cb,
 						      false)
 		      }
-		      if (throbber_p && throbber_callback) 
+		      if (throbber_p && throbber_callback)
 			throbber_callback();
 		      return false; //no need to fire this function
 		    }
@@ -43280,11 +43538,11 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 		      }
 		    }
 		    if (divDescription.waitingFor.length == 0){
-		      if (throbber_p && throbber_callback) 
+		      if (throbber_p && throbber_callback)
 			throbber_callback();
 		      return false; //the last resource this div is waiting for
 		    }
-		    if (throbber_p && throbber_callback) 
+		    if (throbber_p && throbber_callback)
 		      throbber_callback();
 		    return true;
 		  };
@@ -43310,14 +43568,14 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 	  divDescription.appendChild(throbber_p);
 	  function throbber_callback(uri){
 	    divDescription.waitingFor.remove(uri);
-	    
+
 	    if (divDescription.informationFound){
 	      throbber_p.removeChild(throbber_p.firstChild);
 	      throbber_p.textContent = "More information found!";
 	      return false;
 	    } else if (divDescription.waitingFor.length == 0){
-	      
-	      //The final call to this function. But the above callbacks 
+
+	      //The final call to this function. But the above callbacks
 	      //might not have been fired. So check all. Well...
               //It takes time to close the world
 	      //@@This method assumes there's only one thread for this js.
@@ -43350,11 +43608,11 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 // 	  }
 	  for (var i=0;i<divDescription.waitingFor.length;i++)
 	    sf.lookUpThing(tabulator.kb.sym(divDescription.waitingFor[i]));
-	  
+
 	} //function airPane.render.because.displayDesc
 
         airPane.render.because.moreInfo = function(ruleToFollow){
-            //Terminating condition: 
+            //Terminating condition:
             // if the rule has for example - "pol:MA_Disability_Rule_1 tms:justification tms:premise"
             // there are no more information to follow
             var terminatingCondition = tabulator.kb.statementsMatching(ruleToFollow, ap_just, ap_prem, subject);
@@ -43365,21 +43623,21 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
                divPremises.appendChild(myDocument.createTextNode("No more information available from the reasoner!"));
                divPremises.appendChild(myDocument.createElement('br'));
                divPremises.appendChild(myDocument.createElement('br'));
-           
+
             }
             else{
-                
+
                 //Update the description div with the description at the next level
                 var currentRule = tabulator.kb.statementsMatching(undefined, undefined, ruleToFollow);
-                
+
                 //Find the corresponding description matching the currenrRule
 
                 var currentRuleDescSts = tabulator.kb.statementsMatching(undefined, undefined, currentRule[0].object);
-                
+
                 for (var i=0; i<currentRuleDescSts.length; i++){
                     if (currentRuleDescSts[i].predicate == ap_instanceOf.toString()){
                         var currentRuleDesc = tabulator.kb.statementsMatching(currentRuleDescSts[i].subject, undefined, undefined, subject);
-                        
+
                         for (var j=0; j<currentRuleDesc.length; j++){
                             if (currentRuleDesc[j].predicate == ap_description.toString() &&
                             currentRuleDesc[j].object.termType == 'collection'){
@@ -43388,33 +43646,33 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
                                 divDescription.appendChild(myDocument.createElement('br'));
                                 divDescription.appendChild(myDocument.createElement('br'));
                             }
-                        }    
+                        }
                     }
                 }
 
-                
+
                 var currentRuleSts = tabulator.kb.statementsMatching(currentRule[0].subject, ap_just, undefined);
-                
+
                 var nextRuleSts = tabulator.kb.statementsMatching(currentRuleSts[0].object, ap_ruleName, undefined);
                 ruleNameFound = nextRuleSts[0].object;
 
                 var currentRuleAntc = tabulator.kb.statementsMatching(currentRuleSts[0].object, ap_antcExpr, undefined);
-                
+
                 var currentRuleSubExpr = tabulator.kb.statementsMatching(currentRuleAntc[0].object, ap_subExpr, undefined);
 
                 for (var i=0; i<currentRuleSubExpr.length; i++){
                     if(currentRuleSubExpr[i].object.termType == 'formula')
-                        divPremises.appendChild(statementsAsTables(currentRuleSubExpr[i].object.statements, myDocument)); 
+                        divPremises.appendChild(statementsAsTables(currentRuleSubExpr[i].object.statements, myDocument));
                 }
 
             }
         }
-        
+
         airPane.render.because.justify = function(){ //Function Call 3
-        
+
             //Clear the contents of the div
             myDocument.getElementById('premises').innerHTML='';
-            airPane.render.because.moreInfo(ruleNameFound);                
+            airPane.render.because.moreInfo(ruleNameFound);
 
             divJustification.appendChild(divPremises);
             div.appendChild(divJustification);
@@ -43429,7 +43687,7 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
         justifyButton.setAttribute('value','More Information');
         justifyButton.addEventListener('click',airPane.render.because.justify,false);
         div.appendChild(justifyButton);
-                        
+
         div.appendChild(myDocument.createTextNode('   '));//To leave some space between the 2 buttons, any better method?
         div.appendChild(myDocument.createTextNode('   '));
 
@@ -43449,24 +43707,24 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
         var divPremises = myDocument.createElement("div");
         divPremises.setAttribute('class', 'premises');
         divPremises.setAttribute('id', 'premises');
-        */ 
-        
-        
+        */
+
+
         var justificationSts;
-        
-        
+
+
 	airPane.renderReasonsForStatement(st, divJustification);
-    
-        
+
+
         div.appendChild(divJustification);
-	
+
         /*
         divJustification.appendChild(myDocument.createElement('br'));
         divJustification.appendChild(myDocument.createElement('br'));
         divJustification.appendChild(myDocument.createElement('b').appendChild(myDocument.createTextNode('Premises:')));
         divJustification.appendChild(myDocument.createElement('br'));
         divJustification.appendChild(myDocument.createElement('br'));
-	
+
         if (noPremises){
             divPremises.appendChild(myDocument.createElement('br'));
             divPremises.appendChild(myDocument.createElement('br'));
@@ -43477,15 +43735,15 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
             divPremises.appendChild(a);
             divPremises.appendChild(myDocument.createElement('br'));
             divPremises.appendChild(myDocument.createElement('br'));
-            
+
         }
-            
+
         for (var j=0; j<stsJust.length; j++){
             if (stsJust[j].subject.termType == 'formula' && stsJust[j].object.termType == 'bnode'){
-            
+
                 var ruleNameSts = kb.statementsMatching(stsJust[j].object, ap_ruleName, undefined, subject);
-                ruleNameFound =    ruleNameSts[0].object; // This would be the initial rule name from the 
-                                    // statement containing the formula        
+                ruleNameFound =    ruleNameSts[0].object; // This would be the initial rule name from the
+                                    // statement containing the formula
                 if (!noPremises){
                     var t1 = kb.statementsMatching(stsJust[j].object, ap_antcExpr, undefined, subject);
                     for (var k=0; k<t1.length; k++){
@@ -43503,35 +43761,31 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
                                     divPremises.appendChild(a);
                                 }
                                 else{
-                                    divPremises.appendChild(statementsAsTables(t2[l].object.statements, myDocument)); 
+                                    divPremises.appendChild(statementsAsTables(t2[l].object.statements, myDocument));
                                 }
                                 divPremises.appendChild(myDocument.createElement('br'));
                                 divPremises.appendChild(myDocument.createElement('br'));
                             }
-                       }     
+                       }
                     }
                 }
             }
         }
-        
+
         divJustification.appendChild(divPremises);
-        */    
-          
+        */
+
     }//end of airPane.render.because
 
 
     //airPane.render.addInitialButtons();
     airPane.render.because();
-        
+
     return div;
 }
 tabulator.panes.register(airPane, false);
 
 // ends
-
-
-
-
 
 // ###### Finished expanding js/panes/airPane.js ##############
 
@@ -43605,11 +43859,12 @@ tabulator.panes.register( {
 **
 **  This outline pane lists the members of a class
 */
+
 tabulator.panes.register( {
 
     icon: tabulator.Icon.src.icon_instances,
 
-    name: 'classInstance', // @@ 'folder'
+    name: 'classInstance',
 
     label: function(subject) {
       var n = tabulator.kb.each(
@@ -43633,6 +43888,7 @@ tabulator.panes.register( {
         }
         var div = myDocument.createElement("div")
         div.setAttribute('class', 'instancePane');
+        div.setAttribute('style', '  border-top: solid 1px #777; border-bottom: solid 1px #777; margin-top: 0.5em; margin-bottom: 0.5em ')
 
         // If this is an LDP container just list the directory
         var noHiddenFiles = function(st){
@@ -43685,6 +43941,109 @@ tabulator.panes.register( {
 //ends
 
 // ###### Finished expanding js/panes/classInstancePane.js ##############
+// ###### Expanding js/panes/dynamic/dynamicPanes.js ##############
+/*   Dynamic loading of panes from metadata
+**
+**  This outline pane shows an external sanboxed viewer for the subject
+**  according to metadata
+*/
+
+tabulator.panes.panesFromData = function(subject){
+  var ns = tabulator.ns, kb = tabulator.kb
+  var apps = kb.each(undefined, ns.rdf('type'), ns.solid('ApplicationRegistration'))
+  var t = kb.findTypeURIs(subject)
+  for (var i=0; i<apps.length; i++){
+    var app = apps[i]
+    try {
+      var icon = kb.any(app, ns.foaf('img')).value  // @@ check doap voab
+      var label = kb.any(app, ns.rdfs('label')).value
+      var URITemplate = kb.any(app, ns.solid('URITemplate')).value
+      var appPage = kb.any(app, ns.solid('appPage')).uri
+      var matches, types = kb.each(app, ns.solid('forClass'))
+    } catch(e) {
+      console.log("Error getting app details " + app + ": " + e)
+      continue;
+    }
+    for (var j=0; j< types.length; j++){
+      if (t[types[j].uri]) {
+        matches = true; break;
+      }
+    }
+    var render = function(subject, dom, template){
+      var div = myDocument.createElement("div");
+      div.setAttribute('class', 'docView')
+      var iframe = myDocument.createElement("IFRAME")
+      iframe.setAttribute('src', subject.uri)    // allow-same-origin
+      iframe.setAttribute('class', 'doc')
+      iframe.setAttribute('sandbox', 'allow-same-origin allow-forms'); // allow-scripts ?? no documents should be static
+      // https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe
+      iframe.setAttribute('style', 'resize = both; height: 120em; width:80em;')
+//        iframe.setAttribute('height', '480')
+//        iframe.setAttribute('width', '640')
+      var tr = myDocument.createElement('TR')
+      tr.appendChild(iframe)
+      div.appendChild(tr)
+      return div
+    }
+    if (matches){
+      var pane = { icon: icon, label: function(){return label}}
+    }
+  }
+}
+// black rocket not ongh-pages: js/panes/common/icons/noun_113198.svg
+// red rocket:  js/panes/warp/icons/warp-icon.png
+tabulator.Icon.src.icon_warp = tabulator.scriptBase + 'js/panes/warp/icons/warp-icon.png';
+tabulator.Icon.tooltips[tabulator.Icon.src.icon_warp] = 'warp'
+tabulator.panes.register({
+
+    icon: tabulator.Icon.src.icon_warp,
+
+    name: 'warp',
+
+    // same as classInstancePane
+    label: function(subject, myDocument) {
+      var n = tabulator.kb.each(
+          undefined, tabulator.ns.rdf( 'type'), subject).length;
+      if (n > 0) return "List (" + n + ")";  // Show how many in hover text
+      n = tabulator.kb.each(
+          subject, tabulator.ns.ldp( 'contains')).length;
+      if (n > 0) {
+        return "Contents (" + n + ")"  // Show how many in hover text
+      }
+      return null;     // Suppress pane otherwise
+    },
+
+    render: function(subject, myDocument) {
+        var div = myDocument.createElement("div")
+
+        //  @@ When we can, use CSP to turn off scripts within the iframe
+        div.setAttribute('class', 'warp')
+        var iframe = myDocument.createElement("IFRAME")
+        iframe.setAttribute('src', subject.uri)    // allow-same-origin
+        iframe.setAttribute('class', 'doc')
+        iframe.setAttribute('sandbox', 'allow-same-origin allow-forms allow-scripts'); // allow-scripts ?? no documents should be static
+        // https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe
+
+        // Like https://linkeddata.github.io/warp/#/list/http/localhost:3080/timbl/Public/Test/Warp/
+        var warpURI = 'https://linkeddata.github.io/warp/#/list/http'
+        var p = subject.uri.indexOf('//')
+        if (subject.uri.slice(0,6) === 'https:') {
+          warpURI += 's'
+        }
+        warpURI += subject.uri.slice(p + 1)
+        iframe.setAttribute('src', warpURI)
+        iframe.setAttribute('style', 'resize = both; height: 120em; width:80em;')
+//        iframe.setAttribute('height', '480')
+//        iframe.setAttribute('width', '640')
+        var tr = myDocument.createElement('TR')
+        tr.appendChild(iframe)
+        div.appendChild(tr)
+        return div
+    }
+}, true);
+//ends
+
+// ###### Finished expanding js/panes/dynamic/dynamicPanes.js ##############
 // ###### Expanding js/panes/slideshow/slideshowPane.js ##############
 /*   slideshow Pane
 **
@@ -43883,7 +44242,7 @@ var makeBSS = function (el, options) {
 // load also js/panes/slideshow/better-simple-slideshow/css/simple-slideshow-styles.css
 
 // These used to be in js/init/icons.js but are better in the pane.
-tabulator.Icon.src.icon_slideshow = iconPrefix + 'js/panes/common/icons/noun_138712.svg';
+tabulator.Icon.src.icon_slideshow = tabulator.iconPrefix + 'js/panes/common/icons/noun_138712.svg';
 tabulator.Icon.tooltips[tabulator.Icon.src.icon_slideshow] = 'Slideshow'
 
 tabulator.panes.register( {
@@ -44397,109 +44756,6 @@ tabulator.panes.register ({
 
 // ###### Finished expanding js/panes/RDFXMLPane.js ##############
 
-// ###### Expanding js/panes/dynamic/dynamicPanes.js ##############
-/*   Dynamic loading of panes from metadata
-**
-**  This outline pane shows an external sanboxed viewer for the subject
-**  according to metadata
-*/
-
-tabulator.panes.panesFromData = function(subject){
-  var ns = tabulator.ns, kb = tabulator.kb
-  var apps = kb.each(undefined, ns.rdf('type'), ns.solid('ApplicationRegistration'))
-  var t = kb.findTypeURIs(subject)
-  for (var i=0; i<apps.length; i++){
-    var app = apps[i]
-    try {
-      var icon = kb.any(app, ns.foaf('img')).value  // @@ check doap voab
-      var label = kb.any(app, ns.rdfs('label')).value
-      var URITemplate = kb.any(app, ns.solid('URITemplate')).value
-      var appPage = kb.any(app, ns.solid('appPage')).uri
-      var matches, types = kb.each(app, ns.solid('forClass'))
-    } catch(e) {
-      console.log("Error getting app details " + app + ": " + e)
-      continue;
-    }
-    for (var j=0; j< types.length; j++){
-      if (t[types[j].uri]) {
-        matches = true; break;
-      }
-    }
-    var render = function(subject, dom, template){
-      var div = myDocument.createElement("div");
-      div.setAttribute('class', 'docView')
-      var iframe = myDocument.createElement("IFRAME")
-      iframe.setAttribute('src', subject.uri)    // allow-same-origin
-      iframe.setAttribute('class', 'doc')
-      iframe.setAttribute('sandbox', 'allow-same-origin allow-forms'); // allow-scripts ?? no documents should be static
-      // https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe
-      iframe.setAttribute('style', 'resize = both; height: 120em; width:80em;')
-//        iframe.setAttribute('height', '480')
-//        iframe.setAttribute('width', '640')
-      var tr = myDocument.createElement('TR')
-      tr.appendChild(iframe)
-      div.appendChild(tr)
-      return div
-    }
-    if (matches){
-      var pane = { icon: icon, label: function(){return label}}
-    }
-  }
-}
-// black rocket not ongh-pages: js/panes/common/icons/noun_113198.svg
-// red rocket:  js/panes/warp/icons/warp-icon.png
-tabulator.Icon.src.icon_warp = tabulator.scriptBase + 'js/panes/warp/icons/warp-icon.png';
-tabulator.Icon.tooltips[tabulator.Icon.src.icon_warp] = 'warp'
-tabulator.panes.register({
-
-    icon: tabulator.Icon.src.icon_warp,
-
-    name: 'warp',
-
-    // same as classInstancePane
-    label: function(subject, myDocument) {
-      var n = tabulator.kb.each(
-          undefined, tabulator.ns.rdf( 'type'), subject).length;
-      if (n > 0) return "List (" + n + ")";  // Show how many in hover text
-      n = tabulator.kb.each(
-          subject, tabulator.ns.ldp( 'contains')).length;
-      if (n > 0) {
-        return "Contents (" + n + ")"  // Show how many in hover text
-      }
-      return null;     // Suppress pane otherwise
-    },
-
-    render: function(subject, myDocument) {
-        var div = myDocument.createElement("div")
-
-        //  @@ When we can, use CSP to turn off scripts within the iframe
-        div.setAttribute('class', 'warp')
-        var iframe = myDocument.createElement("IFRAME")
-        iframe.setAttribute('src', subject.uri)    // allow-same-origin
-        iframe.setAttribute('class', 'doc')
-        iframe.setAttribute('sandbox', 'allow-same-origin allow-forms allow-scripts'); // allow-scripts ?? no documents should be static
-        // https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe
-
-        // Like https://linkeddata.github.io/warp/#/list/http/localhost:3080/timbl/Public/Test/Warp/
-        var warpURI = 'https://linkeddata.github.io/warp/#/list/http'
-        var p = subject.uri.indexOf('//')
-        if (subject.uri.slice(0,6) === 'https:') {
-          warpURI += 's'
-        }
-        warpURI += subject.uri.slice(p + 1)
-        iframe.setAttribute('src', warpURI)
-        iframe.setAttribute('style', 'resize = both; height: 120em; width:80em;')
-//        iframe.setAttribute('height', '480')
-//        iframe.setAttribute('width', '640')
-        var tr = myDocument.createElement('TR')
-        tr.appendChild(iframe)
-        div.appendChild(tr)
-        return div
-    }
-}, true);
-//ends
-
-// ###### Finished expanding js/panes/dynamic/dynamicPanes.js ##############
 
 // User configured:
 // ###### Expanding js/panes/form/pane.js ##############
@@ -44508,16 +44764,16 @@ tabulator.panes.register({
 **
 */
 
-    
-tabulator.Icon.src.icon_form = iconPrefix + 'js/panes/form/form-b-22.png';
+
+tabulator.Icon.src.icon_form = tabulator.iconPrefix + 'js/panes/form/form-b-22.png';
 tabulator.Icon.tooltips[tabulator.Icon.src.icon_form] = 'forms';
 
 tabulator.panes.register( {
 
     icon: tabulator.Icon.src.icon_form,
-    
+
     name: 'form',
-    
+
     // Does the subject deserve this pane?
     label: function(subject) {
         var n = tabulator.panes.utils.formsFor(subject).length;
@@ -44533,18 +44789,18 @@ tabulator.panes.register( {
         var DC = $rdf.Namespace('http://purl.org/dc/elements/1.1/');
         var DCT = $rdf.Namespace('http://purl.org/dc/terms/');
         var UI = $rdf.Namespace('http://www.w3.org/ns/ui#');
-        
+
 
         var mention = function complain(message, style){
             var pre = dom.createElement("p");
             pre.setAttribute('style', style ? style :'color: grey; background-color: white');
             box.appendChild(pre).textContent = message;
             return pre
-        } 
+        }
 
         var complain = function complain(message, style){
             mention(message, 'style', style ? style :'color: grey; background-color: #fdd;');
-        } 
+        }
 
         var complainIfBad = function(ok,body){
             if (ok) {
@@ -44560,15 +44816,15 @@ tabulator.panes.register( {
             var box2 = thisPane.render(subject, dom);
             parent.replaceChild(box2, box);
         };
-        
-        if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.sparqlUpdate(kb);
-         
+
+        if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(kb);
+
         //kb.statementsMatching(undefined, undefined, subject);
 
         // The question of where to store this data about subject
         // This in general needs a whole lot more thought
         // and it connects to the discoverbility through links
-        
+
         var t = kb.findTypeURIs(subject);
 
         var me_uri = tabulator.preferences.get('me');
@@ -44586,7 +44842,7 @@ to put this new information")
             if (ws.length = 0) {
                 mention("You don't seem to have any workspaces defined.  \
 A workspace is a place on the web (http://..) or in \
-the file system (file:///) to store application data.\n")            
+the file system (file:///) to store application data.\n")
             } else {
                 //@@
             }
@@ -44594,15 +44850,15 @@ the file system (file:///) to store application data.\n")
 
 
         // Render forms using a given store
-        
+
         var renderFormsFor = function(store, subject) {
             kb.fetcher.nowOrWhenFetched(store.uri, subject, function(ok, body) {
                 if (!ok) return complain("Cannot load store "+store.uri + ': '+ body);
 
                 //              Render the forms
-                
+
                 var forms = tabulator.panes.utils.formsFor(subject);
-                
+
                 // complain('Form for editing this form:');
                 for (var i=0; i<forms.length; i++) {
                     var form = forms[i];
@@ -44620,7 +44876,7 @@ the file system (file:///) to store application data.\n")
                     anchor.setAttribute('href', form.uri);
                     heading.appendChild(anchor)
                     anchor.textContent = tabulator.Util.label(form, true);
-                    
+
                     /*  Keep tis as a reminder to let a New one have its URI given by user
                     mention("Where will this information be stored?")
                     var ele = dom.createElement('input');
@@ -44631,7 +44887,7 @@ the file system (file:///) to store application data.\n")
                     ele.setAttribute('style', 'font-size: 80%; color:#222;');
                     ele.value = store.uri
                     */
-                    
+
                     tabulator.panes.utils.appendForm(dom, box, {}, subject, form, store, complainIfBad);
                 }
 
@@ -44650,9 +44906,9 @@ the file system (file:///) to store application data.\n")
         if (subject.uri != docuri
             && tabulator.sparql.editable(docuri, kb))
             store = kb.sym($rdf.Util.uri.docpart(subject.uri)); // an editable data file with hash
-            
+
         else if (store = kb.any(kb.sym(docuri), ns.link('annotationStore'))) {
-            // 
+            //
         }
         // 2. where stuff is already stored
         if (!store) {
@@ -44666,12 +44922,12 @@ the file system (file:///) to store application data.\n")
                 if (uri && tabulator.sparql.editable(uri)) {
                     store = kb.sym(uri);
                     break;
-                }            
+                }
             }
         }
 
         // 3. In a workspace store
-        
+
         var followeach = function(kb, subject, path) {
             if (path.length == 0) return [ subject ];
             var oo = kb.each(subj, path[0]);
@@ -44684,7 +44940,7 @@ the file system (file:///) to store application data.\n")
 
         var date = '2014'; // @@@@@@@@@@@@ pass as parameter
 
-        
+
 
        if (store) {
             // mention("@@ Ok, we have a store <" + store.uri + ">.");
@@ -44709,20 +44965,17 @@ the file system (file:///) to store application data.\n")
                         complain("Note no suitable annotation store in activity: " + act);
                     }
                 }
-                
+
            });
            box.appendChild(foobarbaz);
         };
-        
+
         return box;
     }
 
 }, false);
 
 //ends
-
-
-
 
 // ###### Finished expanding js/panes/form/pane.js ##############
 
@@ -44741,22 +44994,22 @@ the file system (file:///) to store application data.\n")
 ** like "this" where th string is seen by the user and so I18n is an issue.
 */
 
-    
+
 // These used to be in js/init/icons.js but are better in the pane.
 tabulator.Icon.src.icon_paperclip = tabulator.iconPrefix + 'js/panes/attach/tbl-paperclip-22.png';
 tabulator.Icon.tooltips[tabulator.Icon.src.icon_bug] = 'Attachments'
 
-if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.sparqlUpdate(tabulator.kb);
+if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(tabulator.kb);
 
 tabulator.panes.register( {
 
     icon: tabulator.Icon.src.icon_paperclip,
-    
+
     name: 'attachments',
-    
+
     // Does the subject deserve an issue pane?
     //
-    //  In this case we will render any thing which is in any subclass of 
+    //  In this case we will render any thing which is in any subclass of
     //  certain classes, or also the certain classes themselves, as a
     //  triage tool for correlating many attachees with attachments.
     // We also offer the pane for anything of any class which just has an attachment already.
@@ -44773,7 +45026,7 @@ tabulator.panes.register( {
         //subject.uri == 'http://www.w3.org/2000/10/swap/pim/qif#Transaction' ||
         QU('Transaction') in kb.findSuperClassesNT(subject) ||
         kb.holds(subject, WF('attachment'))) return "attachments";
-        return null; 
+        return null;
     },
 
     render: function(subject, dom) {
@@ -44785,10 +45038,10 @@ tabulator.panes.register( {
         var DCT = $rdf.Namespace('http://purl.org/dc/terms/');
         var TRIP = $rdf.Namespace('http://www.w3.org/ns/pim/trip#');
         var QU = $rdf.Namespace('http://www.w3.org/2000/10/swap/pim/qif#');
-        
-        
-   //////////////////////////////////////////////////////////////////////////////     
-        
+
+
+   //////////////////////////////////////////////////////////////////////////////
+
         var setModifiedDate = function(subj, kb, doc) {
             var deletions = kb.statementsMatching(subject, DCT('modified'));
             var deletions = deletions.concat(kb.statementsMatching(subject, WF('modifiedBy')));
@@ -44802,7 +45055,7 @@ tabulator.panes.register( {
             pre.setAttribute('style', 'background-color: pink');
             div.appendChild(pre);
             pre.appendChild(dom.createTextNode(message));
-        } 
+        }
         var thisPane = this;
         var rerender = function(div) {
             var parent  = div.parentNode;
@@ -44812,7 +45065,7 @@ tabulator.panes.register( {
 
         // Where can we write about this thing?
         //
-        // Returns term for document or null 
+        // Returns term for document or null
         var findStore = function(kb, subject) {
             var docURI = tabulator.rdf.Util.uri.docpart(subject.uri);
             if (tabulator.sparql.editable(docURI, kb)) return kb.sym(docURI);
@@ -44821,7 +45074,7 @@ tabulator.panes.register( {
             return store;
         }
 
-        
+
         var div = dom.createElement("div");
         var esc = tabulator.Util.escapeForXML;
         div.setAttribute('class', 'attachPane');
@@ -44831,7 +45084,7 @@ tabulator.panes.register( {
 
         var predicate =  WF('attachment');
         var range = QU('SupportingDocument');
-        
+
         var subjects;
         var multi;
         var options = {};
@@ -44839,12 +45092,12 @@ tabulator.panes.register( {
         var currentSubject = null, currentObject = null;
         var currentSubjectItem = null, currentObjectItem = null;
         var objectType = QU('SupportingDocument');
-        
+
         // Find all members of the class which we know about
         // and sort them by an appropriate property.   @@ Move to library
         //
-        
-        var getSortKeySimple =  function(c) {         
+
+        var getSortKeySimple =  function(c) {
             var sortBy = kb.sym({
                 'http://www.w3.org/2005/01/wf/flow#Task' :
                     'http://purl.org/dc/elements/1.1/created',
@@ -44854,13 +45107,13 @@ tabulator.panes.register( {
                     'http://www.w3.org/2000/10/swap/pim/qif#date',
                 'http://www.w3.org/2000/10/swap/pim/qif#SupportingDocument':
                     'http://purl.org/dc/elements/1.1/date'} [subject.uri]);
-                    
+
             if (!sortBy) {
                 sortBy = kb.any(subject, tabulator.ns.ui('sortBy'));
             }
             return sortBy;
         }
-        
+
         var getSortKey = function(c) {
             var k = getSortKeySimple(c.uri);
             if (k) return k;
@@ -44871,9 +45124,9 @@ tabulator.panes.register( {
             }
             return undefined; // failure
         }
-        
+
         var getMembersAndSort = function(subject) {
-        
+
             var sortBy = getSortKey(subject);
             var u, x, key, uriHash = kb.findMemberURIs(subject);
             var pairs = [], subjects = [];
@@ -44902,7 +45155,7 @@ tabulator.panes.register( {
             }
             return subjects;
         };
-        
+
         // Set up a triage of many class members against documents or just one
         if (subject.uri ==  'http://www.w3.org/ns/pim/trip#Trip' ||
             QU('Transaction') in kb.findSuperClassesNT(subject)
@@ -44923,7 +45176,7 @@ tabulator.panes.register( {
         //var objects = kb.each(undefined, ns.rdf('type'), range);
         var objects = getMembersAndSort(range);
         if (!objects) complain("objects:"+objects.length);
-        
+
         var deselectObject = function() {
             currentObject = null;
             preview.innerHTML = '';
@@ -44944,7 +45197,7 @@ tabulator.panes.register( {
                 deselectObject();
             };
         };
-        
+
 
 
         var setAttachment = function(x, y, value, refresh) {
@@ -44983,7 +45236,7 @@ tabulator.panes.register( {
                     s = currentSubject;
                     o = x;
                 };
-            
+
             } else { // Subjectlist
                 if (!currentObject) {
                     complain("No object for the link has been selected");
@@ -44995,7 +45248,7 @@ tabulator.panes.register( {
             };
             setAttachment(s, o, !kb.holds(s, predicate, o), refresh); // @@ toggle
         };
-        
+
         // When you click on a subject, filter the objects connected to the subject in Mode 1
         var showSubject = function(x, event, selected) {
             if (selected) {
@@ -45006,7 +45259,7 @@ tabulator.panes.register( {
             } // If all are displayed, refresh would just annoy:
             if (currentMode !== 0) showFiltered(currentMode); // Refresh the objects
         }
-        
+
         if (multi) {
             var subjectList = tabulator.panes.utils.selectorPanel(dom, kb, subject,
                     predicate, false, subjects, options, showSubject, linkClicked);
@@ -45027,7 +45280,7 @@ tabulator.panes.register( {
 
 /*
                 var table = dom.createElement('table');
-                tabulator.outline.GotoSubject(x, true, undefined, false, undefined, table) 
+                tabulator.outline.GotoSubject(x, true, undefined, false, undefined, table)
 */
                 var dispalyable = function(kb, x) {
                     var cts = kb.fetcher.getHeader(x, 'content-type');
@@ -45052,11 +45305,11 @@ tabulator.panes.register( {
                     }
                     var display = tabulator.outline.propertyTable(x); //  ,table, pane
                     preview.innerHTML = '';
-                    preview.appendChild(display);                    
+                    preview.appendChild(display);
                 });
 
 
-/*                
+/*
                 if (dispalyable(kb, x) || x.uri.slice(-4) == ".pdf" || x.uri.slice(-4) == ".png" || x.uri.slice(-5) == ".html" ||
                         x.uri.slice(-5) == ".jpeg") { // @@@@@@ MAJOR KLUDGE! use metadata after HEAD
                     preview.innerHTML = '<iframe height="100%" width="100%"src="'
@@ -45071,8 +45324,8 @@ tabulator.panes.register( {
         }
 
         div.setAttribute('style', 'background-color: white; width:40cm; height:20cm;');
-        
-        
+
+
         var headerButtons = function(dom, labels, intial, callback) {
             var head = dom.createElement('table');
             var current = intial;
@@ -45122,7 +45375,7 @@ tabulator.panes.register( {
         objectList.setAttribute('style',
             'background-color: #ffe;  width: 30em; height: 100%; padding: 0em; overflow:scroll;'); //float:left
         wrapper.appendChild(objectList);
-        
+
         //objectList.insertBefore(head, objectList.firstChild);
 
         var preview = dom.createElement("div");
@@ -45178,9 +45431,9 @@ tabulator.panes.register( {
             };
         };
 
-         
-        
-        
+
+
+
         // if (!me) complain("(You do not have your Web Id set. Set your Web ID to make changes.)");
 
         return div;
@@ -45188,8 +45441,6 @@ tabulator.panes.register( {
 }, true);
 
 //ends
-
-
 
 // ###### Finished expanding js/panes/attach/attachPane.js ##############
 // ###### Expanding js/panes/tableViewPane.js ##############
@@ -45214,7 +45465,7 @@ tabulator.panes.register( {
 /* Table view pane  -- view of a class*/
 
 tabulator.panes.register({
-    icon: iconPrefix + "icons/table.png",
+    icon: tabulator.iconPrefix + "icons/table.png",
 
     name: "tableOfClass",
 
@@ -45226,7 +45477,7 @@ tabulator.panes.register({
             if (n == 0) return null;  // None, suppress pane
             if (n > 15) return null;  // @@ At the moment this pane can be slow with too many @@ fixme by using limits
             return "List "+n;     // Show how many in hover text
-            return tabulator.Util.label(subject)+ " table";
+            return (tabulator.Util.label(subject) + " table")
         },
 
     render: function(subject, myDocument) {
@@ -45242,7 +45493,7 @@ tabulator.panes.register({
 /*
 
 tabulator.panes.register({
-    icon: iconPrefix + "icons/table2.png",
+    icon: tabulator.iconPrefix + "icons/table2.png",
     @@@@@@  Needs to be different from other icons used eg above as eems to be used as to fire up the pane
     @@@@@@ Needs to be lower prio for a document than the data content pane
 
@@ -45425,16 +45676,16 @@ tabulator.panes.register(tabulator.panes.defaultPane, true);
 **
 */
 
-    
-tabulator.Icon.src.icon_builder = iconPrefix + 'js/panes/ui/22-builder.png';
+
+tabulator.Icon.src.icon_builder = tabulator.iconPrefix + 'js/panes/ui/22-builder.png';
 tabulator.Icon.tooltips[tabulator.Icon.src.icon_builder] = 'build user interface'
 
 tabulator.panes.register( {
 
     icon: tabulator.Icon.src.icon_builder,
-    
+
     name: 'ui',
-    
+
     // Does the subject deserve this pane?
     label: function(subject) {
         var ns = tabulator.ns;
@@ -45443,14 +45694,14 @@ tabulator.panes.register( {
         if (t[ns.rdfs('Class').uri]) return "creation forms";
         // if (t[ns.rdf('Property').uri]) return "user interface";
         if (t[ns.ui('Form').uri]) return "edit form";
-        
+
         return null; // No under other circumstances (while testing at least!)
     },
 
     render: function(subject, dom) {
         var kb = tabulator.kb;
         var ns = tabulator.ns;
-        
+
         var box = dom.createElement('div')
         box.setAttribute('class', 'formPane'); // Share styles
         var label = tabulator.Util.label(subject);
@@ -45460,11 +45711,11 @@ tabulator.panes.register( {
             pre.setAttribute('style', style ? style :'color: grey; background-color: white');
             box.appendChild(pre).textContent = message;
             return pre
-        } 
+        }
 
         var complain = function complain(message, style){
             mention(message, 'style', style ? style :'color: grey; background-color: #fdd');
-        } 
+        }
 
         var complainIfBad = function(ok,body){
             if (ok) {
@@ -45482,12 +45733,12 @@ tabulator.panes.register( {
         };
 
 
- // //////////////////////////////////////////////////////////////////////////////       
-        
-        
-        
-        if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.sparqlUpdate(kb);
- 
+ // //////////////////////////////////////////////////////////////////////////////
+
+
+
+        if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(kb);
+
         var plist = kb.statementsMatching(subject)
         var qlist = kb.statementsMatching(undefined, undefined, subject)
 
@@ -45495,7 +45746,7 @@ tabulator.panes.register( {
 
         var me_uri = tabulator.preferences.get('me');
         var me = me_uri? kb.sym(me_uri) : null;
-        
+
         var store = null;
         if (subject.uri) {
             var docuri = $rdf.Util.uri.docpart(subject.uri);
@@ -45506,13 +45757,13 @@ tabulator.panes.register( {
         if (!store) store = kb.any(kb.sym(docuri), ns.link('annotationStore'));
         if (!store) store = tabulator.panes.utils.defaultAnnotationStore(subject);
         if (!store) store = kb.sym('http://tabulator.org/wiki/ontologyAnnotation/common'); // fallback
-        
+
         // A fallback which gives a different store page for each ontology would be good @@
-        
+
         var pred;
         if (t[ns.rdfs('Class').uri]) { // Stuff we can do before we load the store
-        } 
-        
+        }
+
         var wait = mention('(Loading data from: '+store+')');
 
         kb.fetcher.nowOrWhenFetched(store.uri, subject, function(ok, body) {
@@ -45525,7 +45776,7 @@ tabulator.panes.register( {
 //      _____________________________________________________________________
 
             //              Render a Class -- the forms associated with it
-            
+
             if (t[ns.rdfs('Class').uri]) {
 
                 // For each creation form, allow one to create a new object with it, and also to edit the form.
@@ -45565,7 +45816,7 @@ tabulator.panes.register( {
                 pred = ns.ui('creationForm');
                 box.appendChild(dom.createElement('h2')).textContent = tabulator.Util.label(pred);
                 mention("Creation forms allow you to add information about a new thing,\
-                                    in this case a new "+label+".");                
+                                    in this case a new "+label+".");
                 displayFormsForRelation(pred, true);
                 box.appendChild(dom.createElement('hr'));
                 mention("You can make a new creation form:");
@@ -45577,7 +45828,7 @@ tabulator.panes.register( {
                 pred = ns.ui('annotationForm');
                 box.appendChild(dom.createElement('h2')).textContent = tabulator.Util.label(pred);
                 mention("Annotaion forms allow you to add extra information about a ,\
-                                "+label+" we already know about.");                
+                                "+label+" we already know about.");
                 displayFormsForRelation(pred, false);
                 box.appendChild(dom.createElement('hr'));
                 mention("You can make a new annotation form:");
@@ -45592,7 +45843,7 @@ tabulator.panes.register( {
 //      _____________________________________________________________________
 
             //              Render a Form
-            
+
             } else if (t[ns.ui('Form').uri]) {
 
                 tabulator.panes.utils.appendForm(dom, box, kb, subject, ns.ui('FormForm'), store, complainIfBad);
@@ -45610,8 +45861,6 @@ tabulator.panes.register( {
 }, false);
 
 //ends
-
-
 
 // ###### Finished expanding js/panes/ui/pane.js ##############
 // tabulator.loadScript("js/panes/categoryPane.js");  // Not useful enough
@@ -45655,7 +45904,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
         //***********************************************
         // BACK END
         //***********************************************
-        var sparqlUpdater = new tabulator.rdf.sparqlUpdate(kb);
+        var sparqlUpdater = new tabulator.rdf.UpdateManager(kb);
         //----------------------------------------------
         //ISO 8601 DATE
         //----------------------------------------------
@@ -45677,11 +45926,11 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
             var theTime = arrDateTime[1].replace("Z","").split(":");
 
             this.setUTCDate(1);
-            this.setUTCFullYear(theDate[0]);  
-            this.setUTCMonth(theDate[1]);  
-            this.setUTCDate(theDate[2]);  
-            this.setUTCHours(theTime[0]);  
-            this.setUTCMinutes(theTime[1]);  
+            this.setUTCFullYear(theDate[0]);
+            this.setUTCMonth(theDate[1]);
+            this.setUTCDate(theDate[2]);
+            this.setUTCHours(theTime[0]);
+            this.setUTCMinutes(theTime[1]);
             this.setUTCSeconds(theTime[2]);
 
             return this;
@@ -45772,11 +46021,11 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
         //----------------------------------------------
         // MICROBLOG
         // store the uri's of followed users for
-        // dereferencing the @replies. 
+        // dereferencing the @replies.
         //----------------------------------------------
         var Microblog = function(kb) {
             this.kb= kb;
-            this.sparqlUpdater = new tabulator.rdf.sparqlUpdate(kb);
+            this.sparqlUpdater = new tabulator.rdf.UpdateManager(kb);
 
             //attempt to fetch user account from local preferences if just
             //in case the user's foaf was not writable. add it to the store
@@ -45820,7 +46069,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
             postLink = h + ":" + m + a + " on " + ds;
             Post.date = postLink;
             //---------
-            Post.mentions =""; 
+            Post.mentions ="";
             Post.message = String(kb.any(uri, SIOC("content")));
             Post.creator = kb.any(uri, SIOC('has_creator'));
             Post.uri = "";
@@ -45938,7 +46187,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
         var mb = new Microblog(kb);
         var Favorites = new Favorites(mb.getMyURI());
         var FollowList = new FollowList(mb.getMyURI());
-        
+
 
         //***********************************************
         // FRONT END FUNCTIONALITY
@@ -45946,7 +46195,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
         //----------------------------------------------
         // PANE
         // User Interface for the Microblog Pane
-        //----------------------------------------------        
+        //----------------------------------------------
         var Pane = function(s, doc, microblogPane){
             var TabManager = function(doc){
                 this.tablist =  {};
@@ -45982,7 +46231,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
                     }
                 }
             }
-            this.microblogPane =  microblogPane; 
+            this.microblogPane =  microblogPane;
             var accounts = kb.each(s, FOAF('holdsAccount'))
             for (var a in accounts) {
                 if (kb.whether(accounts[a], RDF('type'), SIOC('User')) &&
@@ -46005,8 +46254,8 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
             }
 
             this.Tab = new TabManager(doc);
-        } 
-        
+        }
+
         Pane.prototype.notify = function(messageString) {
             var xmsg = doc.createElement('li');
             xmsg.className = "notify";
@@ -46201,7 +46450,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
                         /* else if(words[word].match(/\#\w+/)){
                             //hashtag
                         } else if(words[word].match(/\!\w+/)){
-                            //usergroup 
+                            //usergroup
                         }*/
                     }
                     mbUpdateWithReplies();
@@ -46320,8 +46569,8 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
             return headerContainer;
         }
         Pane.prototype.generatePost = function(post, me) {
-            /* 
-            generatePost - Creates and formats microblog posts 
+            /*
+            generatePost - Creates and formats microblog posts
                 post - symbol of the uri the post in question
         */
             var that=this;
@@ -46502,8 +46751,8 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
                 };
             };
             if (mb.getMyURI()) {
-                // If the microblog in question does not belong to the user, 
-                // display the delete post and reply to post buttons. 
+                // If the microblog in question does not belong to the user,
+                // display the delete post and reply to post buttons.
                 var themaker = kb.any(post, SIOC('has_creator'));
                 if (mb.getMyURI() != themaker.uri) {
                     var xreplyButton = doc.createElement('input');
@@ -46566,7 +46815,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
         };
         Pane.prototype.generatePostList = function(gmb_posts) {
             /*
-            generatePostList - Generate the posts and 
+            generatePostList - Generate the posts and
             display their results on the interface.
             */
             var post_list = doc.createElement('ul');
@@ -46700,7 +46949,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
         var microblogpane  = doc.createElement("div");
 //      var getusersfollows = function(uri){
 //          var follows = new Object();
-//          var followsa = {follows:0, matches:0}; 
+//          var followsa = {follows:0, matches:0};
 //          var accounts = kb.each(s, FOAF("holdsAccount"));
 //          //get all of the accounts that a person holds
 //          for (var acct in accounts){
@@ -47332,7 +47581,7 @@ if (typeof console == 'undefined') { // e.g. firefox extension. Node and browser
 
 
 // These used to be in js/init/icons.js but are better in the pane.
-tabulator.Icon.src.icon_sharing = iconPrefix + 'js/panes/common/icons/noun_123691.svg';
+tabulator.Icon.src.icon_sharing = tabulator.iconPrefix + 'js/panes/common/icons/noun_123691.svg';
 tabulator.Icon.tooltips[tabulator.Icon.src.icon_sharing] = 'Sharing'
 
 tabulator.panes.register( {
@@ -47375,23 +47624,30 @@ tabulator.panes.register( {
     var box = MainRow.appendChild(dom.createElement('table'));
     // var bottomRow = table.appendChild(dom.createElement('tr'));
 
-
     context = { target: subject, me: null, noun: noun,
         div: pane, dom: dom, statusRegion: statusBlock };
+    var uri = tabulator.preferences.get('me');
+    context.me =  uri ? $rdf.sym(uri) : null;
     tabulator.panes.utils.preventBrowserDropEvents(dom);
+
+    box.appendChild(tabulator.panes.utils.ACLControlBox(subject, dom, noun, function(ok, body){
+      if (!ok) {
+        box.innerHTML = "ACL control box Failed: " + body
+      }
+    }))
+
+    /*
     tabulator.panes.utils.logInLoadProfile(context).then(function(context){
-      box.appendChild(tabulator.panes.utils.ACLControlBox(subject, dom, noun, function(ok, body){
-        if (!ok) {
-          box.innerHTML = "ACL control box Failed: " + body
-        }
-      }))
-    }).catch( // If we don't have a profile, we can manaagwe wihout esp when testing
+    }).catch(function(err){
+      console.log('Catch from ACLControlBox: ' + err)
       box.appendChild(tabulator.panes.utils.ACLControlBox(subject, dom, noun, function(ok, body){
         if (!ok) {
           box.innerHTML = "ACL control box Failed (with no profile): " + body
         }
       }))
+    } // If we don't have a profile, we can manaagwe wihout esp when testing
     )
+    */
     div.appendChild(pane);
     return div;
   }
@@ -47412,14 +47668,14 @@ tabulator.panes.register( {
 tabulator.panes.internalPane = {
 
     icon: tabulator.Icon.src.icon_internals,
-    
+
     name: 'internal',
 
     label: function(subject) {
-        //if (subject.uri) 
+        //if (subject.uri)
         return "under the hood";  // There is orften a URI even of no statements
       },
-    
+
     render: function(subject, myDocument) {
         var $r = tabulator.rdf;
         var kb = tabulator.kb;
@@ -47431,8 +47687,9 @@ tabulator.panes.internalPane = {
         }
         var div = myDocument.createElement('div')
         div.setAttribute('class', 'internalPane')
+        div.setAttribute('style', 'background-color: #ddddff; padding: 0.5em; border-radius: 1em;')
 //        appendRemoveIcon(div, subject, div);
-                  
+
         var plist = kb.statementsMatching(subject);
         var doc_uri = null;
         if (subject.uri) {
@@ -47463,7 +47720,7 @@ tabulator.panes.internalPane = {
         tabulator.outline.appendPropertyTRs(div, plist, true, filter);
         return div
     },
-    
+
     predicates: {// Predicates used for inner workings. Under the hood
         'http://www.w3.org/2007/ont/link#request': 1,
         'http://www.w3.org/2007/ont/link#requestedBy': 1,
@@ -47479,7 +47736,7 @@ tabulator.panes.internalPane = {
     classes: { // Things which are inherently already undercover
         'http://www.w3.org/2007/ont/link#ProtocolEvent': 1
     }
-};    
+};
 
 //    if (!SourceOptions["seeAlso not internal"].enabled)
 tabulator.panes.internalPane.predicates['http://www.w3.org/2000/01/rdf-schema#seeAlso'] = 1;
@@ -47487,7 +47744,6 @@ tabulator.panes.internalPane.predicates[tabulator.ns.owl('sameAs').uri] = 1;
 tabulator.panes.register(tabulator.panes.internalPane, true);
 
 //ends
-
 
 // ###### Finished expanding js/panes/internalPane.js ##############
 
@@ -48423,7 +48679,7 @@ if (typeof tabulator.Util.nextVariable == "undefined") tabulator.Util.nextVariab
 tabulator.Util.newVariableName = function() {
     return 'v' + tabulator.Util.nextVariable++;
 }
-tabulator.Util.clearVariableNames = function() { 
+tabulator.Util.clearVariableNames = function() {
     tabulator.Util.nextVariable = 0;
 }
 
@@ -48434,8 +48690,8 @@ tabulator.Util.clearVariableNames = function() {
 */
 
 tabulator.Util.stackString = function(e){
-	
-    var str = "" + e + "\n";    
+
+    var str = "" + e + "\n";
     if (!e.stack) {
             return str + 'No stack available.\n'
     };
@@ -48454,7 +48710,7 @@ tabulator.Util.stackString = function(e){
             toprint.push(chunks);
     };
     //toprint.reverse();  No - I prefer the latest at the top by the error message -tbl
-    
+
     for (var i = 0; i < toprint.length; i++) {
             str += '  ' + toprint[i][1] + '\n    '+ toprint[i][0];
     };
@@ -48465,7 +48721,7 @@ tabulator.Util.stackString = function(e){
 
 
 
-// Now  --afetr the rdflib.js scripts set up a dummy -- 
+// Now  --afetr the rdflib.js scripts set up a dummy --
 // overwrite RDF's dummy logger with Tabulator's :
 // Overwrite the default dummy logger in rdf/Utils.js with a real one//
 // $rdf.log = tabulator.log;    // @@ Doesn't work :-( tbl
@@ -48530,7 +48786,7 @@ tabulator.Util.ancestor = function(target, tagName) {
         try {
             if (level.tagName == tagName) return level;
         } catch(e) { // can hit "TypeError: can't access dead object" in ffox
-            return undefined; 
+            return undefined;
         };
     }
     return undefined
@@ -48547,7 +48803,7 @@ tabulator.Util.getAbout = function(kb, target) {
             return kb.fromNT(aa);
 //        } else {
 //            if (level.tagName=='TR') return undefined;//this is to prevent literals passing through
-                    
+
         }
     }
     tabulator.log.debug("getAbout: No about found");
@@ -48559,7 +48815,7 @@ tabulator.Util.getTerm = function(target){
     var statementTr=target.parentNode;
     var st=statementTr?statementTr.AJAR_statement:undefined;
 
-    var className=st?target.className:'';//if no st then it's necessary to use getAbout    
+    var className=st?target.className:'';//if no st then it's necessary to use getAbout
     switch (className){
         case 'pred':
         case 'pred selected':
@@ -48572,7 +48828,7 @@ tabulator.Util.getTerm = function(target){
             else
                 return st.subject;
             break;
-        case '':    
+        case '':
         case 'selected': //header TD
             return tabulator.Util.getAbout(tabulator.kb,target); //kb to be changed
         case 'undetermined selected':
@@ -48581,7 +48837,7 @@ tabulator.Util.getTerm = function(target){
 }
 
 tabulator.Util.include = function(document,linkstr){
-    
+
     var lnk = document.createElement('script');
     lnk.setAttribute('type', 'text/javascript');
     lnk.setAttribute('src', linkstr);
@@ -48623,7 +48879,7 @@ tabulator.Util.getEyeFocus = function(element,instantly,isBottom,myWindow) {
         if (isBottom){
             myWindow.scrollBy(0,elementPosY+element.clientHeight-(myWindow.scrollY+myWindow.innerHeight));
             return;
-        }            
+        }
         myWindow.scrollBy(0,totalScroll);
         return;
     }
@@ -48703,7 +48959,7 @@ tabulator.Util.shortName = function(uri) {
         if (canUse(p.slice(0,4))) return pok;
         if (canUse(p.slice(0,1))) return pok;
         if (canUse(p.slice(0,5))) return pok;
-        for (var i=0;; i++) if (canUse(p.slice(0,3)+i)) return pok; 
+        for (var i=0;; i++) if (canUse(p.slice(0,3)+i)) return pok;
     }
 };
 
@@ -48722,10 +48978,10 @@ tabulator.Util.ontologyLabel = function(term) {
     } else {
         i = s.lastIndexOf('/');
         if (i >=0 ) {
-            s = s.slice(0, i+1); 
+            s = s.slice(0, i+1);
         } else {
             return term.uri + '?!';    // strange should have # or /
-        }; 
+        };
     };
     for (var ns in tabulator.ns) {
         namespaces[tabulator.ns[ns]] = ns; // reverse index
@@ -48734,14 +48990,14 @@ tabulator.Util.ontologyLabel = function(term) {
         return namespaces[s];
     } catch (e) {
     };
-    
-    s = s.slice(0, -1); // Chop off delimiter ... now have just 
-    
+
+    s = s.slice(0, -1); // Chop off delimiter ... now have just
+
     while(s) {
         i = s.lastIndexOf('/');
         if (i >=0 ) {
             part = s.slice(i+1);
-            s = s.slice(0, i); 
+            s = s.slice(0, i);
             if ((part !== 'ns') && ( '0123456789'.indexOf(part[0]) < 0))
                 return part;
         } else {
@@ -48753,9 +49009,9 @@ tabulator.Util.ontologyLabel = function(term) {
 
 tabulator.Util.labelWithOntology = function(x, initialCap) {
     var t = tabulator.kb.findTypeURIs(x);
-    if (t[tabulator.ns.rdf('Predicate').uri] || 
+    if (t[tabulator.ns.rdf('Predicate').uri] ||
         t[tabulator.ns.rdfs('Class').uri]) {
-        return tabulator.Util.label(x, initialCap) + 
+        return tabulator.Util.label(x, initialCap) +
             ' (' + tabulator.Util.ontologyLabel(x) + ')';
     }
     return tabulator.Util.label(x, initialCap);
@@ -48774,16 +49030,17 @@ tabulator.Util.label = function(x, initialCap) { // x is an object
         //s = s.toString();
         if (initialCap) return s.slice(0,1).toUpperCase() + s.slice(1);
         return s;
-    } 
+    }
     function cleanUp(s1) {
         var s2 = "";
+        if (s1.slice(-1) === '/') s1 = s1.slice(0,-1) // chop trailing slash
         for (var i=0; i<s1.length; i++) {
             if (s1[i] == '_' || s1[i] == '-') {
                 s2 += " ";
                 continue;
             }
             s2 += s1[i];
-            if (i+1 < s1.length && 
+            if (i+1 < s1.length &&
                 s1[i].toUpperCase() != s1[i] &&
                 s1[i+1].toLowerCase() != s1[i+1]) {
                 s2 += " ";
@@ -48792,11 +49049,11 @@ tabulator.Util.label = function(x, initialCap) { // x is an object
         if (s2.slice(0,4) == 'has ') s2 = s2.slice(4);
         return doCap(s2);
     }
-    
+
     var lab=tabulator.lb.label(x);
     if (lab) return doCap(lab.value);
     //load #foo to Labeler?
-    
+
     if (x.termType == 'bnode') {
         return "...";
     }
@@ -48807,13 +49064,13 @@ tabulator.Util.label = function(x, initialCap) { // x is an object
     if (typeof s == 'undefined') return x.toString(); // can't be a symbol
     if (s.slice(-5) == '#this') s = s.slice(0,-5)
     else if (s.slice(-3) == '#me') s = s.slice(0,-3);
-    
+
     var hash = s.indexOf("#")
     if (hash >=0) return cleanUp(s.slice(hash+1));
 
     if (s.slice(-9) == '/foaf.rdf') s = s.slice(0,-9)
     else if (s.slice(-5) == '/foaf') s = s.slice(0,-5);
-    
+
     if (1) { //   Eh? Why not do this? e.g. dc:title needs it only trim URIs, not rdfs:labels
         var slash = s.lastIndexOf("/", s.length-2); // (len-2) excludes trailing slash
         if ((slash >=0) && (slash < x.uri.length)) return cleanUp(s.slice(slash+1));
@@ -48838,14 +49095,14 @@ tabulator.Util.predicateLabelForXML = function(p, inverse) {
 	if (!ip) ip = tabulator.kb.any(undefined, tabulator.ns.owl('inverseOf'), p);
 	if (ip) return tabulator.Util.labelForXML(ip)
     }
-        
+
     lab = tabulator.Util.labelForXML(p)
         if (inverse) {
             if (lab =='type') return '...'; // Not "is type of"
             return "is "+lab+" of";
         }
     return lab
-} 
+}
 
 // Not a method. For use in sorts
 tabulator.Util.RDFComparePredicateObject = function(self, other) {
@@ -48881,14 +49138,14 @@ tabulator.Util.makeQueryRow = function(q, tr, constraint) {
     //predtr = predParentOf(tr);
     var nodes = tr.childNodes, n = tr.childNodes.length, inverse=tr.AJAR_inverse,
         i, hasVar = 0, pattern, v, c, parentVar=null, level, pat;
-    
+
     function makeRDFStatement(freeVar, parent) {
     	if (inverse)
 	    return new tabulator.rdf.Statement(freeVar, st.predicate, parent)
 	else
 	    return new tabulator.rdf.Statement(parent, st.predicate, freeVar)
     }
-    
+
     var optionalSubqueryIndex = null;
 
     for (level=tr.parentNode; level; level=level.parentNode) {
@@ -48902,22 +49159,22 @@ tabulator.Util.makeQueryRow = function(q, tr, constraint) {
                 tabulator.Util.makeQueryRow(q, level);
             parentVar = level.AJAR_variable
             var predLevel = tabulator.Util.predParentOf(level)
-            if (predLevel.getAttribute('optionalSubqueriesIndex')) { 
+            if (predLevel.getAttribute('optionalSubqueriesIndex')) {
             	optionalSubqueryIndex = predLevel.getAttribute('optionalSubqueriesIndex')
             	pat = optionalSubqueriesIndex[optionalSubqueryIndex]
             }
             break;
         }
     }
-    
+
     if (!pat)
     	var pat = q.pat
-    
+
     var predtr = tabulator.Util.predParentOf(tr)
     ///////OPTIONAL KLUDGE///////////
     var opt = (predtr.getAttribute('optional'))
     if (!opt) {
-    	if (optionalSubqueryIndex) 
+    	if (optionalSubqueryIndex)
     		predtr.setAttribute('optionalSubqueriesIndex',optionalSubqueryIndex)
     	else
     		predtr.removeAttribute('optionalSubqueriesIndex')}
@@ -48928,15 +49185,15 @@ tabulator.Util.makeQueryRow = function(q, tr, constraint) {
     	pat.optional.push(optForm)
     	pat=optForm
     }
-    
+
     ////////////////////////////////
 
-    
-    var st = tr.AJAR_statement; 
-       
+
+    var st = tr.AJAR_statement;
+
     var constraintVar = tr.AJAR_inverse? st.subject:st.object; //this is only used for constraints
     var hasParent=true
-    if (constraintVar.isBlank && constraint) 
+    if (constraintVar.isBlank && constraint)
 			alert("You cannot constrain a query with a blank node. No constraint will be added.");
     if (!parentVar) {
     	hasParent=false;
@@ -48960,12 +49217,12 @@ tabulator.Util.makeQueryRow = function(q, tr, constraint) {
         }
         return this;
     }
-    
 
-    
+
+
     if (constraint)   //binds the constrained variable to its selected value
     	pat.constraints[v]=new constraintEqualTo(constraintVar);
-    	
+
     tabulator.log.info('Pattern: '+pattern);
     pattern.tr = tr
     tr.AJAR_pattern = pattern    // Cross-link UI and query line
@@ -49676,26 +49933,26 @@ var activateDrag = function (e){
     request: 'from' 'to' 'message' 'Request'
 */
 var UserInputFormula; //Formula to store references of user's work
-var TempFormula; //Formula to store incomplete tripes (Requests), 
+var TempFormula; //Formula to store incomplete tripes (Requests),
                  //temporarily disjoint with kb to avoid bugs
 function UserInput(outline){
     // var tabulator = Components.classes["@dig.csail.mit.edu/tabulator;1"].getService(Components.interfaces.nsISupports).wrappedJSObject;
     var This=this;
     var kb = tabulator.kb;
-    
+
     var myDocument=outline.document; //is this ok?
     //tabulator.log.warn("myDocument when it's set is "+myDocument.location);
     this.menuId='predicateMenu1';
 
     /* //namespace information, as a subgraph of the knowledge base, is built in showMenu
     this.namespaces={};
-    
+
     for (var name in tabulator.ns) {
         this.namespaces[name] = tabulator.ns[name]('').uri;
-    }   
+    }
     var NameSpaces=this.namespaces;
     */
-    
+
     //hq, print and trim functions
     var qp = function qp(str){
         dump(str+"\n");
@@ -49704,7 +49961,7 @@ function UserInput(outline){
         return this.replace(/^\s+|\s+$/g,"");
     }
     //\\
-    
+
     //people like shortcuts for sure
     // var tabont = tabulator.ns.tabont;
     var foaf = tabulator.ns.foaf;
@@ -49718,20 +49975,20 @@ function UserInput(outline){
     var bibo = tabulator.rdf.Namespace("http://purl.org/ontology/bibo/"); //hql for pubsPane
     var dcterms = tabulator.rdf.Namespace('http://purl.org/dc/terms/');
     var dcelems = tabulator.rdf.Namespace('http://purl.org/dc/elements/1.1/');
-    
+
     var movedArrow = false; //hq
-        
+
     // var updateService=new updateCenter(kb);
-    
+
     if (!UserInputFormula){
         UserInputFormula=new tabulator.rdf.Formula();
         UserInputFormula.superFormula=kb;
-        // UserInputFormula.registerFormula("Your Work"); 
+        // UserInputFormula.registerFormula("Your Work");
     }
-    if (!TempFormula) TempFormula=new tabulator.rdf.IndexedFormula(); 
+    if (!TempFormula) TempFormula=new tabulator.rdf.IndexedFormula();
                                       //Use RDFIndexedFormula so add returns the statement
     TempFormula.name = "TempFormula";
-    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.sparqlUpdate(kb);
+    if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(kb);
 
     return {
 
@@ -49746,15 +50003,15 @@ function UserInput(outline){
  *  Triggering Events: event entry points, should be called only from outline.js but not anywhere else
  *                     in userinput.js, should be as short as possible, function names to be discussed
  */
- 
+
     //  Called when the blue cross under the default pane is clicked.
-    //  Add a new row to a property list ( P and O)    
+    //  Add a new row to a property list ( P and O)
     addNewPredicateObject: function addNewPredicateObject(e){
         if (tabulator.Util.getTarget(e).className != 'bottom-border-active') return;
         var This=outline.UserInput;
         var target=tabulator.Util.getTarget(e);
-            
-        //tabulator.log.warn(ancestor(target,'TABLE').textContent);    
+
+        //tabulator.log.warn(ancestor(target,'TABLE').textContent);
         var insertTr=myDocument.createElement('tr');
         tabulator.Util.ancestor(target,'DIV').insertBefore(insertTr,tabulator.Util.ancestor(target,'TR'));
         var tempTr=myDocument.createElement('tr');
@@ -49763,25 +50020,25 @@ function UserInput(outline){
         var reqTerm2=This.generateRequest("(Enter text or drag an object onto this field)",tempTr,false);
         insertTr.appendChild(tempTr.firstChild);
         //there should be an elegant way of doing this
-        
+
         //Take the why of the last TR and write to it.
         if (tabulator.Util.ancestor(target,'TR').previousSibling &&  // there is a previous predicate/object line
                 tabulator.Util.ancestor(target,'TR').previousSibling.AJAR_statement) {
             preStat=tabulator.Util.ancestor(target,'TR').previousSibling.AJAR_statement;
             //This should always(?) input a non-inverse statement
-            This.formUndetStat(insertTr,preStat.subject,reqTerm1,reqTerm2,preStat.why,false);    
+            This.formUndetStat(insertTr,preStat.subject,reqTerm1,reqTerm2,preStat.why,false);
         } else { // no previous row: write to the document defining the subject
             var subject=tabulator.Util.getAbout(kb,tabulator.Util.ancestor(target.parentNode.parentNode,'TD'));
             var doc=kb.sym(tabulator.rdf.Util.uri.docpart(subject.uri));
             This.formUndetStat(insertTr,subject,reqTerm1,reqTerm2,doc,false);
         }
-     
+
         outline.walk('moveTo',insertTr.firstChild);
         tabulator.log.info("addNewPredicateObject: selection = " + outline.getSelection().map(function(item){return item.textContent;}).join(", "));
         this.startFillInText(outline.getSelection()[0]);
-        
+
     },
-    
+
     //  Called when a blue cross on a predicate is clicked
     //  tr.AJAR_inverse stores whether the clicked predicate is an inverse one
     //  tr.AJAR_statement (an incomplete statement in TempFormula) stores the destination(why), now
@@ -49793,15 +50050,15 @@ function UserInput(outline){
         //var titleTerm=tabulator.Util.getAbout(kb,tabulator.Util.ancestor(predicateTd.parentNode,'TD'));
         //set pseudo lastModifiedStat here
         this.lastModifiedStat=predicateTd.parentNode.AJAR_statement;
-    
+
         var insertTr=this.appendToPredicate(predicateTd);
         var reqTerm=this.generateRequest(" (Error) ",insertTr,false);
         var preStat=insertTr.previousSibling.AJAR_statement;
         if (!isInverse)
             this.formUndetStat(insertTr,preStat.subject,preStat.predicate,reqTerm,preStat.why,false);
         else
-            this.formUndetStat(insertTr,reqTerm,preStat.predicate,preStat.object,preStat.why,true);    
-    
+            this.formUndetStat(insertTr,reqTerm,preStat.predicate,preStat.object,preStat.why,true);
+
         outline.walk('moveTo',insertTr.lastChild);
         this.startFillInText(insertTr.lastChild);
         //this.statIsInverse=false;
@@ -49810,7 +50067,7 @@ function UserInput(outline){
     //  Called when delete is pressed
     Delete: function Delete(selectedTd){
         this.deleteTriple(selectedTd,false);
-    },    
+    },
     //  Called when enter is pressed
     Enter: function Enter(selectedTd){
         this.literalModification(selectedTd);
@@ -49825,7 +50082,7 @@ function UserInput(outline){
         e.stopPropagation();
     },
     //  Called when paste is called (Ctrl+v)
-    pasteFromClipboard: function pasteFromClipboard(address,selectedTd){  
+    pasteFromClipboard: function pasteFromClipboard(address,selectedTd){
         function termFrom(fromCode){
             var term = tabulator.clipboard[fromCode].shift();
             if (term==null){
@@ -49859,8 +50116,8 @@ function UserInput(outline){
                 break;
             case 'pred selected': //paste objects into this predicate
                 term=termFrom('objects');
-                if (!term) return;            
-                break;            
+                if (!term) return;
+                break;
             case 'selected': //header <TD>, undetermined generated
                 var returnArray=termFrom('all');
                 if (!returnArray) return;
@@ -49868,15 +50125,15 @@ function UserInput(outline){
                 this.insertTermTo(selectedTd,term,returnArray[1]);
                 return;
         }
-        this.insertTermTo(selectedTd,term);                        
+        this.insertTermTo(selectedTd,term);
     },
-    
+
 /**
- *  Intermediate Processing: 
+ *  Intermediate Processing:
  */
 
     // a general entry point for any event except Click&Enter(goes to literalModification)
-    // do a little inference to pick the right inputbox 
+    // do a little inference to pick the right inputbox
     startFillInText: function startFillInText(selectedTd){
         switch (this.whatSortOfEditCell(selectedTd)){
             case 'DatatypeProperty-like':
@@ -49885,7 +50142,7 @@ function UserInput(outline){
                 tabulator.Util.emptyNode(selectedTd);
                 this.lastModified = this.createInputBoxIn(selectedTd," (Please Input) ");
                 this.lastModified.isNew=false;
-                   
+
                 this.lastModified.select();
                 break;
             case 'predicate':
@@ -49893,25 +50150,25 @@ function UserInput(outline){
                 //this.performAutoCompleteEdit(selectedTd,['PredicateAutoComplete',
                 //                        this.choiceQuery('SuggestPredicateByDomain')]);
                 this.performAutoCompleteEdit(selectedTd,'PredicateAutoComplete');
-                break;                        
+                break;
             case 'ObjectProperty-like':
             case 'no-idea':
                 //menu should be either function that
                 this.performAutoCompleteEdit(selectedTd,'GeneralAutoComplete');
-                
+
                 /*
                 //<code time="original">
                 emptyNode(selectedTd);
                 this.lastModified=this.createInputBoxIn(selectedTd,"");
                 this.lastModified.select();
-                this.lastModified.addEventListener('keypress',this.AutoComplete,false);            
+                this.lastModified.addEventListener('keypress',this.AutoComplete,false);
                 //this pops up the autocomplete menu
                 this.AutoComplete(1);
                 //</code>
                 */
         }
     },
-     
+
     literalModification: function literalModification(selectedTd){
         tabulator.log.debug("entering literal Modification with "+selectedTd+selectedTd.textContent);
         //var This=outline.UserInput;
@@ -49920,9 +50177,9 @@ function UserInput(outline){
                   "Please wait for the request to finish (the text will turn black)\n"+
                   "before editing this node again.");
             return true;
-        } 
-                    
-        var target=selectedTd;       
+        }
+
+        var target=selectedTd;
         var about = this.getStatementAbout(target); // timbl - to avoid alert from random clicks
         if (!about) return;
         try{
@@ -49932,7 +50189,7 @@ function UserInput(outline){
             tabulator.log.warn('userinput.js: '+e+tabulator.Util.getAbout(kb,selectedTd));
             tabulator.log.error(target+" getStatement Error:"+e);
         }
-                
+
         try{var tdNode=trNode.lastChild;}catch(e){tabulator.log.error(e+"@"+target);}
         //seems to be a event handling problem of firefox3
         /*
@@ -49941,12 +50198,12 @@ function UserInput(outline){
             return;
         }
         */
-        //ignore clicking trNode.firstChild (be careful for <div> or <span>)    
-        //if (e.type!='keypress'&&target!=tdNode && tabulator.Util.ancestor(target,'TD')!=tdNode) return;     
-        
+        //ignore clicking trNode.firstChild (be careful for <div> or <span>)
+        //if (e.type!='keypress'&&target!=tdNode && tabulator.Util.ancestor(target,'TD')!=tdNode) return;
+
         if (obj.termType== 'literal'){
             tdNode.removeChild(tdNode.firstChild); //remove the text
-            
+
             if (obj.value.match('\n')){//match a line feed and require <TEXTAREA>
                  var textBox=myDocument.createElement('textarea');
                  textBox.appendChild(myDocument.createTextNode(obj.value));
@@ -49963,8 +50220,8 @@ function UserInput(outline){
             //Kenny: What should be expected after you click a editable text element?
             //Choice 1
             this.lastModified.select();
-            //Choice 2 - direct the key cursor to where you click (failed attempt) 
-            //--------------------------------------------------------------------------     
+            //Choice 2 - direct the key cursor to where you click (failed attempt)
+            //--------------------------------------------------------------------------
                 //duplicate the event so user can edit without clicking twice
                 //var e2=myDocument.createEvent("MouseEvents");
                 //e2.initMouseEvent("click",true,true,window,0,0,0,0,0,false,false,false,false,0,null);
@@ -49974,10 +50231,10 @@ function UserInput(outline){
 
         return true; //this is not a valid modification
     },
-    
+
 /**
- *  UIs: input event handlers, menu generation 
- */    
+ *  UIs: input event handlers, menu generation
+ */
     performAutoCompleteEdit: function performAutoCompleteEdit(selectedTd,menu){
         tabulator.Util.emptyNode(selectedTd);
         qp("perform AutoCompleteEdit. THIS IS="+this);
@@ -49986,8 +50243,8 @@ function UserInput(outline){
         this.lastModified.addEventListener('keypress',this.getAutoCompleteHandler(menu),false);
         /* keypress!?
            This is what I hate about UI programming.
-           I shall write something about this but not now.        
-        */            
+           I shall write something about this but not now.
+        */
         //this pops up the autocomplete menu
         //Pops up the menu even though no keypress has occured
         //1 is a dummy variable for the "enterEvent"
@@ -50002,7 +50259,7 @@ function UserInput(outline){
         var menu=myDocument.getElementById(this.menuID);
         if (menu) {
             menu.parentNode.removeChild(menu);
-            //emptyNode(menu);      
+            //emptyNode(menu);
         }
     },
 
@@ -50030,7 +50287,7 @@ function UserInput(outline){
                         tabulator.log.error("Error occurs while inserting "+s+'\n\n'+error_body+"\n");
                         // tabulator.log.warn("Error occurs while inserting "+s+'\n\n'+error_body);
                         outline.UserInput.deleteTriple(trCache.lastChild,true);
-                    }                    
+                    }
                 })}catch(e){
                     tabulator.log.error("Error inserting fact "+s+':\n\t'+e+"\n");
                     return;
@@ -50054,14 +50311,14 @@ function UserInput(outline){
                         try{
                             tabulator.sparql.update([s], [s2], function(uri,success,error_body){
                                 if (success){
-                                    obj.value=valueCache;                                
+                                    obj.value=valueCache;
                                 }else{
                                     //obj.value=oldValue;
                                     tabulator.log.warn("Error occurs while editing "+s+'\n\n'+error_body);
                                     trCache.lastChild.textContent=oldValue;
                                 }
-                                trCache.lastChild.className=trCache.lastChild.className.replace(/ pendingedit/g,"");                                   
-                            });                            
+                                trCache.lastChild.className=trCache.lastChild.className.replace(/ pendingedit/g,"");
+                            });
                         } catch(e) {
                              tabulator.log.warn("Error occurs while editing "+s+':\n\t' + e);
                              return;
@@ -50094,7 +50351,7 @@ function UserInput(outline){
                                 try{tabulator.sparql.update([], [s1,s2,s3], function(uri,success,error_body){
                                     if (!success){
                                         dump("Error occurs while editing "+s1+'\n\n'+error_body);
-                                        outline.UserInput.deleteTriple(trCache.lastChild,true);   // @@@@ This 
+                                        outline.UserInput.deleteTriple(trCache.lastChild,true);   // @@@@ This
                                     }
                                 })}catch(e){
                                     dump("Error occurs while editing "+s1+':\n\t'+e);
@@ -50108,7 +50365,7 @@ function UserInput(outline){
                             var enclosingTd=tabulator.Util.ancestor(this.lastModified.parentNode.parentNode,'TD');
                             outline.outline_expand(enclosingTd,s.subject, { 'pane': defaultPane, 'already': true});
                             outline.walk('right',outline.focusTd);
-                        //</Feature>                         
+                        //</Feature>
                         }else{
                             this.fillInRequest('object',this.lastModified.parentNode,kb.literal(this.lastModified.value));
                             return; //The new Td is already generated by fillInRequest, so it's done.
@@ -50123,9 +50380,9 @@ function UserInput(outline){
             this.formUndetStat(trNode,preStat.subject,preStat.predicate,reqTerm,preStat.why,false);
             //this why being the same as the previous statement
             this.lastModified=null;
-            
+
             //tabulator.log.warn("test .isNew)");
-            return;        
+            return;
         }else if(s.predicate.termType=='collection'){
             kb.removeMany(s.subject);
             var upperTr=tabulator.Util.ancestor(tabulator.Util.ancestor(this.lastModified,'TR').parentNode,'TR');
@@ -50142,7 +50399,7 @@ function UserInput(outline){
         }
         //case modified - literal modification only(for now).
         var trNode=tabulator.Util.ancestor(this.lastModified,'TR');
-            
+
         var defaultpropview = this.views.defaults[s.predicate.uri];
         if (!this.statIsInverse){
             //this is for an old feature
@@ -50156,7 +50413,7 @@ function UserInput(outline){
             trNode.lastChild.className+=' pendingedit';
         //trNode.AJAR_statement=s;//you don't have to set AJAR_inverse because it's not changed
         //This is going to be painful when predicate-edit allowed
-        this.lastModified = null;  
+        this.lastModified = null;
     },
 
     /*deletes the triple corresponding to selectedTd, remove that Td.*/
@@ -50171,11 +50428,11 @@ function UserInput(outline){
                   "before editing this node again.");
             outline.walk('up');
             return;
-        }        
+        }
         var removedTr;var afterTr;
         var s=this.getStatementAbout(selectedTd);
         if (!isBackOut&&
-            !kb.whether(s.object,rdf('type'),tabulator.ns.link('Request')) && 
+            !kb.whether(s.object,rdf('type'),tabulator.ns.link('Request')) &&
             // Better to check whether provenance is internal?
             !kb.whether(s.predicate,rdf('type'),tabulator.ns.link('Request')) &&
             !kb.whether(s.subject,rdf('type'),tabulator.ns.link('Request'))){
@@ -50185,7 +50442,7 @@ function UserInput(outline){
                     if (success){
                         removefromview();
                     }
-                    else{                
+                    else{
                         //removedTr.AJAR_statement=kb.add(s.subject,s.predicate,s.object,s.why);
                         dump("Error occurs while deleting "+s+'\n\n'+error_body);
                         selectedTd.className=selectedTd.className.replace(/ pendingedit/g,"");
@@ -50197,10 +50454,10 @@ function UserInput(outline){
                 tabulator.log.warn("Error deleting statement "+s+":\n\t"+e);
                 return;
             }
-            
+
             tabulator.log.debug("SPARQLUpdate sent");
-            
-        }else{ //removal of an undetermined statement associated with pending TRs 
+
+        }else{ //removal of an undetermined statement associated with pending TRs
             //TempFormula.remove(s);
         }
         tabulator.log.debug("about to remove "+s);
@@ -50219,7 +50476,7 @@ function UserInput(outline){
             if (theNext.nextSibling&&theNext.childNodes.length==1){
                 var predicateTd=trIterator.firstChild;
                 predicateTd.setAttribute('rowspan',parseInt(predicateTd.getAttribute('rowspan'))-1);
-                theNext.insertBefore(trIterator.firstChild,theNext.firstChild);           
+                theNext.insertBefore(trIterator.firstChild,theNext.firstChild);
             }
             removedTr.parentNode.removeChild(removedTr);
         }
@@ -50253,7 +50510,7 @@ function UserInput(outline){
 
         var trans = Components.classes["@mozilla.org/widget/transferable;1"].createInstance(Components.interfaces.nsITransferable);
         if (!trans) return false;
-        
+
         var copytext = "Tabulator!!";
 
         var str   = Components.classes["@mozilla.org/supports-string;1"].
@@ -50261,13 +50518,13 @@ function UserInput(outline){
         if (!str) return false;
 
         str.data  = copytext;
-        
+
         trans.addDataFlavor("text/x-moz-url");
         trans.setTransferData("text/x-mox-url", str, copytext.length * 2);
-        
+
         clip.setData(trans, null, clipid.kGlobalClipboard);
         */
-        
+
         var term=tabulator.Util.getTerm(selectedTd);
         switch (selectedTd.className){
             case 'selected': //table header
@@ -50289,7 +50546,7 @@ function UserInput(outline){
                 var defaultpropview = this.views.defaults[selectedTd.parentNode.AJAR_statement.predicate.uri];
                 this.fillInRequest(selectedTd.nextSibling ? 'predicate':'object',selectedTd,term);
                 break;
-            case 'pred selected': //paste objects into this predicate          
+            case 'pred selected': //paste objects into this predicate
                 var insertTr=this.appendToPredicate(selectedTd);
                 var preStat=selectedTd.parentNode.AJAR_statement;
                 var defaultpropview = this.views.defaults[preStat.predicate.uri];
@@ -50300,18 +50557,18 @@ function UserInput(outline){
                     insertTr.AJAR_statement = kb.add(preStat.subject,preStat.predicate,term,preStat.why);
                 else
                     insertTr.AJAR_statemnet = kb.add(term,preStat.predicate,preStat.object,preStat.why);
-                    
+
                 try{
                     tabulator.sparql.update([ ], [insertTr.AJAR_statement], function(uri,success,error_body){
                         if (!success){
                             tabulator.log.error("userinput.js (pred selected): Fail trying to insert statement "+
                                 insertTr.AJAR_statement+": "+tabulator.Util.stackString(e));
-                        }                    
+                        }
                     })}catch(e){
                         tabulator.log.error("Exception trying to insert statement "+
                             insertTr.AJAR_statement+": "+tabulator.Util.stackString(e));
                         return;
-                    }            
+                    }
                 insertTr.AJAR_inverse = isInverse;
                 UserInputFormula.statements.push(insertTr.AJAR_statement);
                 break;
@@ -50331,7 +50588,7 @@ function UserInput(outline){
                     //defaultpropview temporaily not dealt with
                     newTr.appendChild(outline.outline_objectTD(term));
                     outline.walk('moveTo',newTr.firstChild);
-                    this.startFillInText(newTr.firstChild);            
+                    this.startFillInText(newTr.firstChild);
                 }else{//predicate inserted
                     //existing predicate not expected
                     var reqTerm=this.generateRequest("(To be determined. Re-type of drag an object onto this field)",newTr);
@@ -50339,15 +50596,15 @@ function UserInput(outline){
 
                     newTr.insertBefore(outline.outline_predicateTD(term,newTr,false,false),newTr.firstChild);
                     outline.walk('moveTo',newTr.lastChild);
-                    this.startFillInText(newTr.lastChild);                  
+                    this.startFillInText(newTr.lastChild);
                 }
                 break;
-        } 
+        }
     },
 
     Refill: function Refill(e,selectedTd){
         tabulator.log.info("Refill"+selectedTd.textContent);
-        var isPredicate = selectedTd.nextSibling;    
+        var isPredicate = selectedTd.nextSibling;
         if (isPredicate){ //predicateTd
             if (selectedTd.nextSibling.className=='undetermined') {
             /* Make set of proprties to propose for a predicate.
@@ -50355,13 +50612,13 @@ function UserInput(outline){
             of the subject as their domain.  But in fact we must offer anything which
             is not explicitly excluded, by having a domain disjointWith a
             class of the subject.*/
-            
+
             /* SELECT ?pred
                WHERE{
                    ?pred a rdf:Property.
                    ?pred rdfs:domain subjectClass.
                }
-            */  
+            */
             /*  SELECT ?pred ?class
                 WHERE{
                    ?pred a rdf:Property.
@@ -50369,7 +50626,7 @@ function UserInput(outline){
                    ?pred rdfs:domain ?class.
                }
             */
-            /*  SELECT ?pred 
+            /*  SELECT ?pred
                 WHERE{
                    subject a ?subjectClass.
                    ?pred rdfs:domain ?subjectClass.
@@ -50388,9 +50645,9 @@ function UserInput(outline){
             sparqlText[2]="SELECT ?pred WHERE{\n"+
                               subject+rdf('type')+kb.variable("subjectClass")+endl+
                               kb.variable("pred")+tabulator.ns.rdfs('domain')+kb.variable("subjectClass")+endl+
-                          "}";              
-            var predicateQuery=sparqlText.map(SPARQLToQuery);  
-                                      
+                          "}";
+            var predicateQuery=sparqlText.map(SPARQLToQuery);
+
             }else{
             //------selector
             /* SELECT ?pred
@@ -50407,7 +50664,7 @@ function UserInput(outline){
                    object a ?objectClass.
                    ?pred rdfs:domain ?subjectClass.
                    ?pred rdfs:range ?objectClass.
-            */            
+            */
             var subject=tabulator.Util.getAbout(kb,tabulator.Util.ancestor(selectedTd,'TABLE').parentNode);
             var subjectClass=kb.any(subject,rdf('type'));
             var object=selectedTd.parentNode.AJAR_statement.object;
@@ -50421,12 +50678,12 @@ function UserInput(outline){
                            "?pred "+tabulator.ns.rdfs('range')+"?objectClass"+".\n}"; // \n is required? SPARQL parser bug?
             var predicateQuery=SPARQLToQuery(sparqlText);
             }
-            
+
 
             //-------presenter
             //ToDo: how to sort selected predicates?
             this.showMenu(e,'GeneralPredicateChoice',predicateQuery,{'isPredicate': isPredicate,'selectedTd': selectedTd});
-            
+
         }else{ //objectTd
             var predicateTerm=selectedTd.parentNode.AJAR_statement.predicate;
             if (kb.whether(predicateTerm,rdf('type'),tabulator.ns.owl('DatatypeProperty'))||
@@ -50436,19 +50693,19 @@ function UserInput(outline){
                 tabulator.Util.emptyNode(selectedTd);
                 this.lastModified = this.createInputBoxIn(selectedTd," (Please Input) ");
                 this.lastModified.isNew=false;
-                
+
                 this.lastModified.select();
             }
-             
+
             //show menu for rdf:type
             if (selectedTd.parentNode.AJAR_statement.predicate.sameTerm(rdf('type'))){
-               var sparqlText="SELECT ?class WHERE{?class "+rdf('type')+tabulator.ns.rdfs('Class')+".}"; 
+               var sparqlText="SELECT ?class WHERE{?class "+rdf('type')+tabulator.ns.rdfs('Class')+".}";
                //I should just use kb.each
                var classQuery=SPARQLToQuery(sparqlText);
                this.showMenu(e,'TypeChoice',classQuery,{'isPredicate': isPredicate,'selectedTd': selectedTd});
             }
-            
-        
+
+
         }
     },
 
@@ -50459,7 +50716,7 @@ function UserInput(outline){
             mode = 'predicate';
 
         else if (mode!="JournalTAC") //hq  // why? -tim  - not 'predicate' below
-            mode = 'all'; 
+            mode = 'all';
 
         var InputBox;
         if (mode=="JournalTAC"){//hq  // Better to pass in InputBox as a param
@@ -50469,7 +50726,7 @@ function UserInput(outline){
         }
         qp("InputBox="+InputBox);//hq
         qp("InputBox.value="+InputBox.value);//hq
-        
+
         return function (enterEvent) {
             qp("ENTER EVENT="+enterEvent);
             //Firefox 2.0.0.6 makes this not working? 'this' becomes [object HTMLInputElement]
@@ -50488,7 +50745,7 @@ function UserInput(outline){
                 if (menu.lastHighlight) menu.lastHighlight.className = '';
                 menu.lastHighlight = item;
                 menu.lastHighlight.className = 'activeItem';
-                outline.showURI(tabulator.Util.getAbout(kb,menu.lastHighlight));            
+                outline.showURI(tabulator.Util.getAbout(kb,menu.lastHighlight));
             }
             if (enterEvent){ //either the real event of the pseudo number passed by OutlineKeypressPanel
                 qp("2. in (if enterEvent).  with type = "+typeof enterEvent);
@@ -50497,7 +50754,7 @@ function UserInput(outline){
                 if (typeof enterEvent=='object'){
                     qp("3. in typeof enterEvent is object, will switch to keys, arrows, etc. keycode = "+enterEvent.keyCode);
                     enterEvent.stopPropagation();
-                    if (menu && !menu.lastHighlight) //this ensures the following operation valid 
+                    if (menu && !menu.lastHighlight) //this ensures the following operation valid
                         setHighlightItem(menu.firstChild.firstChild);
                     switch (enterEvent.keyCode){
                         case 13://enter
@@ -50510,12 +50767,12 @@ function UserInput(outline){
                             if (!menu.lastHighlight){
                                 if (mode=="JournalTAC"){
                                     outline.UserInput.clearMenu();
-                                    qp("no lastH"); 
+                                    qp("no lastH");
                                     return "no lastH";
                                 }
                                 return;
                             } //warning?
-       
+
                             if (menu.lastHighlight.tagName == 'INPUT'){
                                 switch (menu.lastHighlight.value){
                                     case 'New...':
@@ -50542,10 +50799,10 @@ function UserInput(outline){
                                         juri = juri.slice(4, -4);
                                         return ["gotdptitle", jtitle, juri];
                                     }
-                                    //If doesn't qualify to be autocomplete, return this random string, since pubsPane checks for "gotdptitle" 
+                                    //If doesn't qualify to be autocomplete, return this random string, since pubsPane checks for "gotdptitle"
                                     return "asGivenTxt";
                                 }
-                                
+
                                 var inputTerm=tabulator.Util.getAbout(kb,menu.lastHighlight);
                                 var fillInType=(mode=='predicate')?'predicate':'object';
                                 outline.UserInput.clearMenu();
@@ -50573,7 +50830,7 @@ function UserInput(outline){
                                 setHighlightItem(menu.lastHighlight.nextSibling);
                             return "I'm a little Down Arrow";
                         case 37://left
-                        case 39://right  
+                        case 39://right
                             qp("handler: Arrow left, right");
                             if (menu.lastHighlight.tagName == 'INPUT'){
                                 if (enterEvent.keyCode == 37)
@@ -50592,7 +50849,7 @@ function UserInput(outline){
                                 outline.UserInput.backOut();
                                 return;
                             }
-                            outline.UserInput.clearMenu();                   
+                            outline.UserInput.clearMenu();
                             //Not working? I don't know.
                             //InputBox.removeEventListener('keypress',outline.UserInput.Autocomplete,false);
                             return;
@@ -50605,10 +50862,10 @@ function UserInput(outline){
                             newText+=String.fromCharCode(enterEvent.charCode)
                             qp("charcodent="+enterEvent.charCode);
                             qp("strcharcod="+String.fromCharCode(enterEvent.charCode));
-                            dump("DEFAULT txtstr="+newText+"\n"); //hq                       
+                            dump("DEFAULT txtstr="+newText+"\n"); //hq
                     }
                 } // endif typeof(event) == object
-                
+
                 //tabulator.log.warn(InputBox.choices.length);
                 //for(i=0;InputBox.choices[i].label<newText;i++); //O(n) ToDo: O(log n)
                 if (mode=='all') {
@@ -50617,7 +50874,7 @@ function UserInput(outline){
                     //outline.UserInput.showMenu(e,'GeneralAutoComplete',undefined,{'isPredicate':false,'selectedTd':tdNode,'choices':InputBox.choices, 'index':i});
                     outline.UserInput.showMenu(e,'GeneralAutoComplete',undefined,{'inputText':newText,'selectedTd': tdNode});
                     if (newText.length==0) outline.UserInput.WildCardButtons();
-                                   
+
                 }else if(mode=='predicate'){
                     qp("predicateAC after switch, newText="+newText+"mode is predicate");
                     outline.UserInput.clearMenu();
@@ -50628,7 +50885,7 @@ function UserInput(outline){
                     // Goto showMenu
                     outline.UserInput.showMenu(e, 'JournalTitleAutoComplete', undefined, {'inputText':newText},"orderisuseless");
                 }
-                var menu = myDocument.getElementById(outline.UserInput.menuID); 
+                var menu = myDocument.getElementById(outline.UserInput.menuID);
                 if (!menu) {
                     qp("No menu element.  Do not show menu.");
                     return;
@@ -50640,7 +50897,7 @@ function UserInput(outline){
             }
         };//end of return function
     },
-    
+
     // Add the buttons which allow the suer to craete a new object
     // Or reference an exiting one with a URI.
     //
@@ -50651,7 +50908,7 @@ function UserInput(outline){
         var input2 = div.appendChild(myDocument.createElement('input'));
         input1.type = 'button';input1.value = "New...";
         input2.type = 'button';input2.value = "Know its URI";
-        
+
         function highlightInput(e){ //same as the one in newMenu()
             var menu=myDocument.getElementById(outline.UserInput.menuID);
             if (menu.lastHighlight) menu.lastHighlight.className='';
@@ -50661,12 +50918,12 @@ function UserInput(outline){
         }
         div.addEventListener('mouseover',highlightInput,false);
         input1.addEventListener('click',this.createNew,false);
-        input2.addEventListener('click',this.inputURI,false);        
+        input2.addEventListener('click',this.inputURI,false);
     },
     //ToDo: shrink rows when \n+backspace
     Keypress: function(e){
         if(e.keyCode==13){
-            if(outline.targetOf(e).tagName!='TEXTAREA') 
+            if(outline.targetOf(e).tagName!='TEXTAREA')
                 this.clearInputAndSave();
             else {//<TEXTAREA>
                 var preRows=parseInt(this.lastModified.getAttribute('rows'))
@@ -50694,7 +50951,7 @@ function UserInput(outline){
             }
         }
     },
-    
+
 
     Mouseover: function Mouseover(e){
         this.className='bottom-border-active';
@@ -50721,7 +50978,7 @@ function UserInput(outline){
         this.className='bottom-border';
     if (this._tabulatorMode==1){
         var border=tabulator.Util.getTarget(e);
-        if (tabulator.Util.getTarget(e).className=="bottom-border"){ 
+        if (tabulator.Util.getTarget(e).className=="bottom-border"){
             border.style.borderColor='transparent';
             border.style.cursor='auto';
         }
@@ -50735,7 +50992,7 @@ function UserInput(outline){
     whatSortOfEditCell: function whatSortOfEditCell(selectedTd){
         if (selectedTd.nextSibling) return 'predicate';
         var predicateTerm = this.getStatementAbout(selectedTd).predicate;
-        //var predicateTerm=selectedTd.parentNode.AJAR_statement.predicate; 
+        //var predicateTerm=selectedTd.parentNode.AJAR_statement.predicate;
         if(kb.whether(predicateTerm,tabulator.ns.rdf('type'),tabulator.ns.owl('DatatypeProperty'))||
            kb.whether(predicateTerm,tabulator.ns.rdfs('range'),tabulator.ns.rdfs('Literal'))||
                predicateTerm.termType=='collection')
@@ -50743,9 +51000,9 @@ function UserInput(outline){
             else if (kb.whether(predicateTerm,rdf('type'),tabulator.ns.owl('ObjectProperty')))
                 return 'ObjectProperty-like';
             else
-                return 'no-idea';       
+                return 'no-idea';
     },
-     
+
     getStatementAbout: function getStatementAbout(something){
         //var trNode=something.parentNode;
         var trNode = tabulator.Util.ancestor(something,'TR');
@@ -50760,7 +51017,7 @@ function UserInput(outline){
         //Set last modified here, I am not sure this will be ok.
         this.lastModifiedStat = trNode.AJAR_statement;
         this.statIsInverse = trNode.AJAR_inverse;
-            
+
         return statement;
     },
 
@@ -50775,8 +51032,8 @@ function UserInput(outline){
             inputBox.setAttribute('size','100');//should be the size of <TD>
             function UpAndDown(e){
                 if (e.keyCode==38||e.keyCode==40){
-                    outline.OutlinerKeypressPanel(e);  
-                    outline.UserInput.clearInputAndSave();              
+                    outline.OutlinerKeypressPanel(e);
+                    outline.UserInput.clearInputAndSave();
                 }
             }
             inputBox.addEventListener('keypress',UpAndDown,false)
@@ -50795,10 +51052,10 @@ function UserInput(outline){
         //selection is changed
         outline.outline_expand(outline.getSelection()[0], newTerm);
     },
-    
-    
+
+
     inputURI: function inputURI(e){
-        var This = outline.UserInput;   
+        var This = outline.UserInput;
         This.clearMenu();
         var selectedTd = outline.getSelection()[0];
         tabulator.Util.emptyNode(selectedTd);
@@ -50826,39 +51083,39 @@ function UserInput(outline){
             textbox.setAttribute('type','autocomplete');
             textbox.setAttribute('autocompletesearch','history');
             selectedTd.appendChild(textbox);
-            
+
             urlbar = gURLBar.cloneNode(false);
             selectedTd.appendChild(urlbar);
             urlbar.mController = gURLBar.mController;
-            
+
         }
         */
- 
+
     },
 
-    appendToPredicate: function appendToPredicate(predicateTd){   
+    appendToPredicate: function appendToPredicate(predicateTd){
         var isEnd=false;
         var trIterator;
         try{
             for(trIterator=predicateTd.parentNode.nextSibling;
-            trIterator.childNodes.length==1 && trIterator.AJAR_statement; 
+            trIterator.childNodes.length==1 && trIterator.AJAR_statement;
             //number of nodes as condition, also beware of toggle Trs that don't have AJAR_statement
             trIterator=trIterator.nextSibling){}
         }catch(e){isEnd=true;}
         // if(!isEnd && HCIoptions["bottom insert highlights"].enabled) trIterator=trIterator.previousSibling;
-       
+
         var insertTr=myDocument.createElement('tr');
         //style stuff, I'll have to investigate appendPropertyTRs() somehow
         insertTr.style.colspan='1';
         insertTr.style.display='block';
-        
+
         if (true) { // !DisplayOptions["display:block on"].enabled){ // What was this option Kenny?
             insertTr.style.display='';
             if (predicateTd.hasAttribute('rowspan'))
                 predicateTd.setAttribute('rowspan',parseInt(predicateTd.getAttribute('rowspan'))+1);
         }
         if (!predicateTd.hasAttribute('rowspan')) predicateTd.setAttribute('rowspan','2');
-        
+
         if (!isEnd)
             trIterator.parentNode.insertBefore(insertTr,trIterator);
         else {
@@ -50868,14 +51125,14 @@ function UserInput(outline){
             else
                 table.appendChild(insertTr);
         }
-            
+
         return insertTr;
     },
-    
+
     bnode2symbol: function bnode2symbol(bnode,symbol){
         kb.copyTo(bnode,symbol,['two-direction','delete']);
     },
-    
+
     generateRequest: function generateRequest(tipText, trNew, isPredicate, notShow){
         var trNode;
         if(!notShow){
@@ -50885,15 +51142,15 @@ function UserInput(outline){
                 trNode=tabulator.Util.ancestor(this.lastModified,'TR');
             tabulator.Util.emptyNode(trNode);
         }
-        
+
         //create the undetermined term
         //Choice 1:
-        //var reqTerm=kb.literal("TBD");  
+        //var reqTerm=kb.literal("TBD");
         //this is troblesome since RDFIndexedFormula does not allow me to add <x> <y> "TBD". twice
         //Choice 2: Use a variable.
         //Agreed. Kenny wonders whether there is RDF/XML representation of a variable.
         //labelPriority[tabulator.ns.link('message').uri] = 20;
-        
+
         // We must get rid of this clutter in the store. "OK, will be stroed in a seperate formula to avoid bugs", Kenny says
         var tp=TempFormula;
         var reqTerm=tp.bnode();
@@ -50904,7 +51161,7 @@ function UserInput(outline){
             tp.add(reqTerm,tabulator.ns.link('message'),tp.literal(tipText));
         tp.add(reqTerm,tabulator.ns.link('to'),tp.literal("The User"));
         tp.add(reqTerm,tabulator.ns.link('from'),tp.literal("The User"));
-        
+
         //append the undetermined td
         if (!notShow){
             var newNode;
@@ -50915,10 +51172,10 @@ function UserInput(outline){
             newNode.className='undetermined';
             newNode.textContent = tipText;
         }
-        
+
         return reqTerm;
     },
-    
+
     showMenu: function showMenu(e,menuType,inputQuery,extraInformation,order){
        //ToDo:order, make a class?
         tabulator.log.info("myDocument is now " + myDocument.location);
@@ -50933,7 +51190,7 @@ function UserInput(outline){
         //menu.addEventListener('click',false);
         menu.style.top=e.pageY+"px";
         menu.style.left=e.pageX+"px";
-        
+
         ////For pubsPane
         // This is for setting the location of the dropdown menu, because
         // JournalTitleAutoComplete is called with a keypress, and not mouse actions
@@ -50945,13 +51202,13 @@ function UserInput(outline){
             var oldtp = 0;
             var newlf = 0;
             var newtp = 0;
-            
+
             // repeatedly get ancestor's positions
-            // TODO: STILL a small offset/bug 
+            // TODO: STILL a small offset/bug
             while( el && !isNaN( el.offsetLeft ) && !isNaN( el.offsetTop ) ) {
                 newlf = el.offsetLeft;
                 newtp = el.offsetTop;
-                
+
                 //only change if the new parent's offset is different
                 if (newlf != oldlf) {
                     _lf += el.offsetLeft - el.scrollLeft;
@@ -50959,17 +51216,17 @@ function UserInput(outline){
                 if (newtp != oldtp) {
                     _tp += el.offsetTop - el.scrollTop;
                 }
-                
+
                 oldlf = newlf;
                 oldtp = newtp;
-                
+
                 el = el.parentNode;
             }
             // there is a constant offset
             return { top: _tp+54, left: _lf-38 };
         }
-        // Change the position of menu in pubsPane's journal Title AC 
-        if (menuType == 'JournalTitleAutoComplete'){//hql 
+        // Change the position of menu in pubsPane's journal Title AC
+        if (menuType == 'JournalTitleAutoComplete'){//hql
             var loc = getOffset(myDocument.getElementById("inpid_journal_title"));
             loc.left -= myDocument.getElementById("inpid_journal_title").scrollTop;
             menu.style.top = loc.top+"px";
@@ -50977,10 +51234,10 @@ function UserInput(outline){
         }
         dump("menu at top="+menu.style.top+" left="+menu.style.left+"\n");//hql
         //\\\\\\\hql
-        
+
         myDocument.body.appendChild(menu);
         var table=menu.appendChild(myDocument.createElement('table'));
-           
+
         menu.lastHighlight=null;;
         function highlightTr(e){
             if (menu.lastHighlight) menu.lastHighlight.className='';
@@ -50990,10 +51247,10 @@ function UserInput(outline){
         }
 
         table.addEventListener('mouseover',highlightTr,false);
-        
+
         //setting for action after selecting item
         switch (menuType){
-            case 'DidYouMeanDialog':            
+            case 'DidYouMeanDialog':
                 var selectItem=function selectItem(e){
                     qp("DID YOU MEAN SELECT ITEM!!!!!");
                     var target=tabulator.Util.ancestor(tabulator.Util.getTarget(e),'TR')
@@ -51002,11 +51259,11 @@ function UserInput(outline){
                         outline.UserInput.clearMenu();
                     }
                     else if (target.childNodes.length==2) //No
-                        outline.UserInput.clearMenu();                
-                }   
+                        outline.UserInput.clearMenu();
+                }
                 break;
             case 'LimitedPredicateChoice':
-                var clickedTd=extraInformation.clickedTd;         
+                var clickedTd=extraInformation.clickedTd;
                 var selectItem=function selectItem(e){
                     qp("LIMITED P SELECT ITEM!!!!");
                     var selectedPredicate=tabulator.Util.getAbout(kb,tabulator.Util.getTarget(e));
@@ -51017,7 +51274,7 @@ function UserInput(outline){
                         }
                     }
                     outline.UserInput.clearMenu();
-    
+
                     //refresh the choice
                     var tr=clickedTd.parentNode;
                     var newTd=outline.outline_predicateTD(tr.AJAR_statement.predicate,tr);
@@ -51052,10 +51309,10 @@ function UserInput(outline){
                 }
                 break;
             default: throw "userinput: unexpected mode";
-        }    
-        //hq: this line makes the menu clickable   
+        }
+        //hq: this line makes the menu clickable
         table.addEventListener('click',selectItem,false);
-        
+
         //Add Items to the list
         //build NameSpaces here from knowledge base
         var NameSpaces={};
@@ -51071,13 +51328,13 @@ function UserInput(outline){
                 else
                 	NameSpaces[label.value] = ontology.uri;
             }
-        );        
+        );
         function addMenuItem(predicate){
             if (table.firstChild && table.firstChild.className=='no-suggest') table.removeChild(table.firstChild);
             var Label = tabulator.Util.predicateLabelForXML(predicate, false);
             //Label = Label.slice(0,1).toUpperCase() + Label.slice(1);
 
-            if (!predicate.uri) return; //bnode 
+            if (!predicate.uri) return; //bnode
             var theNamespace="??";
             for (var name in NameSpaces){
                 tabulator.log.debug(NameSpaces[name]);
@@ -51092,7 +51349,7 @@ function UserInput(outline){
             var th=tr.appendChild(myDocument.createElement('th'))
             th.appendChild(myDocument.createElement('div')).appendChild(myDocument.createTextNode(Label));
             tr.appendChild(myDocument.createElement('td')).appendChild(myDocument.createTextNode(theNamespace.toUpperCase()));
-        }    
+        }
         function addPredicateChoice(selectedQuery){
             return function (bindings){
                 var predicate=bindings[selectedQuery.vars[0]]
@@ -51105,7 +51362,7 @@ function UserInput(outline){
                 var bnodeTerm=extraInformation.bnodeTerm;
                 //have to do style instruction passing
                 menu.style.width='auto';
-                
+
                 var h1=table.appendChild(myDocument.createElement('tr'));
                 var h1th=h1.appendChild(myDocument.createElement('th'))
                 h1th.appendChild(myDocument.createTextNode("Did you mean..."));
@@ -51173,7 +51430,7 @@ function UserInput(outline){
                     //var type=theTerm?kb.any(kb.fromNT(thisNT),rdf('type')):undefined;
                     var type=types[i];
                     var typeLabel=type?tabulator.Util.label(type):"";
-                    tr.appendChild(myDocument.createElement('td')).appendChild(myDocument.createTextNode(typeLabel));                
+                    tr.appendChild(myDocument.createElement('td')).appendChild(myDocument.createTextNode(typeLabel));
                 }
                 /*var choices=extraInformation.choices;
                 var index=extraInformation.index;
@@ -51188,14 +51445,14 @@ function UserInput(outline){
                     var theTerm=kb.fromNT(thisNT);
                     var type=theTerm?kb.any(kb.fromNT(thisNT),rdf('type')):undefined;
                     var typeLabel=type?label(type):"";
-                    tr.appendChild(myDocument.createElement('td')).appendChild(myDocument.createTextNode(typeLabel));                
+                    tr.appendChild(myDocument.createElement('td')).appendChild(myDocument.createTextNode(typeLabel));
                 }
                 //alert(extraInformation.choices.length);
                 */
                 break;
             case 'JournalTitleAutoComplete': //hql
                 // HEART OF JOURNAL TITLE AUTOCOMPLETE
-            
+
                 // extraInformatin is from above getAutoCompleteHandler
                 var inputText = extraInformation.inputText;
                 dump("testing searching text= "+ inputText+" =====\n");
@@ -51205,21 +51462,21 @@ function UserInput(outline){
                 var juris=kb.each(undefined, rdf('type'), bibo('Journal'));
 
                 var matchedtitle = []; // debugging display before inserts into menu
-                
+
                 for (var i=0; i<juris.length; i++){
                     var juri = juris[i];
                     var jtitle = kb.each(juri, dcelems('title'), undefined);
-                
+
                     var jtstr = jtitle + "";
-                    
+
                     var matchstr = inputText.toLowerCase();
                     var jtitle_lc = jtstr.toLowerCase();
-                    
+
                     // If the inputText as a whole is contained in a journal title
                     if ( jtitle_lc.search(matchstr) != -1 ) {
                         qp("FOUND A Journal Title Match!!!!!!");
                         matchedtitle.push(jtitle);
-                        
+
                         // Add it as a row to the menu:
                         // == Title, URI ==
                         var tr=table.appendChild(myDocument.createElement('tr'));
@@ -51228,7 +51485,7 @@ function UserInput(outline){
                         th.appendChild(myDocument.createElement('div')).appendChild(myDocument.createTextNode(jtitle));
                         tr.appendChild(myDocument.createElement('td')).appendChild(myDocument.createTextNode(juri));
                     }
-                    
+
                 }
 
                 dump("matched: "+matchedtitle+"\n");
@@ -51240,7 +51497,7 @@ function UserInput(outline){
                 //because getAbout relies on kb.fromNT, which does not deal with
                 //the 'collection' termType. This termType is ambiguous anyway.
                 choiceTerm.termType='collection';
-                var choices=kb.each(choiceTerm,tabulator.ns.link('element'));            
+                var choices=kb.each(choiceTerm,tabulator.ns.link('element'));
                 for (var i=0;i<choices.length;i++)
                     addMenuItem(choices[i]);
                 break;
@@ -51254,7 +51511,7 @@ function UserInput(outline){
                 var This=this;
                 function clearMenu(e){This.clearMenu();e.stopPropagation;};
                 tr.addEventListener('click',clearMenu,'false');
-                                            
+
                 var nullFetcher=function(){};
                 switch (inputQuery.constructor.name){
                 case 'Array':
@@ -51265,26 +51522,26 @@ function UserInput(outline){
                     break;
                 default:
                     kb.query(inputQuery,addPredicateChoice(inputQuery),nullFetcher);
-                }                
+                }
         }
     },//funciton showMenu
 
-    /*When a blank is filled. This happens even for blue-cross editing.*/    
+    /*When a blank is filled. This happens even for blue-cross editing.*/
     fillInRequest: function fillInRequest(type,selectedTd,inputTerm){
         var tr=selectedTd.parentNode;
         var stat;var isInverse;
         stat=tr.AJAR_statement;isInverse=tr.AJAR_inverse;
-        
+
         var reqTerm = (type=='object')?stat.object:stat.predicate;
         var newStat;
         var doNext=false;
-        
+
         //RDF Event
         var eventhandler;
         if (kb.any(reqTerm,tabulator.ns.link('onfillin'))){
             eventhandler = new Function("subject",kb.any(reqTerm,tabulator.ns.link('onfillin')).value);
         }
-        
+
         if (type=='predicate'){
             //ToDo: How to link two things with an inverse relationship
             var newTd=outline.outline_predicateTD(inputTerm,tr,false,false);
@@ -51311,13 +51568,13 @@ function UserInput(outline){
                 newTd.className+=' pendingedit';
                 this.lastModified=null;
             }else{
-                this.formUndetStat(tr,stat.subject,inputTerm,stat.object,stat.why,false);                   
-                outline.walk('right');                
+                this.formUndetStat(tr,stat.subject,inputTerm,stat.object,stat.why,false);
+                outline.walk('right');
                 doNext=true;
             }
             outline.replaceTD(newTd,selectedTd);
             TempFormula.remove(stat);
-            
+
         }else if (type=='object'){     // Object value has been edited
             var newTd = outline.outline_objectTD(inputTerm);
             outline.replaceTD(newTd, selectedTd);
@@ -51332,17 +51589,17 @@ function UserInput(outline){
                     tabulator.sparql.update([], [s], function(uri,success,error_body){
                         tabulator.log.info("@@ usinput.js (object) callback ok="+success+" for statement:"+s+"\n ");
                         if (success){
-                            newTd.className = newTd.className.replace(/ pendingedit/g,""); // User feedback                                               
+                            newTd.className = newTd.className.replace(/ pendingedit/g,""); // User feedback
                             if (!isInverse)
                                 newStats = kb.statementsMatching(stat.subject,stat.predicate,inputTerm,stat.why);
                             else
                                 newStats = kb.statementsMatching(inputTerm,stat.predicate,stat.object,stat.why);
-                            if (!newStats.length)  tabulator.log.error("userinput.js 1711: Can't find statememt!"); 
+                            if (!newStats.length)  tabulator.log.error("userinput.js 1711: Can't find statememt!");
                             tr.AJAR_statement=newStats[0];
                         }else{
                             tabulator.log.warn("userinput.js (object): Fail trying to insert statement "+s);
                             // outline.UserInput.deleteTriple(newTd,true);
-                        } 
+                        }
                     })
                 }catch(e){
                     // outline.UserInput.deleteTriple(newTd,true);
@@ -51358,10 +51615,10 @@ function UserInput(outline){
                 //?this.formUndetStat(tr...)
                 outline.walk('left');
                 doNext=true;
-            }                      
+            }
             //removal of the undetermined statement
             TempFormula.remove(stat);
- 
+
         }
         //do not throw away user's work even update fails
         UserInputFormula.statements.push(newStat);
@@ -51383,7 +51640,7 @@ function UserInput(outline){
         //tabulator.log.warn(event.pageY);
         //tabulator.log.warn(findPos(element)[1]);
         var elementPageY=findPos(element)[1]+38; //I'll figure out what this 38 is...
-        
+
         function findPos(obj) { //C&P from http://www.quirksmode.org/js/findpos.html
         var curleft = curtop = 0;
         if (obj.offsetParent) {
@@ -51396,10 +51653,10 @@ function UserInput(outline){
         }
         return [curleft,curtop];
         }
-        
+
         //tabulator.log.warn(elementPageY+element.offsetHeight-event.pageY);
         //I'm totally confused by these numbers...
-        if(event.pageY-4==elementPageY+element.offsetHeight||event.pageY-5==elementPageY+element.offsetHeight) 
+        if(event.pageY-4==elementPageY+element.offsetHeight||event.pageY-5==elementPageY+element.offsetHeight)
             return true;
         else
             return false;
@@ -51417,11 +51674,8 @@ function UserInput(outline){
     _tabulatorMode: 0
     //Default mode: Discovery
     };
-    
+
     }
-    
-    
-    
 
 // ###### Finished expanding js/tab/userinput.js ##############
 // ###### Expanding js/tab/outline.js ##############
@@ -51471,7 +51725,7 @@ tabulator.OutlineObject = function(doc) {
     var selection=[]
     this.selection=selection;
     this.ancestor = tabulator.Util.ancestor // make available as outline.ancestor in callbacks
-    this.sparql = tabulator.rdf.sparqlUpdate;
+    this.sparql = tabulator.rdf.UpdateManager;
     this.kb = tabulator.kb;
     var kb = tabulator.kb;
     var sf = tabulator.fetcher;
@@ -56400,7 +56654,7 @@ tabulator.registerViewType(TimelineViewFactory);
     tabulator.sourceURI = "resource://tabulator/";
 
     // There must be only one of these as it coordinates upstream and downstream changes
-    tabulator.kb.updater = new tabulator.rdf.sparqlUpdate(tabulator.kb); // Main way to find
+    tabulator.kb.updater = new tabulator.rdf.UpdateManager(tabulator.kb); // Main way to find
     tabulator.updater = tabulator.kb.updater; // shortcuts
     tabulator.sparql = tabulator.kb.updater; // obsolete but still used
 

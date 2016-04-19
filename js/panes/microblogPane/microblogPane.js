@@ -31,7 +31,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
         //***********************************************
         // BACK END
         //***********************************************
-        var sparqlUpdater = new tabulator.rdf.sparqlUpdate(kb);
+        var sparqlUpdater = new tabulator.rdf.UpdateManager(kb);
         //----------------------------------------------
         //ISO 8601 DATE
         //----------------------------------------------
@@ -53,11 +53,11 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
             var theTime = arrDateTime[1].replace("Z","").split(":");
 
             this.setUTCDate(1);
-            this.setUTCFullYear(theDate[0]);  
-            this.setUTCMonth(theDate[1]);  
-            this.setUTCDate(theDate[2]);  
-            this.setUTCHours(theTime[0]);  
-            this.setUTCMinutes(theTime[1]);  
+            this.setUTCFullYear(theDate[0]);
+            this.setUTCMonth(theDate[1]);
+            this.setUTCDate(theDate[2]);
+            this.setUTCHours(theTime[0]);
+            this.setUTCMinutes(theTime[1]);
             this.setUTCSeconds(theTime[2]);
 
             return this;
@@ -148,11 +148,11 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
         //----------------------------------------------
         // MICROBLOG
         // store the uri's of followed users for
-        // dereferencing the @replies. 
+        // dereferencing the @replies.
         //----------------------------------------------
         var Microblog = function(kb) {
             this.kb= kb;
-            this.sparqlUpdater = new tabulator.rdf.sparqlUpdate(kb);
+            this.sparqlUpdater = new tabulator.rdf.UpdateManager(kb);
 
             //attempt to fetch user account from local preferences if just
             //in case the user's foaf was not writable. add it to the store
@@ -196,7 +196,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
             postLink = h + ":" + m + a + " on " + ds;
             Post.date = postLink;
             //---------
-            Post.mentions =""; 
+            Post.mentions ="";
             Post.message = String(kb.any(uri, SIOC("content")));
             Post.creator = kb.any(uri, SIOC('has_creator'));
             Post.uri = "";
@@ -314,7 +314,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
         var mb = new Microblog(kb);
         var Favorites = new Favorites(mb.getMyURI());
         var FollowList = new FollowList(mb.getMyURI());
-        
+
 
         //***********************************************
         // FRONT END FUNCTIONALITY
@@ -322,7 +322,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
         //----------------------------------------------
         // PANE
         // User Interface for the Microblog Pane
-        //----------------------------------------------        
+        //----------------------------------------------
         var Pane = function(s, doc, microblogPane){
             var TabManager = function(doc){
                 this.tablist =  {};
@@ -358,7 +358,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
                     }
                 }
             }
-            this.microblogPane =  microblogPane; 
+            this.microblogPane =  microblogPane;
             var accounts = kb.each(s, FOAF('holdsAccount'))
             for (var a in accounts) {
                 if (kb.whether(accounts[a], RDF('type'), SIOC('User')) &&
@@ -381,8 +381,8 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
             }
 
             this.Tab = new TabManager(doc);
-        } 
-        
+        }
+
         Pane.prototype.notify = function(messageString) {
             var xmsg = doc.createElement('li');
             xmsg.className = "notify";
@@ -577,7 +577,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
                         /* else if(words[word].match(/\#\w+/)){
                             //hashtag
                         } else if(words[word].match(/\!\w+/)){
-                            //usergroup 
+                            //usergroup
                         }*/
                     }
                     mbUpdateWithReplies();
@@ -696,8 +696,8 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
             return headerContainer;
         }
         Pane.prototype.generatePost = function(post, me) {
-            /* 
-            generatePost - Creates and formats microblog posts 
+            /*
+            generatePost - Creates and formats microblog posts
                 post - symbol of the uri the post in question
         */
             var that=this;
@@ -878,8 +878,8 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
                 };
             };
             if (mb.getMyURI()) {
-                // If the microblog in question does not belong to the user, 
-                // display the delete post and reply to post buttons. 
+                // If the microblog in question does not belong to the user,
+                // display the delete post and reply to post buttons.
                 var themaker = kb.any(post, SIOC('has_creator'));
                 if (mb.getMyURI() != themaker.uri) {
                     var xreplyButton = doc.createElement('input');
@@ -942,7 +942,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
         };
         Pane.prototype.generatePostList = function(gmb_posts) {
             /*
-            generatePostList - Generate the posts and 
+            generatePostList - Generate the posts and
             display their results on the interface.
             */
             var post_list = doc.createElement('ul');
@@ -1076,7 +1076,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
         var microblogpane  = doc.createElement("div");
 //      var getusersfollows = function(uri){
 //          var follows = new Object();
-//          var followsa = {follows:0, matches:0}; 
+//          var followsa = {follows:0, matches:0};
 //          var accounts = kb.each(s, FOAF("holdsAccount"));
 //          //get all of the accounts that a person holds
 //          for (var acct in accounts){
