@@ -266,7 +266,8 @@ var messageArea = function (dom, kb, subject, messageStore, options) {
     query = options.query
   } else {
     query = new $rdf.Query('Messages')
-    var v = ['msg', 'date', 'creator', 'content'].map(function (x) {
+    var v = {}; // semicolon needed
+    ['msg', 'date', 'creator', 'content'].map(function (x) {
       query.vars.push(v[x] = $rdf.variable(x))
     })
     query.pat.add(subject, WF('message'), v['msg'])
