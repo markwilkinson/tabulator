@@ -17,6 +17,17 @@
  *
  */
 
+var whereInstalled = '/devel/github.com/linkeddata/tabulator-firefox/'
+
+var mungeFilename = function(fn){
+  var pref = 'chrome://tabulator/'
+  if (fn.slice(0, pref.length) === pref) {
+    return whereInstalled + fn.slice(pref.length)
+  }
+  return fn
+}
+
+dump('\nFirefox extension init.js starts.\n')
 var loader = Components.classes["@mozilla.org/moz/jssubscript-loader;1"]
     .getService(Components.interfaces.mozIJSSubScriptLoader);
 
@@ -31,40 +42,282 @@ tabulator.loadScript = function(uri) {
     loader.loadSubScript('chrome://tabulator/content/'+ uri);
 }
 
+module = {} // try global
+requireState = {}
+requireState.loadedPackage = {}
+requireState.loadedURI = {}
+
+// var scriptURI = 'chrome://tabulator/content/js/init/' // here
+module.scriptURI = 'chrome://tabulator/content/js/init/init.js' // here
+module.packageBase = 'chrome://tabulator/content/js/' // here
+
+
+// We have to be able to read the package files for NPM modules
+var readJSONFile = function(filename){
+  // dump('   reading file '+ filename + '\n')
+
+  var file = Components.classes['@mozilla.org/file/local;1']
+    .createInstance(Components.interfaces.nsILocalFile)
+  file.initWithPath(filename)
+  //
+  // |file| is nsIFile
+  var data = "";
+  var fstream = Components.classes["@mozilla.org/network/file-input-stream;1"].
+                createInstance(Components.interfaces.nsIFileInputStream);
+  var cstream = Components.classes["@mozilla.org/intl/converter-input-stream;1"].
+                createInstance(Components.interfaces.nsIConverterInputStream);
+  fstream.init(file, -1, 0, 0);
+  //cstream.init(fstream, "UTF-8", 0, 0); // you can use another encoding here if you wish
+
+  var nativeJSON = Components.classes["@mozilla.org/dom/json;1"]
+                 .createInstance(Components.interfaces.nsIJSON);
+
+
+  var obj = nativeJSON.decodeFromStream(fstream, 99999)  // length parameter??
+  // dump('json object: ' +obj)
+  return obj
+
+  /*
+  var str = {}
+  var read = 0;
+  do {
+      read = cstream.readString(0xffffffff, str); // read as much as we can and put it in str.value
+      data += str.value;
+  } while (read != 0);
+
+  cstream.close(); // this closes fstream
+  //dump(data + '\n');
+  return data
+  */
+}
+
+var join = function (given, base) {
+  var baseColon
+  var baseHash
+  var baseScheme
+  var baseSingle
+  var colon
+  var lastSlash
+  var path
+  baseHash = base.indexOf('#')
+  if (baseHash > 0) {
+    base = base.slice(0, baseHash)
+  }
+  if (given.length === 0) {
+    return base
+  }
+  if (given.indexOf('#') === 0) {
+    return base + given
+  }
+  colon = given.indexOf(':')
+  if (colon >= 0) {
+    return given
+  }
+  baseColon = base.indexOf(':')
+  if (base.length === 0) {
+    return given
+  }
+  if (baseColon < 0) {
+    alert('Invalid base: ' + base + ' in join with given: ' + given)
+    return given
+  }
+  baseScheme = base.slice(0, +baseColon + 1 || 9e9)
+  if (given.indexOf('//') === 0) {
+    return baseScheme + given
+  }
+  if (base.indexOf('//', baseColon) === baseColon + 1) {
+    baseSingle = base.indexOf('/', baseColon + 3)
+    if (baseSingle < 0) {
+      if (base.length - baseColon - 3 > 0) {
+        return base + '/' + given
+      } else {
+        return baseScheme + given
+      }
+    }
+  } else {
+    baseSingle = base.indexOf('/', baseColon + 1)
+    if (baseSingle < 0) {
+      if (base.length - baseColon - 1 > 0) {
+        return base + '/' + given
+      } else {
+        return baseScheme + given
+      }
+    }
+  }
+  if (given.indexOf('/') === 0) {
+    return base.slice(0, baseSingle) + given
+  }
+  path = base.slice(baseSingle)
+  lastSlash = path.lastIndexOf('/')
+  if (lastSlash < 0) {
+    return baseScheme + given
+  }
+  if (lastSlash >= 0 && lastSlash < path.length - 1) {
+    path = path.slice(0, +lastSlash + 1 || 9e9)
+  }
+  path += given
+  while (path.match(/[^\/]*\/\.\.\//)) {
+    path = path.replace(/[^\/]*\/\.\.\//, '')
+  }
+  path = path.replace(/\.\//g, '')
+  path = path.replace(/\/\.$/, '/')
+  return base.slice(0, baseSingle) + path
+}
+
+var dirPath = function(filename){
+  return filename.slice(0, filename.lastIndexOf('/') + 1)
+}
+
+var setCount = function(set){
+  var count = 0
+  for (x in set) {
+    count++
+  }
+  return count
+}
+var setList = function(set){
+  var str = ''
+  for (x in set) {
+    str += x + ','
+  }
+  return str
+}
+
+// require
+
+var require = function(relURI){
+    dump(" require "+relURI+ " from " + module.scriptURI +"\n");
+    dump("    initial module.packageBase: " + module.packageBase + '\n')
+    var absURI
+    var packageBase
+    var packageName = null;
+    if (relURI.indexOf('/') < 0){ // module name
+      packageBase = join('node_modules/' + relURI + '/' , module.packageBase )
+      dump('   package ' + relURI + ' base: ' + packageBase + '\n')
+      packageName = relURI
+      if (requireState.loadedPackage[packageName]){
+        dump('        -------> package cache hit\n')
+        return requireState.loadedPackage[packageName]
+      }
+      var packageURI = packageBase + 'package.json'
+      var filename = mungeFilename(packageURI)
+      dump('   filename is ' + filename + '\n')
+      var pack = readJSONFile(filename);
+      var mainURI = join(pack.main, packageURI)
+      dump('   package main URI : ' + mainURI + '\n')
+      absURI = mainURI
+      if (absURI.slice(-3) !== '.js'){
+        absURI += '.js'
+      }
+    } else {
+      var absURI = join(relURI, module.scriptURI)
+      if (absURI.slice(-3) !== '.js'){
+        absURI += '.js'
+      }
+      if (relURI.slice(0,2) === './'){
+        packageBase = module.packageBase // keep the same when just a relative path
+        // dump('aaaaa simple '+packageBase+'\n')
+      } else {
+        packageBase = dirPath(absURI)
+        // dump('aaaaa complex '+packageBase+'\n')
+      }
+    }
+    dump("   --> " + absURI + "\n");
+    if (requireState.loadedURI[absURI]){
+      dump("        -----> URI cache hit\n");
+      return requireState.loadedURI[absURI]
+    }
+    // dump('   cache A: '  + setCount(requireState.loadedURI)+') '+ requireState.loadedURI[absURI] + ' -- ' + absURI + '\n')
+
+
+    var __dirname = absURI.slice(0, absURI.lastIndexOf('/'))
+    var doSandbox = false
+    var result
+    if (doSandbox) {
+      var sandbox = {}
+      sandbox.module = {}
+      sandbox.module.require = require
+      sandbox.module.scriptURI = absURI
+      sandbox.module.packageBase = packageBase
+      sandbox.module.exports = {}
+      // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/mozIJSSubScriptLoader
+      try {
+        loader.loadSubScript(absURI, sandbox);
+      } catch(e){
+        dump('****  Error loading sandboxed ' + absURI + ': ' + e + '\n')
+      }
+      result = sandbox.module.exports
+    } else {
+      //module = {}
+      var last = {}
+      last.scriptURI = module.scriptURI
+      last.packageBase = module.packageBase
+      // dump('    last package base ' + module.packageBase + '\n')
+      last.require = require
+      dump('    next package base ' + packageBase + '\n')
+
+      module.scriptURI = absURI
+      module.packageBase = packageBase
+      module.exports = {}
+
+      try {
+        loader.loadSubScript(absURI, sandbox);
+      } catch(e){
+        dump('****  Error loading ' + absURI + ': ' + e + '\n')
+      }
+      result = module.exports
+      module.scriptURI = last.scriptURI
+      // dump('    back to last URI: '+ module.scriptURI + '\n')
+      module.packageBase = last.packageBase
+      require = last.require // eg N3 corrupts require
+    }
+    if (packageName){
+      requireState.loadedPackage[packageName] = result
+    }
+    requireState.loadedURI[module.scriptURI] = result
+    dump(' finished require: ' + module.scriptURI + '\n')
+    // dump('   cache D: ' + setList(requireState.loadedURI) + '\n')
+    return result
+}
+
+
 //Before anything else, load up the logger so that errors can get logged.
 // dump('trying import services: \n')
 // Components.utils.import("resource://gre/modules/Services.jsm");
 // dump('trying require: \n')
 // var foo = require("../tab/log-ext.js");
 
-tabulator.loadScript("js/tab/log-ext.js");
+// tabulator.log = require('../tab/log-ext-node.js')
 
-tabulator.log = new TabulatorLogger();
-dump("@@@ init.js Inital setting of tabulator.log\n");
+// tabulator.loadScript("js/tab/log-ext.js");
 
-// Now we have to load jQuery for RDFa -- but it is also loaded in ../../tabulator.xul @@
-// tabulator.loadScript("js/jquery/jquery-1.4.2.min.js");
+// tabulator.log = new TabulatorLogger();
 
-//Load the RDF Library, which defines itself in the namespace $rdf.
-// see the script rdf/create-lib which creates one file, rdflib.js
-// by concatenating all the js files)
+// dump('aaaaaa' + require + '\n')
 
-if (tabulator.jQuery) {
-    jQuery = tabulator.jQuery;
-    dump("tabulator.jQuery is defined\n");
-    tabulator.loadScript("js/rdf/dist/rdflib-rdfa.js");
-} else {
-    dump("Hmmm, tabulator.jQuery not defined. Not loading RDFa\n");
-    tabulator.loadScript("js/rdf/dist/rdflib.js");
-};
-    tabulator.rdf = $rdf;
+// tabulator.loadScript("js/solid/dist/solid.js"); // Defines Solid
+// dump('aaaaaa' + require + '\n')
 
-    tabulator.loadScript("js/solid/dist/solid.js"); // Defines Solid
+// $rdf.log = tabulator.log // @@ for now
+
+$rdf = {}
+
+var http = require('http-browserify')
+requireState.loadedPackage['http'] = requireState.loadedPackage['http-browserify']
+
+var UI = tabulator.solidUi = require('../solid-ui/index.js')
+
+// Because it wasn't loaded as a module (yet) we cheat
+requireState.loadedPackage['solid-iu'] = tabulator.solidUi
+
+// $rdf = tabulator.rdf = require('../rdf/dist/rdflib-node.js')
 
 
+tabulator.Util = tabulator.solidUi.utils
 
 //Common code has  stackString used reporting errors in catch() below
-tabulator.loadScript("js/tab/common.js");
+// moved to ui.utils
+// tabulator.loadScript("js/tab/common.js");
 
 // This is because Firefox silently throws away any errors here alas
 try {

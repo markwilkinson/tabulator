@@ -5,6 +5,16 @@
  * oshani@csail.mit.edu
  */
 
+ var UI = {
+   icons: require('./iconBase.js'),
+   log: require('./log'),
+   ns: require('./ns'),
+   store: require('./store'),
+   rdf: require('./rdf'),
+   utils: require('./utils'),
+   widgets: require('./widget')
+ }
+ //var nsModule = require('./ns.js')
 
 
 
@@ -13,8 +23,8 @@
 //these are prefixed with 'ap_' (short for air pane) - Oshani
 // moved to airpane.js from paneutils.js 2014 tbl
 
-var ap_air = tabulator.rdf.Namespace("http://dig.csail.mit.edu/TAMI/2007/amord/air#");
-var ap_tms = tabulator.rdf.Namespace("http://dig.csail.mit.edu/TAMI/2007/amord/tms#");
+var ap_air = UI.rdf.Namespace("http://dig.csail.mit.edu/TAMI/2007/amord/air#");
+var ap_tms = UI.rdf.Namespace("http://dig.csail.mit.edu/TAMI/2007/amord/tms#");
 var ap_compliant = ap_air('compliant-with');
 var ap_nonCompliant = ap_air('non-compliant-with');
 var ap_antcExpr = ap_tms('antecedent-expr');
@@ -39,7 +49,7 @@ airPane.label = function(subject) {
     justificationsArr = [];
 
 	//Find all the statements with air:justification in it
-	var stsJust = tabulator.kb.statementsMatching(undefined, ap_just, undefined, subject);
+	var stsJust = UI.store.statementsMatching(undefined, ap_just, undefined, subject);
 	//This will hold the string to display if the pane appears
 	var stringToDisplay = null
 	//Then make a registry of the compliant and non-compliant subjects
@@ -55,7 +65,7 @@ airPane.label = function(subject) {
 			//Keep track of the subjects of the statements in the global variables above and return "Justify"
 			//which will be the tool-tip text of the label icon
 			if (sts[0].predicate.toString() == ap_compliant.toString()){
-                var compliantString = tabulator.Util.label(sts[0].subject) + " is compliant with " + tabulator.Util.label(sts[0].object);
+                var compliantString = UI.utils.label(sts[0].subject) + " is compliant with " + UI.utils.label(sts[0].object);
                 var compliantArr = [];
                 compliantArr.push(sts[0].object);
                 compliantArr.push(ap_compliant.toString());
@@ -63,7 +73,7 @@ airPane.label = function(subject) {
 				justificationsArr.push(compliantArr);
             }
 			if (sts[0].predicate.toString() == ap_nonCompliant.toString()){
-                var nonCompliantString = tabulator.Util.label(sts[0].subject) + " is non compliant with " + tabulator.Util.label(sts[0].object);
+                var nonCompliantString = UI.utils.label(sts[0].subject) + " is non compliant with " + UI.utils.label(sts[0].object);
                 var nonCompliantArr = [];
                 nonCompliantArr.push(sts[0].object);
                 nonCompliantArr.push(ap_nonCompliant.toString());
@@ -75,8 +85,8 @@ airPane.label = function(subject) {
 		}
 	}
 	//Make the subject list we will be exploring in the render function unique
-	//compliantStrings = tabulator.panes.utils.unique(compliantStrings);
-	//nonCompliantStrings = tabulator.panes.utils.unique(nonCompliantStrings);
+	//compliantStrings = UI.widgets.unique(compliantStrings);
+	//nonCompliantStrings = UI.widgets.unique(nonCompliantStrings);
 
    return stringToDisplay;
 }
@@ -90,7 +100,7 @@ airPane.render = function(subject, myDocument) {
 	var div = myDocument.createElement("div");
 
 	//Helpers
-	var logFileURI = tabulator.panes.utils.extractLogURI(myDocument.location.toString());
+	var logFileURI = UI.widgets.extractLogURI(myDocument.location.toString());
 
 	div.setAttribute('class', 'dataContentPane'); //airPane has the same formatting as the dataContentPane
 	div.setAttribute('id', 'dataContentPane'); //airPane has the same formatting as the dataContentPane
@@ -148,7 +158,7 @@ airPane.render = function(subject, myDocument) {
             return;
 
         selected = justificationsArr[this.selectedIndex - 1];
-        var stsJust = tabulator.kb.statementsMatching(undefined, ap_just, undefined, subject);
+        var stsJust = UI.store.statementsMatching(undefined, ap_just, undefined, subject);
 
 
         for (var i=0; i<stsJust.length; i++){
@@ -184,7 +194,7 @@ airPane.render = function(subject, myDocument) {
                 var td_s = myDocument.createElement("td");
                 var a_s = myDocument.createElement('a')
                 a_s.setAttribute('href', stsFound.subject.uri)
-                a_s.appendChild(myDocument.createTextNode(tabulator.Util.label(stsFound.subject)));
+                a_s.appendChild(myDocument.createTextNode(UI.utils.label(stsFound.subject)));
                 td_s.appendChild(a_s);
                 tr.appendChild(td_s);
 
@@ -195,14 +205,14 @@ airPane.render = function(subject, myDocument) {
                 var td_p = myDocument.createElement("td");
                 var a_p = myDocument.createElement('a');
                 a_p.setAttribute('href', stsFound.predicate.uri)
-                a_p.appendChild(myDocument.createTextNode(tabulator.Util.label(stsFound.predicate)));
+                a_p.appendChild(myDocument.createTextNode(UI.utils.label(stsFound.predicate)));
                 td_p.appendChild(a_p);
                 tr.appendChild(td_p);
 
                 var td_o = myDocument.createElement("td");
                 var a_o = myDocument.createElement('a')
                 a_o.setAttribute('href', stsFound.object.uri)
-                a_o.appendChild(myDocument.createTextNode(tabulator.Util.label(stsFound.object)));
+                a_o.appendChild(myDocument.createTextNode(UI.utils.label(stsFound.object)));
                 td_o.appendChild(a_o);
                 tr.appendChild(td_o);
 
@@ -237,7 +247,7 @@ airPane.render = function(subject, myDocument) {
 
                     //If the reasoner used closed-world-assumption, there are no interesting premises
                     var cwa = ap_air('closed-world-assumption');
-                    var cwaStatements = tabulator.kb.statementsMatching(undefined, cwa, undefined, subject);
+                    var cwaStatements = UI.store.statementsMatching(undefined, cwa, undefined, subject);
                     var noPremises = false;
                 /*    if (cwaStatements.length > 0){
                         noPremises = true;
@@ -258,7 +268,7 @@ airPane.render = function(subject, myDocument) {
                                 if (obj.elements[i].termType == 'symbol') {
                                     var anchor = myDocument.createElement('a');
                                     anchor.setAttribute('href', obj.elements[i].uri);
-                                    anchor.appendChild(myDocument.createTextNode(tabulator.Util.label(obj.elements[i])));
+                                    anchor.appendChild(myDocument.createTextNode(UI.utils.label(obj.elements[i])));
                                     //anchor.appendChild(myDocument.createTextNode(obj.elements[i]));
                                     divDescription.appendChild(anchor);
                                 }
@@ -281,7 +291,7 @@ airPane.render = function(subject, myDocument) {
                         //Terminating condition:
                         // if the rule has for example - "pol:MA_Disability_Rule_1 tms:justification tms:premise"
                         // there are no more information to follow
-                        var terminatingCondition = tabulator.kb.statementsMatching(ruleToFollow, ap_just, ap_prem, subject);
+                        var terminatingCondition = UI.store.statementsMatching(ruleToFollow, ap_just, ap_prem, subject);
                         if (terminatingCondition[0] != undefined){
 
                            divPremises.appendChild(myDocument.createElement('br'));
@@ -294,15 +304,15 @@ airPane.render = function(subject, myDocument) {
                         else{
 
                             //Update the description div with the description at the next level
-                            var currentRule = tabulator.kb.statementsMatching(undefined, undefined, ruleToFollow, subject);
+                            var currentRule = UI.store.statementsMatching(undefined, undefined, ruleToFollow, subject);
 
                             //Find the corresponding description matching the currenrRule
 
-                            var currentRuleDescSts = tabulator.kb.statementsMatching(undefined, undefined, currentRule[0].object);
+                            var currentRuleDescSts = UI.store.statementsMatching(undefined, undefined, currentRule[0].object);
 
                             for (var i=0; i<currentRuleDescSts.length; i++){
                                 if (currentRuleDescSts[i].predicate == ap_instanceOf.toString()){
-                                    var currentRuleDesc = tabulator.kb.statementsMatching(currentRuleDescSts[i].subject, undefined, undefined, subject);
+                                    var currentRuleDesc = UI.store.statementsMatching(currentRuleDescSts[i].subject, undefined, undefined, subject);
 
                                     for (var j=0; j<currentRuleDesc.length; j++){
                                         if (currentRuleDesc[j].predicate == ap_description.toString() &&
@@ -325,13 +335,13 @@ airPane.render = function(subject, myDocument) {
                                 }
                             }
 
-                            var currentRuleSts = tabulator.kb.statementsMatching(correctCurrentRule, ap_just, undefined, subject);
-                            var nextRuleSts = tabulator.kb.statementsMatching(currentRuleSts[0].object, ap_ruleName, undefined, subject);
+                            var currentRuleSts = UI.store.statementsMatching(correctCurrentRule, ap_just, undefined, subject);
+                            var nextRuleSts = UI.store.statementsMatching(currentRuleSts[0].object, ap_ruleName, undefined, subject);
                             ruleNameFound = nextRuleSts[0].object;
 
-                            var currentRuleAntc = tabulator.kb.statementsMatching(currentRuleSts[0].object, ap_antcExpr, undefined, subject);
+                            var currentRuleAntc = UI.store.statementsMatching(currentRuleSts[0].object, ap_antcExpr, undefined, subject);
 
-                            var currentRuleSubExpr = tabulator.kb.statementsMatching(currentRuleAntc[0].object, ap_subExpr, undefined, subject);
+                            var currentRuleSubExpr = UI.store.statementsMatching(currentRuleAntc[0].object, ap_subExpr, undefined, subject);
 
                             var formulaFound = false;
                             var bnodeFound = false;
@@ -413,7 +423,7 @@ airPane.render = function(subject, myDocument) {
                     var justificationSts;
 
                     //Get all the triples with a air:description as the predicate
-                    var stsDesc = tabulator.kb.statementsMatching(undefined, ap_description, undefined, subject);
+                    var stsDesc = UI.store.statementsMatching(undefined, ap_description, undefined, subject);
 
                     //You are bound to have more than one such triple,
                     //so iterates through all of them and figure out which belongs to the one that's referred from the drop down box
@@ -462,13 +472,13 @@ airPane.render = function(subject, myDocument) {
                     for (var j=0; j<stsJust.length; j++){
                         if (stsJust[j].subject.termType == 'formula' && stsJust[j].object.termType == 'bnode'){
 
-                            var ruleNameSts = tabulator.kb.statementsMatching(stsJust[j].object, ap_ruleName, undefined, subject);
+                            var ruleNameSts = UI.store.statementsMatching(stsJust[j].object, ap_ruleName, undefined, subject);
                             ruleNameFound =	ruleNameSts[0].object; // This would be the initial rule name from the
                                                 // statement containing the formula
                             if (!noPremises){
-                                var t1 = tabulator.kb.statementsMatching(stsJust[j].object, ap_antcExpr, undefined, subject);
+                                var t1 = UI.store.statementsMatching(stsJust[j].object, ap_antcExpr, undefined, subject);
                                 for (var k=0; k<t1.length; k++){
-                                    var t2 = tabulator.kb.statementsMatching(t1[k].object, undefined, undefined, subject);
+                                    var t2 = UI.store.statementsMatching(t1[k].object, undefined, undefined, subject);
                                     for (var l=0; l<t2.length; l++){
                                         if (t2[l].subject.termType == 'bnode' && t2[l].object.termType == 'formula'){
                                             justificationSts = t2;
@@ -547,7 +557,7 @@ airPane.renderReasonsForStatement = function renderReasonsForStatement(st,
 	//It's no longer English-like, but just property tables
         //var stsDesc = kb.statementsMatching(undefined, ap_description, undefined, subject);
         //var stsDesc = kb.statementsMatching(st, ap_description);
-	var stsDesc = tabulator.kb.statementsMatching(st, ap_just);
+	var stsDesc = UI.store.statementsMatching(st, ap_just);
 	// {}  tms:justification []. (multiple)
 
 	if(stsDesc.length > 1){
@@ -576,7 +586,7 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
     var stsCompliant;
     var stsNonCompliant;
     var stsFound;
-    var stsJust = tabulator.kb.statementsMatching(st, ap_just);
+    var stsJust = UI.store.statementsMatching(st, ap_just);
 
 
     var divOutcome = myDocument.createElement("div"); //To give the "yes/no" type answer indicating the concise reason
@@ -600,7 +610,7 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
         var td_s = myDocument.createElement("td");
         var a_s = myDocument.createElement('a')
         a_s.setAttribute('href', stsFound.subject.uri)
-        a_s.appendChild(myDocument.createTextNode(tabulator.Util.label(stsFound.subject)));
+        a_s.appendChild(myDocument.createTextNode(UI.utils.label(stsFound.subject)));
         td_s.appendChild(a_s);
         tr.appendChild(td_s);
 
@@ -611,7 +621,7 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
         var td_p = myDocument.createElement("td");
         var a_p = myDocument.createElement('a');
         a_p.setAttribute('href', stsFound.predicate.uri);
-        a_p.appendChild(myDocument.createTextNode(tabulator.Util.label(stsFound.predicate)));
+        a_p.appendChild(myDocument.createTextNode(UI.utils.label(stsFound.predicate)));
         td_p.appendChild(a_p);
         tr.appendChild(td_p);
 
@@ -622,7 +632,7 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 	} else {
 	  var a_o = myDocument.createElement('a');
 	  a_o.setAttribute('href', stsFound.object.uri);
-	  a_o.appendChild(myDocument.createTextNode(tabulator.Util.label(stsFound.object)));
+	  a_o.appendChild(myDocument.createTextNode(UI.utils.label(stsFound.object)));
 	}
         td_o.appendChild(a_o);
         tr.appendChild(td_o);
@@ -677,7 +687,7 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
     airPane.render.because = function(){ //Function Call 2
 
         var cwa = ap_air('closed-world-assumption');
-        var cwaStatements = tabulator.kb.statementsMatching(undefined, cwa, undefined, subject);
+        var cwaStatements = UI.store.statementsMatching(undefined, cwa, undefined, subject);
         var noPremises = false;
         if (cwaStatements.length > 0){
             noPremises = true;
@@ -692,8 +702,8 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
         airPane.render.because.displayDesc = function(obj, divDescription){
 	  //@argument obj: most likely a [] that has
 	  //a tms:antecedent-expr and a tms:rule-name
-	  var aAnd_justification = tabulator.kb.the(obj, ap_antcExpr);
-	  var subExprs = tabulator.kb.each(aAnd_justification, ap_subExpr);
+	  var aAnd_justification = UI.store.the(obj, ap_antcExpr);
+	  var subExprs = UI.store.each(aAnd_justification, ap_subExpr);
 	  var premiseFormula = null;
 	  if (subExprs[0].termType == 'formula')
 	    premiseFormula = subExprs[0];
@@ -742,7 +752,7 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 		case 'symbol':
 		  var anchor = myDocument.createElement('a');
 		  anchor.setAttribute('href', element.uri);
-		  anchor.appendChild(myDocument.createTextNode(tabulator.Util.label(element)));
+		  anchor.appendChild(myDocument.createTextNode(UI.utils.label(element)));
 		  p.appendChild(anchor);
 		  p.appendChild(myDocument.createTextNode(" "));
 		  break;
@@ -755,20 +765,20 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 	      p.appendChild(myDocument.createTextNode(". "));
 	      if(firstLevel){
 		divDescription.appendChild(p);
-		var one_statement_formula = new tabulator.rdf.IndexedFormula();
+		var one_statement_formula = new UI.rdf.IndexedFormula();
 		one_statement_formula.statements.push(st)
 		p.AJAR_formula = one_statement_formula;
 		function make_callback(st, p, divDescription){
 		  return function statement_more_information_callback(uri){
 		    divDescription.waitingFor.remove(uri);
-		    if(tabulator.kb.any(p.AJAR_formula, ap_just)) {
+		    if(UI.store.any(p.AJAR_formula, ap_just)) {
 		      //The would get called twice even if the callback
 		      //is canceled, so check the last child.
 		      //dump("in statement_more_information_callback with st: "                         +st + "and uri: " + uri + "\n");
 		      divDescription.informationFound = true;
 		      if (p.lastChild.nodeName=="#text"){
 			var explain_icon = p.appendChild(myDocument.createElement('img'));
-			explain_icon.src = tabulator.iconPrefix + "icons/tango/22-help-browser.png";
+			explain_icon.src = UI.icon.originalIconBase + "tango/22-help-browser.png";
 			var click_cb = function(){
 			  airPane.renderReasonsForStatement(
 			    p.AJAR_formula, divJustification);
@@ -787,7 +797,7 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 		                           //Array.prototype.remove would
                                            //be one of them!!!
 		      var thing =[st.subject, st.object][h];
-		      var uris = tabulator.kb.uris(thing);
+		      var uris = UI.store.uris(thing);
 		      for (var k=0;k<uris.length;k++){
 			var doc_uri = Util.uri.docpart(uris[k])
 			  if (typeof sf.requested[doc_uri]=="undefined" &&
@@ -795,7 +805,7 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 			    //the second condition holds, for example,
 			    //Util.uri.docpart(thing.uri)
 			    divDescription.waitingFor.push(doc_uri);
-			    sf.lookUpThing(tabulator.kb.sym(doc_uri));
+			    sf.lookUpThing(UI.store.sym(doc_uri));
 			  }
 		      }
 		    }
@@ -869,7 +879,7 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 // 	    sf.addCallback('fail',throbber_callback);
 // 	  }
 	  for (var i=0;i<divDescription.waitingFor.length;i++)
-	    sf.lookUpThing(tabulator.kb.sym(divDescription.waitingFor[i]));
+	    sf.lookUpThing(UI.store.sym(divDescription.waitingFor[i]));
 
 	} //function airPane.render.because.displayDesc
 
@@ -877,7 +887,7 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
             //Terminating condition:
             // if the rule has for example - "pol:MA_Disability_Rule_1 tms:justification tms:premise"
             // there are no more information to follow
-            var terminatingCondition = tabulator.kb.statementsMatching(ruleToFollow, ap_just, ap_prem, subject);
+            var terminatingCondition = UI.store.statementsMatching(ruleToFollow, ap_just, ap_prem, subject);
             if (terminatingCondition[0] != undefined){
 
                divPremises.appendChild(myDocument.createElement('br'));
@@ -890,15 +900,15 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
             else{
 
                 //Update the description div with the description at the next level
-                var currentRule = tabulator.kb.statementsMatching(undefined, undefined, ruleToFollow);
+                var currentRule = UI.store.statementsMatching(undefined, undefined, ruleToFollow);
 
                 //Find the corresponding description matching the currenrRule
 
-                var currentRuleDescSts = tabulator.kb.statementsMatching(undefined, undefined, currentRule[0].object);
+                var currentRuleDescSts = UI.store.statementsMatching(undefined, undefined, currentRule[0].object);
 
                 for (var i=0; i<currentRuleDescSts.length; i++){
                     if (currentRuleDescSts[i].predicate == ap_instanceOf.toString()){
-                        var currentRuleDesc = tabulator.kb.statementsMatching(currentRuleDescSts[i].subject, undefined, undefined, subject);
+                        var currentRuleDesc = UI.store.statementsMatching(currentRuleDescSts[i].subject, undefined, undefined, subject);
 
                         for (var j=0; j<currentRuleDesc.length; j++){
                             if (currentRuleDesc[j].predicate == ap_description.toString() &&
@@ -913,14 +923,14 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
                 }
 
 
-                var currentRuleSts = tabulator.kb.statementsMatching(currentRule[0].subject, ap_just, undefined);
+                var currentRuleSts = UI.store.statementsMatching(currentRule[0].subject, ap_just, undefined);
 
-                var nextRuleSts = tabulator.kb.statementsMatching(currentRuleSts[0].object, ap_ruleName, undefined);
+                var nextRuleSts = UI.store.statementsMatching(currentRuleSts[0].object, ap_ruleName, undefined);
                 ruleNameFound = nextRuleSts[0].object;
 
-                var currentRuleAntc = tabulator.kb.statementsMatching(currentRuleSts[0].object, ap_antcExpr, undefined);
+                var currentRuleAntc = UI.store.statementsMatching(currentRuleSts[0].object, ap_antcExpr, undefined);
 
-                var currentRuleSubExpr = tabulator.kb.statementsMatching(currentRuleAntc[0].object, ap_subExpr, undefined);
+                var currentRuleSubExpr = UI.store.statementsMatching(currentRuleAntc[0].object, ap_subExpr, undefined);
 
                 for (var i=0; i<currentRuleSubExpr.length; i++){
                     if(currentRuleSubExpr[i].object.termType == 'formula')

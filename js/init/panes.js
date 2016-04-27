@@ -36,9 +36,10 @@ The default panes take little precedence, except the internals pane
 is lower as normally it is just for diagnostics.
 Also lower could be optional tools for various classes.
 */
+
 /* First we load the common utilities so panes can add them (while developing) as well as use them */
 // Pattern of adding code where it used then moving it back out into a common code.
-
+/*       MOVED TO SOLID_UI
 // General low-level ACL access routine
 tabulator.loadScript("js/panes/common/acl.js");
 
@@ -62,6 +63,8 @@ tabulator.loadScript("js/panes/common/matrix.js");
 
 // A line-oriented collaborative notepad
 tabulator.loadScript("js/panes/common/pad.js");
+*/
+
 
 /*  Note that the earliest panes have priority. So the most specific ones are first.
 **

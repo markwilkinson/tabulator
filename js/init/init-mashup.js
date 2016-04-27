@@ -1,4 +1,4 @@
-// mashlib-init.js
+// init-mashup.js
 
 if (typeof tabulator === 'undefined') tabulator = {} // allow pre-loading of options
 tabulator.isExtension = false;
@@ -23,9 +23,15 @@ tabulator.setup = function() {
     // see the script rdf/create-lib (this script creates one file -rdflib.js that concatenates all the js files)
 
     tabulator.loadScript("js/rdf/dist/rdflib.js"); // Sets this.$rdf
-
     tabulator.rdf = $rdf;
-//    $rdf = this['$rdf'];
+
+    // The main store, with fetcher and updater linked to it
+    tabulator.kb = new $rdf.IndexedFormula();
+    tabulator.sf = tabulator.fetcher = new $rdf.Fetcher(tabulator.kb); // .sf deprecated
+    // There must be only one of these as it coordinates upstream and downstream changes
+    tabulator.kb.updater = new $rdf.UpdateManager(tabulator.kb); // Main way to find
+    tabulator.updater = tabulator.kb.updater; // shortcuts
+    tabulator.sparql = tabulator.kb.updater; // obsolete but still used
 
     tabulator.loadScript("js/solid/dist/solid.js"); // Defines Solid
 
@@ -56,17 +62,10 @@ tabulator.setup = function() {
     //Oh, and the views!
     tabulator.loadScript("js/init/views.js");
 
-    tabulator.kb = new tabulator.rdf.IndexedFormula();
-    tabulator.sf = tabulator.fetcher = new tabulator.rdf.Fetcher(tabulator.kb); // .sf deprecated
 
     tabulator.qs = new tabulator.rdf.QuerySource();
     // tabulator.sourceWidget = new SourceWidget();
     tabulator.sourceURI = "resource://tabulator/";
-
-    // There must be only one of these as it coordinates upstream and downstream changes
-    tabulator.kb.updater = new tabulator.rdf.UpdateManager(tabulator.kb); // Main way to find
-    tabulator.updater = tabulator.kb.updater; // shortcuts
-    tabulator.sparql = tabulator.kb.updater; // obsolete but still used
 
     // tabulator.rc = new RequestConnector();
     tabulator.requestCache = [];

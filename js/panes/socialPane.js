@@ -242,14 +242,21 @@ tabulator.panes.register( tabulator.panes.socialPane = {
 
         var div2 = dom.createElement("div");
 
+        var listener = function(newIdURI){
+            // @@ To be written:   redraw as a function the new me
+        }
+
         // @@ Addd: event handler to redraw the stuff below when me changes.
-        tips.appendChild(tabulator.panes.utils.loginStatusBox(dom));
+        tips.appendChild(tabulator.panes.utils.loginStatusBox(dom, listener));
+
+
 
         var me_uri = tabulator.preferences.get('me');
         var me = me_uri && kb.sym(me_uri);
 
         var thisIsYou = (me && kb.sameThings(me,s));
 
+        /*
         if (!me || thisIsYou) {  // If we know who me is, don't ask for other people
 
             var f = dom.createElement('form');
@@ -270,10 +277,11 @@ tabulator.panes.register( tabulator.panes.socialPane = {
             input.checked = (thisIsYou);
             input.addEventListener('click', myHandler, false);
         }
+        */
 /*
         if (thisIsYou) {  // This is you
-            var h = dom.createElement('h2');
-            h.appendChild(dom.createTextNode('Your public profile'));
+            var h = dom.createElement('p');
+            h.appendChild(dom.createTextNode('This is you'));
             tools.appendChild(h);
         }
 */

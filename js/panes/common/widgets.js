@@ -138,7 +138,7 @@ tabulator.panes.utils.setImage = function(element, x) {
         if (ns.solid('AppProvider').uri in types) {
           return iconDir + 'noun_15177.svg' // App
         }
-        if ((x.uri.split('/').length = 4 && !(x.uri.split('/')[1]) && !(x.uri.split('/')[3]))) {
+        if (x.uri && x.uri.split('/').length === 4 && !(x.uri.split('/')[1]) && !(x.uri.split('/')[3])) {
           return iconDir + 'noun_15177.svg' // App -- this is an origin
         }
         if (ns.solid('AppProviderClass').uri in types) {
@@ -303,7 +303,7 @@ tabulator.panes.field[tabulator.ns.ui('Group').uri] = function(
     for (var i=0; i<p2.length; i++) {
         var field = p2[i];
         var t = tabulator.panes.utils.bottomURI(field); // Field type
-        if (t == ui('Options').uri) {
+        if (t === ui('Options').uri) {
             var dep = kb.any(field, ui('dependingOn'));
             if (dep && kb.any(subject, dep)) original[i] = kb.any(subject, dep).toNT();
         }
