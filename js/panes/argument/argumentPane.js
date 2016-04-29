@@ -4,61 +4,52 @@
 ** support or oppose it.
 */
 
-
 tabulator.Icon.src.icon_argument = tabulator.iconPrefix + 'js/panes/argument/icon_argument.png'
 tabulator.panes.argumentPane = {
-    
-    icon:  tabulator.Icon.src.icon_argument, // @@
-    
-    name: 'argument',
-    
-    label: function(subject) {
+  icon: tabulator.Icon.src.icon_argument, // @@
 
-        var kb = tabulator.kb;
-        var t = kb.findTypeURIs(subject);
-   
-        if (t[tabulator.ns.arg('Position').uri]) return "Argument";
-        
-        return null;
-    },
+  name: 'argument',
 
+  label: function (subject) {
+    var kb = UI.store
+    var t = kb.findTypeURIs(subject)
 
-    // View the data in a file in user-friendly way
-    render: function(subject, myDocument) {
+    if (t[UI.ns.arg('Position').uri]) return 'Argument'
 
-        var $r = tabulator.rdf;
-        var kb = tabulator.kb;
-        var arg = tabulator.ns.arg;
-        
-        subject = kb.canon(subject);
-        var types = kb.findTypeURIs(subject);
+    return null
+  },
 
-        var div = myDocument.createElement('div')
-        div.setAttribute('class', 'argumentPane')
+  // View the data in a file in user-friendly way
+  render: function (subject, myDocument) {
+    var $r = UI.rdf
+    var kb = UI.store
+    var arg = UI.ns.arg
 
-        // var title = kb.any(subject, tabulator.ns.dc('title'));
-        
-        var comment = kb.any(subject, tabulator.ns.rdfs('comment'));
-        if (comment) {
-            var para = myDocument.createElement('p');
-            para.setAttribute('style', 'margin-left: 2em; font-style: italic;');
-            div.appendChild(para);
-            para.textContent = comment.value;
-        };
-        var plist = kb.statementsMatching(subject, arg('support'));
-        tabulator.outline.appendPropertyTRs(div, plist, false);
+    subject = kb.canon(subject)
+    var types = kb.findTypeURIs(subject)
 
-        var plist = kb.statementsMatching(subject, arg('opposition'));
-        tabulator.outline.appendPropertyTRs(div, plist, false);
+    var div = myDocument.createElement('div')
+    div.setAttribute('class', 'argumentPane')
 
-        return div
+    // var title = kb.any(subject, UI.ns.dc('title'))
+
+    var comment = kb.any(subject, UI.ns.rdfs('comment'))
+    if (comment) {
+      var para = myDocument.createElement('p')
+      para.setAttribute('style', 'margin-left: 2em; font-style: italic;')
+      div.appendChild(para)
+      para.textContent = comment.value
     }
-};
+    var plist = kb.statementsMatching(subject, arg('support'))
+    tabulator.outline.appendPropertyTRs(div, plist, false)
 
-tabulator.panes.register(tabulator.panes.argumentPane, false);
+    var plist = kb.statementsMatching(subject, arg('opposition'))
+    tabulator.outline.appendPropertyTRs(div, plist, false)
 
+    return div
+  }
+}
 
+tabulator.panes.register(tabulator.panes.argumentPane, false)
 
-
-//ends
-
+// ends

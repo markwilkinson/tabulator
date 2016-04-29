@@ -10,11 +10,11 @@ tabulator.panes.register( {
     name: 'classInstance',
 
     label: function(subject) {
-      var n = tabulator.kb.each(
-          undefined, tabulator.ns.rdf( 'type'), subject).length;
+      var n = UI.store.each(
+          undefined, UI.ns.rdf( 'type'), subject).length;
       if (n > 0) return "List (" + n + ")";  // Show how many in hover text
-      n = tabulator.kb.each(
-          subject, tabulator.ns.ldp( 'contains')).length;
+      n = UI.store.each(
+          subject, UI.ns.ldp( 'contains')).length;
       if (n > 0) {
         return "Contents (" + n + ")"  // Show how many in hover text
       }
@@ -22,7 +22,7 @@ tabulator.panes.register( {
     },
 
     render: function(subject, myDocument) {
-        var kb = tabulator.kb
+        var kb = UI.store
         var complain = function complain(message, color){
             var pre = myDocument.createElement("pre");
             pre.setAttribute('style', 'background-color: '+ color || '#eed' +';');
@@ -38,28 +38,28 @@ tabulator.panes.register( {
           var lastbit = st.object.uri.slice(st.object.dir().length +1)
           return !(lastbit.length && lastbit[0] === '.' || lastbit.slice(-3) === '.acl' );
         }
-        var contentsStatements = kb.statementsMatching(subject, tabulator.ns.ldp( 'contains'));
+        var contentsStatements = kb.statementsMatching(subject, UI.ns.ldp( 'contains'));
         if (contentsStatements.length) {
             // complain("Contents:", 'white'); // filter out hidden files?
             tabulator.outline.appendPropertyTRs(div, contentsStatements, false, function(pred){return true;})
         }
 
         // If this is a class, look for all both explicit and implicit
-        var sts = kb.statementsMatching(undefined, tabulator.ns.rdf( 'type'), subject)
+        var sts = kb.statementsMatching(undefined, UI.ns.rdf( 'type'), subject)
         if (sts.length > 0) {
           var already = {}, more = [];
           sts.map(function(st){already[st.subject.toNT()] = st});
           for (var nt in kb.findMembersNT(subject)) if (!already[nt])
-              more.push($rdf.st(kb.fromNT(nt), tabulator.ns.rdf( 'type'), subject)); // @@ no provenence
+              more.push($rdf.st(kb.fromNT(nt), UI.ns.rdf( 'type'), subject)); // @@ no provenence
           if (more.length) complain("There are "+sts.length+" explicit and "+
-                  more.length+" implicit members of "+tabulator.Util.label(subject));
-          if (subject.sameTerm(tabulator.ns.rdf('Property'))) {
+                  more.length+" implicit members of "+UI.utils.label(subject));
+          if (subject.sameTerm(UI.ns.rdf('Property'))) {
                   /// Do not find all properties used as properties .. unlesss look at kb index
-          } else if (subject.sameTerm(tabulator.ns.rdfs('Class'))) {
-              var uses = kb.statementsMatching(undefined, tabulator.ns.rdf( 'type'), undefined);
+          } else if (subject.sameTerm(UI.ns.rdfs('Class'))) {
+              var uses = kb.statementsMatching(undefined, UI.ns.rdf( 'type'), undefined);
               var usedTypes = {}; uses.map(function(st){usedTypes[st.object] = st}); // Get unique
               var used = []; for (var i in usedTypes) used.push($rdf.st(
-                      st.object,tabulator.ns.rdf( 'type'),tabulator.ns.rdfs('Class')));
+                      st.object,UI.ns.rdf( 'type'),UI.ns.rdfs('Class')));
               complain("Total of "+uses.length+" type statments and "+used.length+" unique types.");
           }
 

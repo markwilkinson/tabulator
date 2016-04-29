@@ -7,8 +7,8 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
     icon: tabulator.Icon.src.icon_mb,
     name: 'microblogPane',
     label: function(subject) {
-        var SIOCt = tabulator.rdf.Namespace('http://rdfs.org/sioc/types#');
-        if (tabulator.kb.whether(subject, tabulator.ns.rdf('type'), tabulator.ns.foaf('Person'))) {
+        var SIOCt = UI.rdf.Namespace('http://rdfs.org/sioc/types#');
+        if (UI.store.whether(subject, UI.ns.rdf('type'), UI.ns.foaf('Person'))) {
             return "Microblog";
         } else {
             return null;
@@ -18,20 +18,20 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
         //***********************************************
         // NAMESPACES  SECTION
         //***********************************************
-        var SIOC = tabulator.rdf.Namespace("http://rdfs.org/sioc/ns#");
-        var SIOCt = tabulator.rdf.Namespace('http://rdfs.org/sioc/types#');
-        var RSS = tabulator.rdf.Namespace("http://purl.org/rss/1.0/");
-        var FOAF = tabulator.rdf.Namespace('http://xmlns.com/foaf/0.1/');
-        var terms = tabulator.rdf.Namespace("http://purl.org/dc/terms/");
-        var RDF = tabulator.ns.rdf;
+        var SIOC = UI.rdf.Namespace("http://rdfs.org/sioc/ns#");
+        var SIOCt = UI.rdf.Namespace('http://rdfs.org/sioc/types#');
+        var RSS = UI.rdf.Namespace("http://purl.org/rss/1.0/");
+        var FOAF = UI.rdf.Namespace('http://xmlns.com/foaf/0.1/');
+        var terms = UI.rdf.Namespace("http://purl.org/dc/terms/");
+        var RDF = UI.ns.rdf;
 
-        var kb = tabulator.kb;
+        var kb = UI.store;
         var charCount = 140;
-        var sf =  tabulator.fetcher
+        var sf =  UI.store.fetcher
         //***********************************************
         // BACK END
         //***********************************************
-        var sparqlUpdater = new tabulator.rdf.UpdateManager(kb);
+        var sparqlUpdater = new UI.rdf.UpdateManager(kb);
         //----------------------------------------------
         //ISO 8601 DATE
         //----------------------------------------------
@@ -126,7 +126,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
             return (kb.sym(post) in this.favorites);
         };
         Favorites.prototype.add = function(post, callback) {
-            var batch = new tabulator.rdf.Statement(this.favoritesURI, SIOC('container_of'), kb.sym(post), kb.sym(this.user));
+            var batch = new UI.rdf.Statement(this.favoritesURI, SIOC('container_of'), kb.sym(post), kb.sym(this.user));
             sparqlUpdater.insert_statement(batch,
             function(a, success, c) {
                 if (success) {
@@ -136,7 +136,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
             });
         };
         Favorites.prototype.remove = function(post, callback) {
-            var batch = new tabulator.rdf.Statement(this.favoritesURI, SIOC('container_of'), kb.sym(post), kb.sym(this.user));
+            var batch = new UI.rdf.Statement(this.favoritesURI, SIOC('container_of'), kb.sym(post), kb.sym(this.user));
             sparqlUpdater.delete_statement(batch,
             function(a, success, c) {
                 if (success) {
@@ -152,7 +152,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
         //----------------------------------------------
         var Microblog = function(kb) {
             this.kb= kb;
-            this.sparqlUpdater = new tabulator.rdf.UpdateManager(kb);
+            this.sparqlUpdater = new UI.rdf.UpdateManager(kb);
 
             //attempt to fetch user account from local preferences if just
             //in case the user's foaf was not writable. add it to the store
@@ -223,26 +223,26 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
 
             //generate new post
             var batch = [
-            new tabulator.rdf.Statement(newPost, RDF('type'), SIOCt('MicroblogPost'), myUser),
-            new tabulator.rdf.Statement(newPost, SIOC('has_creator'), kb.sym(myUserURI), myUser),
-            new tabulator.rdf.Statement(newPost, SIOC('content'), statusMsg, myUser),
-            new tabulator.rdf.Statement(newPost, terms('created'), String(new Date().getISOdate()), myUser),
-            new tabulator.rdf.Statement(micro, SIOC('container_of'), newPost, myUser)
+            new UI.rdf.Statement(newPost, RDF('type'), SIOCt('MicroblogPost'), myUser),
+            new UI.rdf.Statement(newPost, SIOC('has_creator'), kb.sym(myUserURI), myUser),
+            new UI.rdf.Statement(newPost, SIOC('content'), statusMsg, myUser),
+            new UI.rdf.Statement(newPost, terms('created'), String(new Date().getISOdate()), myUser),
+            new UI.rdf.Statement(micro, SIOC('container_of'), newPost, myUser)
             ];
 
             // message replies
             if (replyTo) {
-                batch.push(new tabulator.rdf.Statement(newPost, SIOC('reply_of'), kb.sym(replyTo), myUser));
+                batch.push(new UI.rdf.Statement(newPost, SIOC('reply_of'), kb.sym(replyTo), myUser));
             }
 
             // @replies, #hashtags, !groupReplies
             for (var r in meta.recipients) {
-                batch.push(new tabulator.rdf.Statement(newPost, SIOC('topic'), kb.sym(meta.recipients[r]), myUser));
-                batch.push(new tabulator.rdf.Statement(kb.any(), SIOC("container_of"), newPost, myUser));
+                batch.push(new UI.rdf.Statement(newPost, SIOC('topic'), kb.sym(meta.recipients[r]), myUser));
+                batch.push(new UI.rdf.Statement(kb.any(), SIOC("container_of"), newPost, myUser));
                 var mblogs = kb.each(kb.sym(meta.recipients[r]), SIOC('creator_of'));
                 for (var mbl in mblogs) {
                     if (kb.whether(mblogs[mbl], SIOC('topic'), kb.sym(meta.recipients[r]))) {
-                        var replyBatch = new tabulator.rdf.Statement(
+                        var replyBatch = new UI.rdf.Statement(
                         mblogs[mbl],
                         SIOC("container_of"),
                         newPost,
@@ -286,28 +286,28 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
 
             var genUserMB = [
             //user
-            new tabulator.rdf.Statement(kb.sym(host + "#" + id), RDF('type'), SIOC('User'), kb.sym(host)),
-            new tabulator.rdf.Statement(kb.sym(host + "#" + id), SIOC('creator_of'), kb.sym(host + '#mb'), kb.sym(host)),
-            new tabulator.rdf.Statement(kb.sym(host + "#" + id), SIOC('creator_of'), kb.sym(host + '#mbn'), kb.sym(host)),
-            new tabulator.rdf.Statement(kb.sym(host + "#" + id), SIOC('creator_of'), kb.sym(host + '#fav'), kb.sym(host)),
-            new tabulator.rdf.Statement(kb.sym(host + "#" + id), SIOC('name'), name, kb.sym(host)),
-            new tabulator.rdf.Statement(kb.sym(host + "#" + id), SIOC('id'), id, kb.sym(host)),
-            new tabulator.rdf.Statement(kb.sym(host + "#" + id), RDF('label'), id, kb.sym(host)),
-            new tabulator.rdf.Statement(s, FOAF('holdsAccount'), kb.sym(host + "#" + id), kb.sym(host)),
+            new UI.rdf.Statement(kb.sym(host + "#" + id), RDF('type'), SIOC('User'), kb.sym(host)),
+            new UI.rdf.Statement(kb.sym(host + "#" + id), SIOC('creator_of'), kb.sym(host + '#mb'), kb.sym(host)),
+            new UI.rdf.Statement(kb.sym(host + "#" + id), SIOC('creator_of'), kb.sym(host + '#mbn'), kb.sym(host)),
+            new UI.rdf.Statement(kb.sym(host + "#" + id), SIOC('creator_of'), kb.sym(host + '#fav'), kb.sym(host)),
+            new UI.rdf.Statement(kb.sym(host + "#" + id), SIOC('name'), name, kb.sym(host)),
+            new UI.rdf.Statement(kb.sym(host + "#" + id), SIOC('id'), id, kb.sym(host)),
+            new UI.rdf.Statement(kb.sym(host + "#" + id), RDF('label'), id, kb.sym(host)),
+            new UI.rdf.Statement(s, FOAF('holdsAccount'), kb.sym(host + "#" + id), kb.sym(host)),
             //microblog
-            new tabulator.rdf.Statement(kb.sym(host + '#mb'), RDF('type'), SIOCt('Microblog'), kb.sym(host)),
-            new tabulator.rdf.Statement(kb.sym(host + '#mb'), SIOC('has_creator'), kb.sym(host + "#" + id), kb.sym(host)),
+            new UI.rdf.Statement(kb.sym(host + '#mb'), RDF('type'), SIOCt('Microblog'), kb.sym(host)),
+            new UI.rdf.Statement(kb.sym(host + '#mb'), SIOC('has_creator'), kb.sym(host + "#" + id), kb.sym(host)),
             //notification microblog
-            new tabulator.rdf.Statement(kb.sym(host + '#mbn'), RDF('type'), SIOCt('Microblog'), kb.sym(host)),
-            new tabulator.rdf.Statement(kb.sym(host + '#mbn'), SIOC('topic'), kb.sym(host + "#" + id), kb.sym(host)),
-            new tabulator.rdf.Statement(kb.sym(host + '#mbn'), SIOC('has_creator'), kb.sym(host + "#" + id), kb.sym(host)),
+            new UI.rdf.Statement(kb.sym(host + '#mbn'), RDF('type'), SIOCt('Microblog'), kb.sym(host)),
+            new UI.rdf.Statement(kb.sym(host + '#mbn'), SIOC('topic'), kb.sym(host + "#" + id), kb.sym(host)),
+            new UI.rdf.Statement(kb.sym(host + '#mbn'), SIOC('has_creator'), kb.sym(host + "#" + id), kb.sym(host)),
             //favorites container
-            new tabulator.rdf.Statement(kb.sym(host + '#fav'), RDF('type'), SIOCt('FavouriteThings'), kb.sym(host)),
-            new tabulator.rdf.Statement(kb.sym(host + '#fav'), SIOC('has_creator'), kb.sym(host + '#' + id), kb.sym(host))
+            new UI.rdf.Statement(kb.sym(host + '#fav'), RDF('type'), SIOCt('FavouriteThings'), kb.sym(host)),
+            new UI.rdf.Statement(kb.sym(host + '#fav'), SIOC('has_creator'), kb.sym(host + '#' + id), kb.sym(host))
             ];
             if (avatar) {
                 //avatar optional
-                genUserMB.push(new tabulator.rdf.Statement(kb.sym(host + "#" + id), SIOC('avatar'), kb.sym(avatar), kb.sym(host)));
+                genUserMB.push(new UI.rdf.Statement(kb.sym(host + "#" + id), SIOC('avatar'), kb.sym(avatar), kb.sym(host)));
             }
             this.sparqlUpdater.insert_statement(genUserMB, cbgenUserMB);
         };
@@ -422,7 +422,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
                         that.notify("You " + doFollow + username + ".");
                     }
                 };
-                var followMe = new tabulator.rdf.Statement(myUser, SIOC('follows'), that.creator.sym, myUser);
+                var followMe = new UI.rdf.Statement(myUser, SIOC('follows'), that.creator.sym, myUser);
                 xfollowButton.disabled = true;
                 xfollowButton.value = "Updating...";
                 if (!that.Ifollow) {
@@ -660,7 +660,7 @@ tabulator.panes.register(tabulator.panes.microblogPane = {
                 kb.whether(kb.any(creators[c], SIOC('creator_of')), RDF('type'), SIOCt('Microblog'))) {
                     var creator = creators[c];
                     // var mb = kb.sym(creator.uri.split("#")[0]);
-                    //tabulator.fetcher.refresh(mb);
+                    //UI.store.fetcher.refresh(mb);
                     break;
                     //TODO add support for more than one microblog in same foaf
                 }

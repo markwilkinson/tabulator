@@ -16,20 +16,20 @@ tabulator.panes.dataContentPane = {
     name: 'dataContents',
     
     label: function(subject) {
-        if('http://www.w3.org/2007/ont/link#ProtocolEvent' in tabulator.kb.findTypeURIs(subject)) return null;
-        var n = tabulator.kb.statementsMatching(
+        if('http://www.w3.org/2007/ont/link#ProtocolEvent' in UI.store.findTypeURIs(subject)) return null;
+        var n = UI.store.statementsMatching(
             undefined, undefined, undefined, subject).length;
         if (n == 0) return null;
         return "Data ("+n+")";
     },
     /*
     shouldGetFocus: function(subject) {
-        return tabulator.kb.whether(subject, tabulator.ns.rdf('type'), tabulator.ns.link('RDFDocument'));
+        return UI.store.whether(subject, UI.ns.rdf('type'), UI.ns.link('RDFDocument'));
     },
 */
     statementsAsTables: function statementsAsTables(sts, myDocument, initialRoots) {
         var rep = myDocument.createElement('table');
-        var sz = tabulator.rdf.Serializer( tabulator.kb );
+        var sz = UI.rdf.Serializer( UI.store );
         var res = sz.rootSubjects(sts);
         var roots = res.roots;
         var subjects = res.subjects;
@@ -61,8 +61,8 @@ tabulator.panes.dataContentPane = {
                     td_p.setAttribute('class', 'pred');
                     var anchor = myDocument.createElement('a')
                     anchor.setAttribute('href', st.predicate.uri)
-                    anchor.addEventListener('click', tabulator.panes.utils.openHrefInOutlineMode, true);
-                    anchor.appendChild(myDocument.createTextNode(tabulator.Util.predicateLabelForXML(st.predicate)));
+                    anchor.addEventListener('click', UI.widgets.openHrefInOutlineMode, true);
+                    anchor.appendChild(myDocument.createTextNode(UI.utils.predicateLabelForXML(st.predicate)));
                     td_p.appendChild(anchor);
                     tr.appendChild(td_p);
                     lastPred = st.predicate.uri;
@@ -85,8 +85,8 @@ tabulator.panes.dataContentPane = {
                 case 'symbol':
                     var anchor = myDocument.createElement('a')
                     anchor.setAttribute('href', obj.uri)
-                    anchor.addEventListener('click', tabulator.panes.utils.openHrefInOutlineMode, true);
-                    anchor.appendChild(myDocument.createTextNode(tabulator.Util.label(obj)));
+                    anchor.addEventListener('click', UI.widgets.openHrefInOutlineMode, true);
+                    anchor.appendChild(myDocument.createTextNode(UI.utils.label(obj)));
                     return anchor;
                     
                 case 'literal':
@@ -116,7 +116,7 @@ tabulator.panes.dataContentPane = {
                     doneBnodes[obj.toNT()] = true; // Flag to prevent infinite recusruion in propertyTree
                     var newTable =  propertyTree(obj);
                     doneBnodes[obj.toNT()] = newTable; // Track where we mentioned it first
-                    if (tabulator.Util.ancestor(newTable, 'TABLE') && tabulator.Util.ancestor(newTable, 'TABLE').style.backgroundColor=='white') {
+                    if (UI.utils.ancestor(newTable, 'TABLE') && UI.utils.ancestor(newTable, 'TABLE').style.backgroundColor=='white') {
                         newTable.style.backgroundColor='#eee'
                     } else {
                         newTable.style.backgroundColor='white'
@@ -163,7 +163,7 @@ tabulator.panes.dataContentPane = {
             tr.appendChild(td_tree);
             var root = roots[i];
             if (root.termType == 'bnode') {
-                td_s.appendChild(myDocument.createTextNode(tabulator.Util.label(root))); // Don't recurse!
+                td_s.appendChild(myDocument.createTextNode(UI.utils.label(root))); // Don't recurse!
             } 
             else {
                 td_s.appendChild(objectTree(root)); // won't have tree
@@ -186,7 +186,7 @@ tabulator.panes.dataContentPane = {
     // View the data in a file in user-friendly way
     render: function(subject, myDocument) {
 
-        var kb = tabulator.kb;
+        var kb = UI.store;
         var div = myDocument.createElement("div")
         div.setAttribute('class', 'dataContentPane');
         // Because of smushing etc, this will not be a copy of the original source
@@ -197,13 +197,13 @@ tabulator.panes.dataContentPane = {
             initialRoots = []; // Ordering: start with stuf fabout this doc
             if (kb.holds(subject, undefined, undefined, subject)) initialRoots.push(subject);
             // Then about the primary topic of the document if any
-            var ps = kb.any(subject, tabulator.ns.foaf('primaryTopic'), undefined, subject);
+            var ps = kb.any(subject, UI.ns.foaf('primaryTopic'), undefined, subject);
             if (ps) initialRoots.push(ps);
             div.appendChild(tabulator.panes.dataContentPane.statementsAsTables(
                             sts, myDocument, initialRoots));
             
         } else {  // An outline mode openable rendering .. might be better
-            var sz = tabulator.rdf.Serializer( tabulator.kb );
+            var sz = UI.rdf.Serializer( UI.store );
             var res = sz.rootSubjects(sts);
             var roots = res.roots;
             var p  = {};

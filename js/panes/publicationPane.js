@@ -15,11 +15,11 @@ tabulator.panes.register(tabulator.panes.publishingPane = new function() {
     this.icon = Icon.src.icon_publicationPane;
 	
     this.label = function(subject) {
-        var typeTriples = tabulator.kb.statementsMatching(subject,tabulator.ns.rdf('type'),null,null); // Stores all the 'types' of the URI in an array
+        var typeTriples = UI.store.statementsMatching(subject,UI.ns.rdf('type'),null,null); // Stores all the 'types' of the URI in an array
         if(this.isEmpty(typeTriples)) return null;
         for(var ind = 0;ind < typeTriples.length;ind++) {
             if(this.isEmpty(typeTriples[ind])) continue;
-            else if(tabulator.kb.whether(typeTriples[ind].object,tabulator.ns.rdfs('subClassOf'),tabulator.ns.bibo('Document'),null))
+            else if(UI.store.whether(typeTriples[ind].object,UI.ns.rdfs('subClassOf'),UI.ns.bibo('Document'),null))
                 return this.name;
         }
         return null;
@@ -28,11 +28,11 @@ tabulator.panes.register(tabulator.panes.publishingPane = new function() {
     this.render = function(subject, document) {
         var div = document.createElement('div');
         div.setAttribute('id','publicationPane');
-        var bibo = tabulator.ns.bibo; // for aesthetics
-        var foaf = tabulator.ns.foaf;
-        var dct = tabulator.ns.dct;
-        var owl = tabulator.ns.owl;
-        var rdf = tabulator.ns.rdf;
+        var bibo = UI.ns.bibo; // for aesthetics
+        var foaf = UI.ns.foaf;
+        var dct = UI.ns.dct;
+        var owl = UI.ns.owl;
+        var rdf = UI.ns.rdf;
 
         var ps = new PatternSearch();
 
@@ -128,7 +128,7 @@ tabulator.panes.register(tabulator.panes.publishingPane = new function() {
         for(var i = 0;i < dataToAssemble.length;i++)
             div = this.appendEntry(document, div, dataToAssemble[i][0], dataToAssemble[i][1], dataToAssemble[i][2]);
 
-        //alert("statementsMatching: "+tabulator.kb.statementsMatching(tabulator.kb.sym("http://www.advogato.org/person/timbl/foaf.rdf#me"),rdf('type'))+"\nwhether: "+tabulator.kb.statementsMatching(tabulator.kb.sym("http://www.advogato.org/person/timbl/foaf.rdf#me"),rdf('type'),foaf('Person'))+"\nsource of foaf(Person): "+foaf('Person').toSource());
+        //alert("statementsMatching: "+UI.store.statementsMatching(UI.store.sym("http://www.advogato.org/person/timbl/foaf.rdf#me"),rdf('type'))+"\nwhether: "+UI.store.statementsMatching(UI.store.sym("http://www.advogato.org/person/timbl/foaf.rdf#me"),rdf('type'),foaf('Person'))+"\nsource of foaf(Person): "+foaf('Person').toSource());
    
         return div;
     }

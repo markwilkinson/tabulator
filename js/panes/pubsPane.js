@@ -40,9 +40,9 @@ tabulator.panes.pubsPane = {
     label: function(subject) {  // Subject is the source of the document
         //criteria for display satisfied: return string that would be title for icon, else return null
         // only displays if it is a person, copied from social/pane.js
-        if (tabulator.kb.whether(
-            subject, tabulator.ns.rdf('type'),
-            tabulator.ns.foaf('Person'))){
+        if (UI.store.whether(
+            subject, UI.ns.rdf('type'),
+            UI.ns.foaf('Person'))){
             //dump("pubsPane: the subject is: "+subject);
                 return 'pubs';
             } else {
@@ -54,16 +54,16 @@ tabulator.panes.pubsPane = {
     render: function(subject, myDocument) { //Subject is source of doc, document is HTML doc element we are attaching elements to
 
         //NAMESPACES ------------------------------------------------------
-        var foaf = tabulator.rdf.Namespace("http://xmlns.com/foaf/0.1/");
-        //var rdf= tabulator.ns.rdf;
-        var rdf = tabulator.rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
-        var owl = tabulator.rdf.Namespace("http://www.w3.org/2002/07/owl/");
-        var bibo = tabulator.rdf.Namespace("http://purl.org/ontology/bibo/");
-        var dcterms = tabulator.rdf.Namespace('http://purl.org/dc/terms/');
-        var dcelems = tabulator.rdf.Namespace('http://purl.org/dc/elements/1.1/');
-        var soics = tabulator.rdf.Namespace('http://rdfs.org/sioc/spec/');
-        var kb = tabulator.kb;
-        var sparqlUpdater = new tabulator.rdf.UpdateManager(kb);
+        var foaf = UI.rdf.Namespace("http://xmlns.com/foaf/0.1/");
+        //var rdf= UI.ns.rdf;
+        var rdf = UI.rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
+        var owl = UI.rdf.Namespace("http://www.w3.org/2002/07/owl/");
+        var bibo = UI.rdf.Namespace("http://purl.org/ontology/bibo/");
+        var dcterms = UI.rdf.Namespace('http://purl.org/dc/terms/');
+        var dcelems = UI.rdf.Namespace('http://purl.org/dc/elements/1.1/');
+        var soics = UI.rdf.Namespace('http://rdfs.org/sioc/spec/');
+        var kb = UI.store;
+        var sparqlUpdater = new UI.rdf.UpdateManager(kb);
 
         var collections_URI = 'http://dig.csail.mit.edu/2007/wiki/docs/collections';
         var journalURI = "";
@@ -241,20 +241,20 @@ tabulator.panes.pubsPane = {
                         docOutput.className = 'active';
 
                         // 1. Make this doc URI type specified
-                        var doctype_addst = new tabulator.rdf.Statement(kb.sym(docURI), tabulator.ns.rdf('type'), typeofdoc, kb.sym(storeURI));
+                        var doctype_addst = new UI.rdf.Statement(kb.sym(docURI), UI.ns.rdf('type'), typeofdoc, kb.sym(storeURI));
 
                         // 2. Add the title for the journal (NB, not article title)
                         //NB, not using above doctitle_value because it will
                         // add "enter" to the string, messing it up
                         var doctitle_id = myDocument.getElementById("inpid_"+ spacetoUline(caption_title));
                         doctitle_value = doctitle_id.value;
-                        var doctitle_addst = new tabulator.rdf.Statement(kb.sym(docURI), dcelems('title'), doctitle_value, kb.sym(storeURI));
+                        var doctitle_addst = new UI.rdf.Statement(kb.sym(docURI), dcelems('title'), doctitle_value, kb.sym(storeURI));
 
                         var totalst = [doctype_addst, doctitle_addst];
 
                         // 3. Only for books, add creator:
                         if (caption_title == "Book Title"){
-                            var creator_add = new tabulator.rdf.Statement(kb.sym(docURI), dcelems('creator'), subject, kb.sym(storeURI));
+                            var creator_add = new UI.rdf.Statement(kb.sym(docURI), dcelems('creator'), subject, kb.sym(storeURI));
                             totalst.push(creator_add);
                         }
 
@@ -295,7 +295,7 @@ tabulator.panes.pubsPane = {
                         subjectURI = bookURI;
                     }
                     dump("3\n");
-                    var item_st = new tabulator.rdf.Statement(kb.sym(subjectURI), thepredicate, item_trim, kb.sym(storeURI));
+                    var item_st = new UI.rdf.Statement(kb.sym(subjectURI), thepredicate, item_trim, kb.sym(storeURI));
                     dump('start SU for ' + namestr + "\n\n");
                     dump('Inserting start:\n' + item_st + '\nInserting ///////\n');
                     sparqlUpdater.insert_statement(item_st, returnFunc);
@@ -419,17 +419,17 @@ tabulator.panes.pubsPane = {
                 dump("jartURI="+jarticleURI+"\n");
 
                 // 1. Make this journal article URI type AcademicArticle
-                var jarttype_add = new tabulator.rdf.Statement(kb.sym(jarticleURI), tabulator.ns.rdf('type'), bibo('AcademicArticle'), kb.sym(works_URI));
+                var jarttype_add = new UI.rdf.Statement(kb.sym(jarticleURI), UI.ns.rdf('type'), bibo('AcademicArticle'), kb.sym(works_URI));
 
                 // 2. Add the title for this journal article
-                var jart_add = new tabulator.rdf.Statement(kb.sym(jarticleURI), dcelems('title'), jarttitle_value, kb.sym(works_URI));
+                var jart_add = new UI.rdf.Statement(kb.sym(jarticleURI), dcelems('title'), jarttitle_value, kb.sym(works_URI));
 
                 dump("The SUBJECT = "+subject+"\n");
                 // 3. Add author to a creator of the journal article
-                var auth_add = new tabulator.rdf.Statement(kb.sym(jarticleURI), dcterms('creator'), subject, kb.sym(jarticleURI));
+                var auth_add = new UI.rdf.Statement(kb.sym(jarticleURI), dcterms('creator'), subject, kb.sym(jarticleURI));
                 dump("1\n");
                 // 4. Connect this journal article to the journal before
-                var connect_add = new tabulator.rdf.Statement(kb.sym(jarticleURI), dcterms('isPartOf'), kb.sym(journalURI), kb.sym(works_URI));
+                var connect_add = new UI.rdf.Statement(kb.sym(jarticleURI), dcterms('isPartOf'), kb.sym(journalURI), kb.sym(works_URI));
                 dump("2\n");
                 var totalst = [jarttype_add, jart_add, auth_add, connect_add];
                 dump("3\n");

@@ -52,7 +52,7 @@ tabulator.panes.sourcePane = {
     // View the data in a file in user-friendly way
     render: function(subject, myDocument) {
 
-        var kb = tabulator.kb;
+        var kb = UI.store;
         var div = myDocument.createElement("div")
         div.setAttribute('class', 'sourcePane');
 

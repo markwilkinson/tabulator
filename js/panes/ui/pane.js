@@ -14,8 +14,8 @@ tabulator.panes.register( {
 
     // Does the subject deserve this pane?
     label: function(subject) {
-        var ns = tabulator.ns;
-        var kb = tabulator.kb;
+        var ns = UI.ns;
+        var kb = UI.store;
         var t = kb.findTypeURIs(subject);
         if (t[ns.rdfs('Class').uri]) return "creation forms";
         // if (t[ns.rdf('Property').uri]) return "user interface";
@@ -25,12 +25,12 @@ tabulator.panes.register( {
     },
 
     render: function(subject, dom) {
-        var kb = tabulator.kb;
-        var ns = tabulator.ns;
+        var kb = UI.store;
+        var ns = UI.ns;
 
         var box = dom.createElement('div')
         box.setAttribute('class', 'formPane'); // Share styles
-        var label = tabulator.Util.label(subject);
+        var label = UI.utils.label(subject);
 
         var mention = function complain(message, style){
             var pre = dom.createElement("p");
@@ -63,7 +63,7 @@ tabulator.panes.register( {
 
 
 
-        if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(kb);
+        if (!tabulator.sparql) tabulator.sparql = new UI.rdf.UpdateManager(kb);
 
         var plist = kb.statementsMatching(subject)
         var qlist = kb.statementsMatching(undefined, undefined, subject)
@@ -81,7 +81,7 @@ tabulator.panes.register( {
                 store = kb.sym($rdf.Util.uri.docpart(subject.uri)); // an editable ontology with hash
         }
         if (!store) store = kb.any(kb.sym(docuri), ns.link('annotationStore'));
-        if (!store) store = tabulator.panes.utils.defaultAnnotationStore(subject);
+        if (!store) store = UI.widgets.defaultAnnotationStore(subject);
         if (!store) store = kb.sym('http://tabulator.org/wiki/ontologyAnnotation/common'); // fallback
 
         // A fallback which gives a different store page for each ontology would be good @@
@@ -115,7 +115,7 @@ tabulator.panes.register( {
                             var cell = dom.createElement('td');
                             box.lastChild.appendChild(cell);
                             if (allowCreation) {
-                                cell.appendChild(tabulator.panes.utils.newButton(
+                                cell.appendChild(UI.widgets.newButton(
                                     dom, kb, null, null, subject, form, store, function(ok,body){
                                     if (ok) {
                                         // tabulator.outline.GotoSubject(newThing@@, true, undefined, true, undefined);
@@ -127,7 +127,7 @@ tabulator.panes.register( {
                             var formdef = kb.statementsMatching(form, ns.rdf('type'));
                             if (!formdef.length) formdef = kb.statementsMatching(form);
                             if (!formdef.length) complain('No data about form');
-                            else tabulator.panes.utils.editFormButton(dom, box,
+                            else UI.widgets.editFormButton(dom, box,
                                             form, formdef[0].why, complainIfBad);
                         }
                         box.appendChild(dom.createElement('hr'));
@@ -140,25 +140,25 @@ tabulator.panes.register( {
 
 
                 pred = ns.ui('creationForm');
-                box.appendChild(dom.createElement('h2')).textContent = tabulator.Util.label(pred);
+                box.appendChild(dom.createElement('h2')).textContent = UI.utils.label(pred);
                 mention("Creation forms allow you to add information about a new thing,\
                                     in this case a new "+label+".");
                 displayFormsForRelation(pred, true);
                 box.appendChild(dom.createElement('hr'));
                 mention("You can make a new creation form:");
-                box.appendChild(tabulator.panes.utils.newButton(
+                box.appendChild(UI.widgets.newButton(
                     dom, kb, subject, pred, ns.ui('Form'), null, store, complainIfBad) )
 
                 box.appendChild(dom.createElement('hr'));
 
                 pred = ns.ui('annotationForm');
-                box.appendChild(dom.createElement('h2')).textContent = tabulator.Util.label(pred);
+                box.appendChild(dom.createElement('h2')).textContent = UI.utils.label(pred);
                 mention("Annotaion forms allow you to add extra information about a ,\
                                 "+label+" we already know about.");
                 displayFormsForRelation(pred, false);
                 box.appendChild(dom.createElement('hr'));
                 mention("You can make a new annotation form:");
-                box.appendChild(tabulator.panes.utils.newButton(
+                box.appendChild(UI.widgets.newButton(
                     dom, kb, subject, pred, ns.ui('Form'), null, store, complainIfBad) )
 
                 mention("(Storing new forms in: "+store+')')
@@ -172,7 +172,7 @@ tabulator.panes.register( {
 
             } else if (t[ns.ui('Form').uri]) {
 
-                tabulator.panes.utils.appendForm(dom, box, kb, subject, ns.ui('FormForm'), store, complainIfBad);
+                UI.widgets.appendForm(dom, box, kb, subject, ns.ui('FormForm'), store, complainIfBad);
 
             } else {
                 complain("ui/pane internal error -- Eh?");

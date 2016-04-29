@@ -26,10 +26,10 @@
     }
     
     // namespace and shorthand for concepts in the tag ontology
-    var RDF = tabulator.rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
-    var RDFS = tabulator.rdf.Namespace("http://www.w3.org/2000/01/rdf-schema#");
-    var TAGS = tabulator.rdf.Namespace("http://www.holygoat.co.uk/owl/redwood/0.1/tags/");
-    var PAC = tabulator.rdf.Namespace("http://dig.csail.mit.edu/2008/PAC/ontology/pac#");
+    var RDF = UI.rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
+    var RDFS = UI.rdf.Namespace("http://www.w3.org/2000/01/rdf-schema#");
+    var TAGS = UI.rdf.Namespace("http://www.holygoat.co.uk/owl/redwood/0.1/tags/");
+    var PAC = UI.rdf.Namespace("http://dig.csail.mit.edu/2008/PAC/ontology/pac#");
     
     function CompareTags(photo,checked) {
         if (checked.length == 0) {
@@ -52,7 +52,7 @@
     
     photoPane.label = function(subject) {
         
-        if (!tabulator.kb.whether(subject, RDF('type'), PAC("PhotoAlbum"))) {
+        if (!UI.store.whether(subject, RDF('type'), PAC("PhotoAlbum"))) {
             return null;
         }
         return "Photo Album";
@@ -132,18 +132,18 @@
         photoPane.render.LoadPhotoData = function() {
            
             // Retrieve the photos in the album (using the "Contains" property)
-            var stsPhotos = tabulator.kb.statementsMatching(subject, PAC("Contains"), undefined);
+            var stsPhotos = UI.store.statementsMatching(subject, PAC("Contains"), undefined);
             for (var i = 0; i < stsPhotos.length; i++) {
                 var photo = {};
                 photo.URI = stsPhotos[i].object.toString();
                 
                 // For each tagging, retrieve all the associated tags
-                var stsTaggings = tabulator.kb.statementsMatching(stsPhotos[i].object, PAC("hasTagging"), undefined);
+                var stsTaggings = UI.store.statementsMatching(stsPhotos[i].object, PAC("hasTagging"), undefined);
                 for (var j = 0; j < stsTaggings.length; j++) {
                     var tags = [];
-                    var stsTags = tabulator.kb.statementsMatching(stsTaggings[j].object, TAGS("associatedTag"), undefined);
+                    var stsTags = UI.store.statementsMatching(stsTaggings[j].object, TAGS("associatedTag"), undefined);
                     for (var k = 0; k < stsTags.length; k++) {
-                        var tag = tabulator.kb.the(stsTags[k].object, RDFS("label"), undefined);
+                        var tag = UI.store.the(stsTags[k].object, RDFS("label"), undefined);
                         tags.push(tag);
                         if (allTags.indexOf(tag) == -1) {
                             allTags.push(tag);

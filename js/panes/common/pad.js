@@ -2,7 +2,7 @@
 
 // A utility which should prb go elsewhere
 
-tabulator.panes.utils.hashColor = function(who) {
+UI.widgets.hashColor = function(who) {
     who = who.uri || who;
     var hash = function(x){return x.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0); }
     return '#' + ((hash(who) & 0xffffff) | 0xc0c0c0).toString(16); // c0c0c0 or 808080 forces pale
@@ -21,7 +21,7 @@ if (!tabulator.audioContext) {
     }
 }
 if (tabulator.audioContext) {
-    tabulator.panes.utils.beep = (function () {
+    UI.widgets.beep = (function () {
         var ctx = new(tabulator.audioContext);
         return function (duration, frequency, type, finishedCallback) {
 
@@ -46,7 +46,7 @@ if (tabulator.audioContext) {
         };
     })();
 } else { // Safari 2015
-    tabulator.panes.utils.beep  = function() {};
+    UI.widgets.beep  = function() {};
 }
 
 ////////////////////////////////////////////////
@@ -56,17 +56,17 @@ if (tabulator.audioContext) {
 
 
 
-tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
+UI.widgets.notepad  = function (dom, padDoc, subject, me, options) {
     options = options || {}
     var exists = options.exists;
     var table = dom.createElement('table');
-    var kb = tabulator.kb;
+    var kb = UI.store;
     // var mainRow = table.appendChild(dom.createElement('tr'));
 
-    var fetcher = tabulator.sf;
-    var ns = tabulator.ns;
+    var fetcher = UI.store.fetcher;
+    var ns = UI.ns;
 
-    tabulator.updater = tabulator.updater || new tabulator.rdf.UpdateManager(kb);
+    tabulator.updater = tabulator.updater || new UI.rdf.UpdateManager(kb);
     var updater = tabulator.updater;
 
     var waitingForLogin = false;
@@ -92,7 +92,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
         console.log(message);
         if (options.statusArea) {
         (upstream ? upstreamStatus : downstreamStatus).appendChild(
-            tabulator.panes.utils.errorMessageBlock(dom, message, 'pink'));
+            UI.widgets.errorMessageBlock(dom, message, 'pink'));
         }
     }
 
@@ -158,7 +158,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             } else if (xhr.status === 409) { // Conflict
                 setPartStyle(part,'color: black;  background-color: #ffd;'); // yellow
                 part.state = 0; // Needs downstream refresh
-                tabulator.panes.utils.beep(0.5, 512); // Ooops clash with other person
+                UI.widgets.beep(0.5, 512); // Ooops clash with other person
                 setTimeout(function(){
                     updater.requestDownstreamAction(padDoc, reloadAndSync);
                 }, 1000);
@@ -320,7 +320,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
                     if (xhr.status === 409) { // Conflict -  @@ we assume someone else
                         setPartStyle(part,'color: black;  background-color: #fdd;');
                         part.state = 0; // Needs downstream refresh
-                        tabulator.panes.utils.beep(0.5, 512); // Ooops clash with other person
+                        UI.widgets.beep(0.5, 512); // Ooops clash with other person
                         setTimeout(function(){
                             updater.requestDownstreamAction(padDoc, reloadAndSync);
                         }, 1000);
@@ -329,7 +329,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
                         setPartStyle(part,'color: black;  background-color: #fdd;'); // failed pink
                         part.state = 0;
                         complain("    Error " + xhr.status + " sending data: " + error_body, true);
-                        tabulator.panes.utils.beep(1.0, 128); // Other
+                        UI.widgets.beep(1.0, 128); // Other
                         // @@@   Do soemthing more serious with other errors eg auth, etc
                     }
                 } else {
@@ -401,7 +401,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
 
 
     var newChunk = function(ele, before) { // element of chunk being split
-        var kb = tabulator.kb, tr1;
+        var kb = UI.store, tr1;
 
         var here, prev, next, queue, indent = 0, queueProperty = null;
         if (ele) {
@@ -430,7 +430,7 @@ tabulator.panes.utils.notepad  = function (dom, padDoc, subject, me, options) {
             tr1 = undefined;
         }
 
-        var chunk = tabulator.panes.utils.newThing(padDoc);
+        var chunk = UI.widgets.newThing(padDoc);
         var label = chunk.uri.slice(-4)
 
         del = [ $rdf.st(prev, PAD('next'), next, padDoc)];

@@ -15,8 +15,8 @@ tabulator.panes.internalPane = {
       },
 
     render: function(subject, myDocument) {
-        var $r = tabulator.rdf;
-        var kb = tabulator.kb;
+        var $r = UI.rdf;
+        var kb = UI.store;
         subject = kb.canon(subject);
         var types = kb.findTypeURIs(subject);
         function filter(pred, inverse) {
@@ -32,15 +32,15 @@ tabulator.panes.internalPane = {
         var doc_uri = null;
         if (subject.uri) {
             plist.push($r.st(subject,
-                    kb.sym('http://www.w3.org/2007/ont/link#uri'), subject.uri, tabulator.fetcher.appNode));
+                    kb.sym('http://www.w3.org/2007/ont/link#uri'), subject.uri, UI.store.fetcher.appNode));
             if (subject.uri.indexOf('#') >= 0) {
                 doc_uri = subject.uri.split('#')[0];
                 plist.push($r.st(subject,
                     kb.sym('http://www.w3.org/2007/ont/link#documentURI'),
-                    subject.uri.split('#')[0], tabulator.fetcher.appNode));
+                    subject.uri.split('#')[0], UI.store.fetcher.appNode));
                 plist.push($r.st(subject,
                     kb.sym('http://www.w3.org/2007/ont/link#document'),
-                     kb.sym(subject.uri.split('#')[0]), tabulator.fetcher.appNode));
+                     kb.sym(subject.uri.split('#')[0]), UI.store.fetcher.appNode));
             } else {
                 doc_uri = subject.uri;
             }
@@ -50,7 +50,7 @@ tabulator.panes.internalPane = {
             if (ed) {
                 plist.push($r.st(subject,
                     kb.sym('http://www.w3.org/ns/rww#editable'),
-                    kb.literal(ed), tabulator.fetcher.appNode));
+                    kb.literal(ed), UI.store.fetcher.appNode));
             }
         }
         tabulator.outline.appendPropertyTRs(div, plist, false, filter)
@@ -78,7 +78,7 @@ tabulator.panes.internalPane = {
 
 //    if (!SourceOptions["seeAlso not internal"].enabled)
 tabulator.panes.internalPane.predicates['http://www.w3.org/2000/01/rdf-schema#seeAlso'] = 1;
-tabulator.panes.internalPane.predicates[tabulator.ns.owl('sameAs').uri] = 1;
+tabulator.panes.internalPane.predicates[UI.ns.owl('sameAs').uri] = 1;
 tabulator.panes.register(tabulator.panes.internalPane, true);
 
 //ends

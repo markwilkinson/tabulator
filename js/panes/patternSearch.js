@@ -29,7 +29,7 @@ function PatternSearch() { // Encapsulates all of the methods and classes
     this.PatternNode.prototype.fetch = function(subject) {
         if(subject == null) return null;
         if(subject.type === 'Symbol')
-            tabulator.fetcher.requestURI(getBaseURI(subject.uri));
+            UI.store.fetcher.requestURI(getBaseURI(subject.uri));
         return this.fetchMethod(this.searchMethod(subject), this.children);
     }
     this.PatternNode.prototype.toString = function() {
@@ -115,7 +115,7 @@ function PatternSearch() { // Encapsulates all of the methods and classes
      ****************************/
     this.searchByPredicate = function(uri) {
         return function(subject) {
-            var triples = tabulator.kb.statementsMatching(subject, uri);
+            var triples = UI.store.statementsMatching(subject, uri);
             if(isEmpty(triples)) return new Array();
             return getObjects(triples);
         }
@@ -123,12 +123,12 @@ function PatternSearch() { // Encapsulates all of the methods and classes
 
     this.searchByObjectType = function(uri) {
         return function(subject) {
-            var triples = tabulator.kb.statementsMatching(subject,null,null,null);
+            var triples = UI.store.statementsMatching(subject,null,null,null);
             var objects = getObjects(triples);
             var matchingTriples = new Array();
             if(isEmpty(triples)) return matchingTriples;
             for(var i = 0;i < objects.length;i++)
-                if(tabulator.kb.whether(objects[i],tabulator.ns.rdf('type'),uri))
+                if(UI.store.whether(objects[i],UI.ns.rdf('type'),uri))
                     matchingTriples.push(triples[i]);
             return getObjects(matchingTriples);
         }

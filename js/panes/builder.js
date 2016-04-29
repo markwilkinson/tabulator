@@ -21,7 +21,7 @@ tabulator.panes.metaPane = {
         ps ={};
         for (nt in ts) {
             t = kb.fromNT(nt);
-            ps = ps.concat(kb.each(t, tabulator.ns.ui('formDefinition')));
+            ps = ps.concat(kb.each(t, UI.ns.ui('formDefinition')));
         }
         for (var i=0; i <ps.length; i++) {
             if (tabulator.panes.index[ps[i].uri] == undefined) { // New one
@@ -29,9 +29,9 @@ tabulator.panes.metaPane = {
                 var p = ps[i]; // The pane definition on the web
                 pane.definition = p;
                 pane.render = tabulator.panes.metaPane.render; // ie below
-                pane.icon = image = kb.any(p, tabulator.ns.ui('icon'));
-                pane.label = kb.any(p, tabulator.ns.ui('icon'));
-                if (!p.label) p.label = tabulator.Util.label(p);
+                pane.icon = image = kb.any(p, UI.ns.ui('icon'));
+                pane.label = kb.any(p, UI.ns.ui('icon'));
+                if (!p.label) p.label = UI.utils.label(p);
                 pane.definition = p;
                 tabulator.panes.index[ps[i].uri] = p;
                 tabulator.panes.register(p, false); // no "Find all" button
@@ -45,8 +45,8 @@ tabulator.panes.metaPane = {
     // View the object in user-friendly way
     render: function(subject, myDocument) {
 
-        var kb = tabulator.kb;
-        var ns = tabulator.ns;
+        var kb = UI.store;
+        var ns = UI.ns;
         var div = myDocument.createElement("div")
         div.setAttribute('class', 'dataContentPane'); // @@
 

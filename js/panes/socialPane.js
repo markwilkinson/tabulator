@@ -13,8 +13,8 @@ tabulator.panes.register( tabulator.panes.socialPane = {
     name: 'social',
 
     label: function(subject) {
-        if (!tabulator.kb.whether(
-            subject, tabulator.ns.rdf( 'type'), tabulator.ns.foaf('Person'))) return null;
+        if (!UI.store.whether(
+            subject, UI.ns.rdf( 'type'), UI.ns.foaf('Person'))) return null;
         return "Friends";
     },
 
@@ -85,15 +85,15 @@ tabulator.panes.register( tabulator.panes.socialPane = {
                         outline.UserInput.sparqler.insert_statement(statement, function(uri,success,error_body) {
                             tx.className = 'question';
                             if (!success){
-                                tabulator.log.alert(null,"Message","Error occurs while inserting "+statement+'\n\n'+error_body);
+                                UI.log.alert(null,"Message","Error occurs while inserting "+statement+'\n\n'+error_body);
                                 input.checked = false; //rollback UI
                                 return;
                             }
                             kb.add(statement.subject, statement.predicate, statement.object, statement.why);
                         })
                     }catch(e){
-                        tabulator.log.error("Data write fails:" + e);
-                        tabulator.log.alert("Data write fails:" + e);
+                        UI.log.error("Data write fails:" + e);
+                        UI.log.alert("Data write fails:" + e);
                         input.checked = false; //rollback UI
                         tx.className = 'question';
                     }
@@ -102,14 +102,14 @@ tabulator.panes.register( tabulator.panes.socialPane = {
                         outline.UserInput.sparqler.delete_statement(statement, function(uri,success,error_body) {
                             tx.className = 'question';
                             if (!success){
-                                tabulator.log.alert("Error occurs while deleting "+statement+'\n\n'+error_body);
+                                UI.log.alert("Error occurs while deleting "+statement+'\n\n'+error_body);
                                 this.checked = true; // Rollback UI
                             } else {
                                 kb.removeMany(statement.subject, statement.predicate, statement.object, statement.why);
                             }
                         })
                     }catch(e){
-                        tabulator.log.alert("Delete fails:" + e);
+                        UI.log.alert("Delete fails:" + e);
                         this.checked = true; // Rollback UI
                         return;
                     }
@@ -127,14 +127,14 @@ tabulator.panes.register( tabulator.panes.socialPane = {
         }
 
         var oneFriend = function(friend, confirmed) {
-            return tabulator.panes.utils.personTR(dom, tabulator.ns.foaf('knows'), friend, {})
+            return UI.widgets.personTR(dom, UI.ns.foaf('knows'), friend, {})
         }
 
         //////////////////////////////// Event handler for existing file
         gotOne = function(ele) {
             var webid = dom.getElementById("webidField").value;
             tabulator.preferences.set('me', webid);
-            tabulator.log.alert("You are now logged in as "+webid);
+            UI.log.alert("You are now logged in as "+webid);
             ele.parentNode.removeChild(ele);
         }
 
@@ -201,7 +201,7 @@ tabulator.panes.register( tabulator.panes.socialPane = {
             //assume the server does PUT content-negotiation.
             xhr.setRequestHeader('Content-type', content_type);//OK?
             xhr.send(contents);
-            tabulator.log.info("sending "+"["+contents+"] to +"+targetURI);
+            UI.log.info("sending "+"["+contents+"] to +"+targetURI);
 
 
         }
@@ -211,10 +211,10 @@ tabulator.panes.register( tabulator.panes.socialPane = {
         if (typeof tabulator == 'undefined') tabulator = this.tb;
         var outline = tabulator.outline;
         var thisPane = this; // For re-render
-        var kb = tabulator.kb
+        var kb = UI.store
         var div = dom.createElement("div")
         div.setAttribute('class', 'socialPane');
-        var foaf = tabulator.ns.foaf;
+        var foaf = UI.ns.foaf;
 
         var tools = dom.createElement('div');
         tools.className = 'navBlock';
@@ -247,7 +247,7 @@ tabulator.panes.register( tabulator.panes.socialPane = {
         }
 
         // @@ Addd: event handler to redraw the stuff below when me changes.
-        tips.appendChild(tabulator.panes.utils.loginStatusBox(dom, listener));
+        tips.appendChild(UI.widgets.loginStatusBox(dom, listener));
 
 
 
@@ -269,7 +269,7 @@ tabulator.panes.register( tabulator.panes.socialPane = {
             var myHandler = function(e) {
                 var uri = this.checked? s.uri : '';
                 tabulator.preferences.set('me', uri);
-                tabulator.log.alert('You are now '+ (uri ? 'logged in as ' + uri :
+                UI.log.alert('You are now '+ (uri ? 'logged in as ' + uri :
                     'logged out. To log in again, find yourself and check "This is you".'));
                 // div.parentNode.replaceChild(thisPane.render(s, dom), div);
             }
@@ -299,12 +299,12 @@ tabulator.panes.register( tabulator.panes.socialPane = {
             var works = kb.each(undefined, foaf('primaryTopic'), me)
             var message = "";
             for (var i=0; i<works.length; i++) {
-                if (kb.whether(works[i], tabulator.ns.rdf('type'),
+                if (kb.whether(works[i], UI.ns.rdf('type'),
                                             foaf('PersonalProfileDocument'))) {
 
                     editable = outline.UserInput.sparqler.editable(works[i].uri, kb);
                     if (!editable) {
-                        message += ("Your profile <"+tabulator.Util.escapeForXML(works[i].uri)+"> is not remotely editable.");
+                        message += ("Your profile <"+UI.utils.escapeForXML(works[i].uri)+"> is not remotely editable.");
                     } else {
                         profile = works[i];
                         break;
@@ -316,7 +316,7 @@ tabulator.panes.register( tabulator.panes.socialPane = {
                 if (!profile) {
                     say(message + "\nI couldn't find an editable personal profile document.");
                 } else  {
-                    say("Editing your profile <"+tabulator.Util.escapeForXML(profile.uri)+">.");
+                    say("Editing your profile <"+UI.utils.escapeForXML(profile.uri)+">.");
                      // Do I have an EDITABLE profile?
                     editable = outline.UserInput.sparqler.editable(profile.uri, kb);
                 }
@@ -374,7 +374,7 @@ tabulator.panes.register( tabulator.panes.socialPane = {
 
                 if (editable) {
                     var f = buildCheckboxForm("You know " + familiar,
-                            new tabulator.rdf.Statement(me, knows, s, profile), outgoing)
+                            new UI.rdf.Statement(me, knows, s, profile), outgoing)
                     tools.appendChild(f);
                 } // editable
 
@@ -390,7 +390,7 @@ tabulator.panes.register( tabulator.panes.socialPane = {
                         if (mutualFriends) {
                             for (var i=0; i<mutualFriends.length; i++) {
                                 tr.appendChild(dom.createTextNode(
-                                    ',  '+ tabulator.Util.label(mutualFriends[i])));
+                                    ',  '+ UI.utils.label(mutualFriends[i])));
                             }
                         }
                     }
@@ -427,7 +427,7 @@ tabulator.panes.register( tabulator.panes.socialPane = {
 
         for (var i=0; i<incoming.length; i++) {
             var friend = incoming[i];
-            var lab = tabulator.Util.label(friend);
+            var lab = UI.utils.label(friend);
             var found = false;
             for (var j=0; j<outgoing.length; j++) {
                 if (outgoing[j].sameTerm(friend)) {
@@ -454,7 +454,7 @@ tabulator.panes.register( tabulator.panes.socialPane = {
 
             var items = [];
             for (var j=0; j<friends.length; j++) {
-                items.push([tabulator.Util.label(friends[j]), friends[j]]);
+                items.push([UI.utils.label(friends[j]), friends[j]]);
             }
             items.sort();
             var last = null;
@@ -462,7 +462,7 @@ tabulator.panes.register( tabulator.panes.socialPane = {
                 var friend = items[j][1];
 				if (friend.sameTerm(last)) continue; // unique
                 last = friend;
-				if (tabulator.Util.label(friend) != "..."){	//This check is to avoid bnodes with no labels attached
+				if (UI.utils.label(friend) != "..."){	//This check is to avoid bnodes with no labels attached
 												//appearing in the friends list with "..." - Oshani
 					main.appendChild(oneFriend(friend));
 				}
@@ -477,9 +477,9 @@ tabulator.panes.register( tabulator.panes.socialPane = {
         h3.appendChild(dom.createTextNode('Basic Information'));
         tools.appendChild(h3);
 
-        var preds = [ tabulator.ns.foaf('homepage') ,
-                tabulator.ns.foaf('weblog'),
-                tabulator.ns.foaf('workplaceHomepage'),  tabulator.ns.foaf('schoolHomepage')];
+        var preds = [ UI.ns.foaf('homepage') ,
+                UI.ns.foaf('weblog'),
+                UI.ns.foaf('workplaceHomepage'),  UI.ns.foaf('schoolHomepage')];
         for (var i=0; i<preds.length; i++) {
             var pred = preds[i];
             var sts = kb.statementsMatching(s, pred);
@@ -498,7 +498,7 @@ tabulator.panes.register( tabulator.panes.socialPane = {
                     if (uri == last) continue; // uniques only
                     last = uri;
                     var hostlabel = ""
-                    var lab = tabulator.Util.label(pred);
+                    var lab = UI.utils.label(pred);
                     if (uris.length > 1) {
                         var l = uri.indexOf('//');
                         if (l>0) {
@@ -522,8 +522,8 @@ tabulator.panes.register( tabulator.panes.socialPane = {
             }
         }
 
-        var preds = [  tabulator.ns.foaf('openid'),
-                tabulator.ns.foaf('nick')
+        var preds = [  UI.ns.foaf('openid'),
+                UI.ns.foaf('nick')
                 ];
         for (var i=0; i<preds.length; i++) {
             var pred = preds[i];
@@ -561,6 +561,6 @@ tabulator.panes.register( tabulator.panes.socialPane = {
 }, false);  // tabulator.panes.register({})
 
 if (tabulator.preferences && tabulator.preferences.get('me')) {
-    tabulator.fetcher.lookUpThing(tabulator.kb.sym(tabulator.preferences.get('me')));
+    UI.store.fetcher.lookUpThing(UI.store.sym(tabulator.preferences.get('me')));
 };
 //ends

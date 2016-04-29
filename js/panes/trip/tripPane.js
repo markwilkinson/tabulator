@@ -22,7 +22,7 @@ tabulator.panes.register( {
     // Does the subject deserve this pane?
     label: function(subject) {
         var Q = $rdf.Namespace('http://www.w3.org/2000/10/swap/pim/qif#');
-        var kb = tabulator.kb;
+        var kb = UI.store;
         var t = kb.findTypeURIs(subject);
 
         // if (t['http://www.w3.org/2000/10/swap/pim/qif#Transaction']) return "$$";
@@ -36,8 +36,8 @@ tabulator.panes.register( {
     },
 
     render: function(subject, myDocument) {
-        var kb = tabulator.kb;
-        var ns = tabulator.ns;
+        var kb = UI.store;
+        var ns = UI.ns;
         var CAL = $rdf.Namespace('http://www.w3.org/2002/12/cal/ical#');
         var WF = $rdf.Namespace('http://www.w3.org/2005/01/wf/flow#');
         var DC = $rdf.Namespace('http://purl.org/dc/elements/1.1/');
@@ -85,7 +85,7 @@ tabulator.panes.register( {
 
 
 
-        var sparqlService = new tabulator.rdf.UpdateManager(kb);
+        var sparqlService = new UI.rdf.UpdateManager(kb);
 
 
         var plist = kb.statementsMatching(subject)
@@ -99,7 +99,7 @@ tabulator.panes.register( {
         //      Function: Render a single trip
 
         var renderTrip = function renderTrip(subject, thisDiv){
-            var query = new $rdf.Query(tabulator.Util.label(subject));
+            var query = new $rdf.Query(UI.utils.label(subject));
             var vars =  [ 'date', 'transaction', 'comment', 'type',  'in_USD'];
             var v = {};
             vars.map(function(x){query.vars.push(v[x]=$rdf.variable(x))}); // Only used by UI
@@ -145,14 +145,14 @@ tabulator.panes.register( {
                 var types = 0;
                 var grandTotal = 0.0;
                 for (var uri in total) {
-                    str += tabulator.Util.label(kb.sym(uri)) + ': '+total[uri]+'; ';
+                    str += UI.utils.label(kb.sym(uri)) + ': '+total[uri]+'; ';
                     types++;
                     grandTotal += total[uri];
                 }
                 complain("Totals of "+trans.length+" transactions: " + str, ''); // @@@@@  yucky -- need 2 col table
                 if (types > 1) complain("Overall net: "+grandTotal, 'text-treatment: bold;')
             }
-            var tableDiv = tabulator.panes.utils.renderTableViewPane(myDocument, {'query': query, 'onDone': calculations} );
+            var tableDiv = UI.widgets.renderTableViewPane(myDocument, {'query': query, 'onDone': calculations} );
             thisDiv.appendChild(tableDiv);
 
         }

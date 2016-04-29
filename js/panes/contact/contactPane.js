@@ -17,7 +17,7 @@ to change its state according to an ontology, comment on it, etc.
 
 if (typeof console == 'undefined') { // e.g. firefox extension. Node and browser have console
     console = {};
-    console.log = function(msg) { tabulator.log.info(msg);};
+    console.log = function(msg) { UI.log.info(msg);};
 }
 
 
@@ -34,8 +34,8 @@ tabulator.panes.register( {
 
     // Does the subject deserve an contact pane?
     label: function(subject) {
-        var kb = tabulator.kb;
-        var ns = tabulator.ns;
+        var kb = UI.store;
+        var ns = UI.ns;
         var t = kb.findTypeURIs(subject);
         if (t[ns.vcard('Individual').uri]) return "Contact";
         if (t[ns.vcard('Organization').uri]) return "contact";
@@ -51,7 +51,7 @@ tabulator.panes.register( {
         var appInstanceNoun = 'address book';
 
         var complain = function(message) {
-            div.appendChild(tabulator.panes.utils.errorMessageBlock(dom, message, 'pink'));
+            div.appendChild(UI.widgets.errorMessageBlock(dom, message, 'pink'));
         };
 
 
@@ -77,7 +77,7 @@ tabulator.panes.register( {
 
         var newAppPointer = newBase + 'index.html'; // @@ assuming we can't trust server with bare dir
 
-        var offline = tabulator.panes.utils.offlineTestID();
+        var offline = UI.widgets.offlineTestID();
         if (offline) {
             toBeWritten.push( {to: 'local.html', from: 'local.html', contentType: 'text/html' });
             newAppPointer = newBase + 'local.html'; // kludge for testing
@@ -109,7 +109,7 @@ tabulator.panes.register( {
                 var aclOptions = task.aclOptions || {};
                 var checkOKSetACL = function(uri, ok) {
                     if (ok) {
-                        tabulator.panes.utils.setACLUserPublic(dest, me, aclOptions, function(){
+                        UI.widgets.setACLUserPublic(dest, me, aclOptions, function(){
                             if (ok) {
                                 doNextTask()
                             } else {
@@ -122,7 +122,7 @@ tabulator.panes.register( {
                 };
 
                 if ('content' in task) {
-                    tabulator.panes.utils.webOperation('PUT', dest,
+                    UI.widgets.webOperation('PUT', dest,
                         { data: task.content, saveMetadata: true, contentType: task.contentType},
                     checkOKSetACL);
                 } else if ('existing' in task) {
@@ -130,7 +130,7 @@ tabulator.panes.register( {
                 } else {
                     throw "copy not expected"
                     var from = task.from || task.to; // default source to be same as dest
-                    tabulator.panes.utils.webCopy(base + from, dest, task.contentType, checkOKSetACL);
+                    UI.widgets.webCopy(base + from, dest, task.contentType, checkOKSetACL);
                 }
             }
         }
@@ -139,8 +139,8 @@ tabulator.panes.register( {
     },
 
     render: function(subject, dom) {
-        var kb = tabulator.kb;
-        var ns = tabulator.ns;
+        var kb = UI.store;
+        var ns = UI.ns;
         var DC = $rdf.Namespace('http://purl.org/dc/elements/1.1/');
         var DCT = $rdf.Namespace('http://purl.org/dc/terms/');
         var div = dom.createElement("div")
@@ -182,7 +182,7 @@ tabulator.panes.register( {
         // Unused and untested but could be handy: a facetted browser view
         //
         var addressBookAsTable = function() {
-            var query = new $rdf.Query(tabulator.Util.label(subject));
+            var query = new $rdf.Query(UI.utils.label(subject));
             var vars =  ['contact', 'name', 'em', 'email'];
             var v = {}; // The RDF variable objects for each variable name
             vars.map(function(x){query.vars.push(v[x]=$rdf.variable(x))});
@@ -209,7 +209,7 @@ tabulator.panes.register( {
                 }
             }
 
-            var tableDiv = tabulator.panes.utils.renderTableViewPane(dom, {'query': query,
+            var tableDiv = UI.widgets.renderTableViewPane(dom, {'query': query,
    /*             'hints': {
                     '?created': { 'cellFormat': 'shortDate'},
                     '?state': { 'initialSelection': selectedStates }}
@@ -222,8 +222,8 @@ tabulator.panes.register( {
                 var refreshButton = dom.createElement('button');
                 refreshButton.textContent = "refresh";
                 refreshButton.addEventListener('click', function(e) {
-                    tabulator.fetcher.unload(nameEmailIndex);
-                    tabulator.fetcher.nowOrWhenFetched(nameEmailIndex.uri, undefined, function(ok, body){
+                    UI.store.fetcher.unload(nameEmailIndex);
+                    UI.store.fetcher.nowOrWhenFetched(nameEmailIndex.uri, undefined, function(ok, body){
                         if (!ok) {
                             console.log("Cant refresh data:" + body);
                         } else {
@@ -241,7 +241,7 @@ tabulator.panes.register( {
         /////////////////////// Reproduction: Spawn a new instance of this app
 
         var newAddressBookButton = function(thisAddressBook) {
-            return tabulator.panes.utils.newAppInstance(dom,
+            return UI.widgets.newAppInstance(dom,
                 {noun: "address book", appPathSegment: "contactorator.timbl.com"}, function(ws, newBase){
 
                     thisPane.clone(thisAddressBook, newBase, {me: me, div: div, dom: dom})
@@ -254,8 +254,8 @@ tabulator.panes.register( {
 
 
 
-        var updater = new tabulator.rdf.UpdateManager(kb);
-        tabulator.panes.utils.preventBrowserDropEvents(dom);
+        var updater = new UI.rdf.UpdateManager(kb);
+        UI.widgets.preventBrowserDropEvents(dom);
 
         var plist = kb.statementsMatching(subject)
         var qlist = kb.statementsMatching(undefined, undefined, subject)
@@ -273,8 +273,8 @@ tabulator.panes.register( {
         // Reload resorce then
 
         var reloadStore = function(store, callBack) {
-            tabulator.fetcher.unload(store);
-            tabulator.fetcher.nowOrWhenFetched(store.uri, undefined, function(ok, body){
+            UI.store.fetcher.unload(store);
+            UI.store.fetcher.nowOrWhenFetched(store.uri, undefined, function(ok, body){
                 if (!ok) {
                     console.log("Cant refresh data:" + body);
                 } else {
@@ -305,8 +305,8 @@ tabulator.panes.register( {
         }
         var renderThreeColumnBrowser2 = function(books, context, options){
 
-          classLabel = tabulator.Util.label(ns.vcard('AddressBook'));
-          IndividualClassLabel = tabulator.Util.label(ns.vcard('Individual'));
+          classLabel = UI.utils.label(ns.vcard('AddressBook'));
+          IndividualClassLabel = UI.utils.label(ns.vcard('Individual'));
 
           var book = books[0] // for now
           var groupIndex = kb.any(book, ns.vcard('groupIndex'));
@@ -327,7 +327,7 @@ tabulator.panes.register( {
               title = title ? title.value : classLabel;
               // @@ Todo
             })
-            .catch(function(err){tabulator.panes.utils.complain(context, err)})
+            .catch(function(err){UI.widgets.complain(context, err)})
           }
 
           //var cats = kb.each(book, ns.wf('contactCategory')); // zero or more
@@ -371,7 +371,7 @@ tabulator.panes.register( {
                           updater.update([], agenda.shift(), updateCallback);
                       } else { // done!
                           dump("Done patching. Now reading back in.\n")
-                          tabulator.fetcher.nowOrWhenFetched(doc, undefined, function(ok, body){
+                          UI.store.fetcher.nowOrWhenFetched(doc, undefined, function(ok, body){
                               if (ok) {
                                   dump("Read back in OK.\n")
                                   callback(true, person);
@@ -384,7 +384,7 @@ tabulator.panes.register( {
                   }
               };
 
-              tabulator.fetcher.nowOrWhenFetched(nameEmailIndex, undefined, function(ok, message) {
+              UI.store.fetcher.nowOrWhenFetched(nameEmailIndex, undefined, function(ok, message) {
                   if (ok) {
                       dump(" People index must be loaded\n");
                       updater.put(doc, [
@@ -411,7 +411,7 @@ tabulator.panes.register( {
               var group = kb.sym(doc.uri + '#this');
               dump(" New group will be: "+ group + '\n');
 
-              tabulator.fetcher.nowOrWhenFetched(gix, undefined, function(ok, message) {
+              UI.store.fetcher.nowOrWhenFetched(gix, undefined, function(ok, message) {
                   if (ok) {
                       dump(" Group index must be loaded\n");
                       updater.update([],
@@ -438,10 +438,10 @@ tabulator.panes.register( {
           var getNameForm = function(dom, kb, classLabel, selectedGroups, gotNameCallback) {
               var form = dom.createElement('div');  // form is broken as HTML behaviour can resurface on js error
 
-              tabulator.fetcher.removeCallback('done','expand'); // @@ experimental -- does this kill the re-paint? no
-              tabulator.fetcher.removeCallback('fail','expand'); // @@ ??
+              UI.store.fetcher.removeCallback('done','expand'); // @@ experimental -- does this kill the re-paint? no
+              UI.store.fetcher.removeCallback('fail','expand'); // @@ ??
 
-              // classLabel = tabulator.Util.label(ns.vcard('Individual'));
+              // classLabel = UI.utils.label(ns.vcard('Individual'));
               form.innerHTML = "<h2>Add new "+
                       classLabel+"</h2><p>name of new "+classLabel+":</p>";
               var namefield = dom.createElement('input')
@@ -489,7 +489,7 @@ tabulator.panes.register( {
 
           ////////////////////////////// Three-column Contact Browser
 
-          tabulator.fetcher.nowOrWhenFetched(groupIndex.uri, book, function(ok, body) {
+          UI.store.fetcher.nowOrWhenFetched(groupIndex.uri, book, function(ok, body) {
 
               if (!ok) return console.log("Cannot load group index: "+body);
 
@@ -547,16 +547,16 @@ tabulator.panes.register( {
               }
 
               var toolsPane = function(selectedGroups, groupsMainTable) {
-                  var kb = tabulator.kb, ns = tabulator.ns;
-                  var updater = new tabulator.rdf.UpdateManager(kb);
-                  var ACL = tabulator.ns.acl, VCARD = tabulator.ns.vcard;
+                  var kb = UI.store, ns = UI.ns;
+                  var updater = new UI.rdf.UpdateManager(kb);
+                  var ACL = UI.ns.acl, VCARD = UI.ns.vcard;
                   var doc = $rdf.sym(book.uri.split('#')[0]); // The ACL is actually to the doc describing the thing
 
                   var pane = dom.createElement('div');
                   var table = pane.appendChild(dom.createElement('table'));
                   table.setAttribute('style', 'font-size:120%; margin: 1em; border: 0.1em #ccc ;');
                   var headerRow = table.appendChild(dom.createElement('tr'));
-                  headerRow.textContent =  tabulator.Util.label(book) + " - tools";
+                  headerRow.textContent =  UI.utils.label(book) + " - tools";
                   headerRow.setAttribute('style', 'min-width: 20em; padding: 1em; font-size: 150%; border-bottom: 0.1em solid red; margin-bottom: 2em;');
 
                   var statusRow = table.appendChild(dom.createElement('tr'));
@@ -570,17 +570,17 @@ tabulator.panes.register( {
                   context = { target: book, me: me, noun: "address book",
                       div: pane, dom: dom, statusRegion: statusBlock };
 
-                  box.appendChild(tabulator.panes.utils.ACLControlBox(book, dom, "book", function(ok, body){
+                  box.appendChild(UI.widgets.ACLControlBox(book, dom, "book", function(ok, body){
                       if (!ok) box.innerHTML = "ACL control box Failed: " + body;
                   }));
 
 
                   //
-                  tabulator.panes.utils.registrationControl(
+                  UI.widgets.registrationControl(
                       context, book, ns.vcard('AddressBook'))
                   .then(function(box){
                           pane.appendChild(box)
-                  }).catch(function(e){tabulator.panes.utils.complain(context, e)});
+                  }).catch(function(e){UI.widgets.complain(context, e)});
 
 
                   //  Output stats in line mode form
@@ -613,7 +613,7 @@ tabulator.panes.register( {
                       loadIndexButton.setAttribute('style', 'background-color: #ffc;');
 
                       var nameEmailIndex = kb.any(book, ns.vcard('nameEmailIndex'));
-                      tabulator.fetcher.nowOrWhenFetched(nameEmailIndex, undefined, function(ok, message) {
+                      UI.store.fetcher.nowOrWhenFetched(nameEmailIndex, undefined, function(ok, message) {
                           if (ok) {
                               loadIndexButton.setAttribute('style', 'background-color: #cfc;');
                               log(" People index has been loaded\n");
@@ -632,16 +632,16 @@ tabulator.panes.register( {
                       for (var i = 0; i< gg.length; i++) {
                           g = kb.sym(gg[i]);
                           var a = kb.each(g, ns.vcard('hasMember'));
-                          log(tabulator.Util.label(g)+ ': ' + a.length + " members");
+                          log(UI.utils.label(g)+ ': ' + a.length + " members");
                           for (var j=0; j < a.length; j++) {
                               var card = a[j];
-                              log(tabulator.Util.label(card));
+                              log(UI.utils.label(card));
                               function doCard(card) {
-                                  tabulator.panes.utils.fixIndividualCardACL(card, log, function(ok, message) {
+                                  UI.widgets.fixIndividualCardACL(card, log, function(ok, message) {
                                       if (ok) {
-                                          log("Sucess for "+tabulator.Util.label(card));
+                                          log("Sucess for "+UI.utils.label(card));
                                       } else {
-                                          log("Failure for "+tabulator.Util.label(card) + ": " + message);
+                                          log("Failure for "+UI.utils.label(card) + ": " + message);
                                       }
                                   });
                               }
@@ -659,7 +659,7 @@ tabulator.panes.register( {
                               log("Failed: " + message)
                               return;
                           }
-                          tabulator.fetcher.nowOrWhenFetched(nameEmailIndex, undefined,
+                          UI.store.fetcher.nowOrWhenFetched(nameEmailIndex, undefined,
                               function(ok, message) {
 
                                   log("Loaded groups and name index.");
@@ -667,7 +667,7 @@ tabulator.panes.register( {
                                   for (var i = 0; i< groups.length; i++) {
                                       g = groups[i];
                                       var a = kb.each(g, ns.vcard('hasMember'));
-                                      log(tabulator.Util.label(g)+ ': ' + a.length + " members");
+                                      log(UI.utils.label(g)+ ': ' + a.length + " members");
                                       for (var j=0; j<a.length; j++) {
                                           reverseIndex[a[j].uri] = true;
                                       }
@@ -680,7 +680,7 @@ tabulator.panes.register( {
                                   for (var c=0; c < cards.length; c++) {
                                       if (!reverseIndex[cards[c].uri]) {
                                           groupless.push(cards[c]);
-                                          log("   groupless " + tabulator.Util.label(cards[c]));
+                                          log("   groupless " + UI.utils.label(cards[c]));
                                       }
                                   }
                                   log("" + groupless.length + " groupless cards.");
@@ -845,7 +845,7 @@ tabulator.panes.register( {
                       personRow.subject = person;
 
                       var setPersonListener = function toggle(personLeft, person) {
-                          tabulator.panes.utils.deleteButtonWithCheck(dom, personRight, 'contact', function(){
+                          UI.widgets.deleteButtonWithCheck(dom, personRight, 'contact', function(){
                               deleteThing(person);
                               refreshNames();
                               cardMain.innerHTML = '';
@@ -854,7 +854,7 @@ tabulator.panes.register( {
                               event.preventDefault();
                               cardMain.innerHTML = 'loading...';
                               var cardURI = person.uri.split('#')[0];
-                              tabulator.fetcher.nowOrWhenFetched(cardURI, undefined, function(ok, message){
+                              UI.store.fetcher.nowOrWhenFetched(cardURI, undefined, function(ok, message){
                                   cardMain.innerHTML = '';
                                   if (!ok) return IfBad(ok, "Can't load card: " +  group.uri.split('#')[0] + ": " + message)
                                   // dump("Loaded card " + cardURI + '\n')
@@ -916,7 +916,7 @@ tabulator.panes.register( {
                           groupRow.setAttribute('style', dataCellStyle);
                           groupRow.textContent = name;
                           var foo = function toggle(groupRow, group, name) {
-                              tabulator.panes.utils.deleteButtonWithCheck(dom, groupRow, "group " + name, function(){
+                              UI.widgets.deleteButtonWithCheck(dom, groupRow, "group " + name, function(){
                                   deleteThing(group);
                                   syncGroupTable();
                               });
@@ -936,7 +936,7 @@ tabulator.panes.register( {
 
                                       if (!event.altKey) { // If only one group has beeen selected show ACL
                                           cardMain.innerHTML = '';
-                                          cardMain.appendChild(tabulator.panes.utils.ACLControlBox(group, dom, "group", function(ok, body){
+                                          cardMain.appendChild(UI.widgets.ACLControlBox(group, dom, "group", function(ok, body){
                                               if (!ok) cardMain.innerHTML = "Failed: " + body;
                                           }));
                                       }
@@ -963,7 +963,7 @@ tabulator.panes.register( {
               var container = dom.createElement("div");
               newContactButton.setAttribute("type", "button");
               if (!me) newContactButton.setAttribute('disabled', 'true')
-              tabulator.panes.utils.checkUser(book.doc(), function(uri){
+              UI.widgets.checkUser(book.doc(), function(uri){
                    newContactButton.removeAttribute('disabled');
               });
               container.appendChild(newContactButton);
@@ -983,7 +983,7 @@ tabulator.panes.register( {
                   cardMain.innerHTML = '';
 
                   var nameEmailIndex = kb.any(book, ns.vcard('nameEmailIndex'));
-                  tabulator.fetcher.nowOrWhenFetched(nameEmailIndex, undefined, function(ok, message) {
+                  UI.store.fetcher.nowOrWhenFetched(nameEmailIndex, undefined, function(ok, message) {
                       if (ok) {
                           dump(" People index has been loaded\n");
                       } else {
@@ -1015,7 +1015,7 @@ tabulator.panes.register( {
                   // b.setAttribute('disabled', 'true');  (do we need o do this?)
                   cardMain.innerHTML = '';
                   var groupIndex = kb.any(book, ns.vcard('groupIndex'));
-                  tabulator.fetcher.nowOrWhenFetched(groupIndex, undefined, function(ok, message) {
+                  UI.store.fetcher.nowOrWhenFetched(groupIndex, undefined, function(ok, message) {
                       if (ok) {
                           dump(" Group index has been loaded\n");
                       } else {
@@ -1036,7 +1036,7 @@ tabulator.panes.register( {
                                   syncGroupTable(); // Refresh list of groups
 
                                   cardMain.innerHTML = '';
-                                  cardMain.appendChild(tabulator.panes.utils.ACLControlBox(body, dom, "group", function(ok, body){
+                                  cardMain.appendChild(UI.widgets.ACLControlBox(body, dom, "group", function(ok, body){
                                       if (!ok) cardMain.innerHTML = "Group sharing setup failed: " + body;
                                   }));
                               }
@@ -1076,7 +1076,7 @@ tabulator.panes.register( {
             // var individualFormDoc = kb.sym('https://timbl.rww.io/Apps/Contactator/individualForm.ttl');
             var individualForm = kb.sym(individualFormDoc.uri + '#form1')
 
-            tabulator.fetcher.nowOrWhenFetched(individualFormDoc.uri, subject, function drawContactPane(ok, body) {
+            UI.store.fetcher.nowOrWhenFetched(individualFormDoc.uri, subject, function drawContactPane(ok, body) {
                 if (!ok) return console.log("Failed to load form " + individualFormDoc.uri + ' '+body);
                 var predicateURIsDone = {};
                 var donePredicate = function(pred) {predicateURIsDone[pred.uri]=true};
@@ -1106,21 +1106,21 @@ tabulator.panes.register( {
                 setPaneStyle();
 
 
-                tabulator.panes.utils.checkUserSetMe(cardDoc);
+                UI.widgets.checkUserSetMe(cardDoc);
 
                 var img = div.appendChild(dom.createElement('img'));
                 img.setAttribute('style', 'max-height: 10em; border-radius: 1em; margin: 0.7em;')
-                tabulator.panes.utils.setImage(img, subject);
+                UI.widgets.setImage(img, subject);
 
 
-                tabulator.panes.utils.appendForm(dom, div, {}, subject, individualForm, cardDoc, complainIfBad);
+                UI.widgets.appendForm(dom, div, {}, subject, individualForm, cardDoc, complainIfBad);
 
 
                  //   Comment/discussion area
                 /*
                 var messageStore = kb.any(tracker, ns.wf('messageStore'));
                 if (!messageStore) messageStore = kb.any(tracker, ns.wf('doc'));
-                div.appendChild(tabulator.panes.utils.messageArea(dom, kb, subject, messageStore));
+                div.appendChild(UI.widgets.messageArea(dom, kb, subject, messageStore));
                 donePredicate(ns.wf('message'));
                 */
 
@@ -1150,7 +1150,7 @@ tabulator.panes.register( {
       } else if (t[ns.vcard('Group').uri]) {
 
         // If we have a main address book, then render this group as a guest group withn it
-        tabulator.panes.utils.findAppInstances(context, ns.vcard('AddressBook'))
+        UI.widgets.findAppInstances(context, ns.vcard('AddressBook'))
         .then(function(context){
             addressBooks = context.instances;
             if (addressBooks.length > 0) {
@@ -1162,7 +1162,7 @@ tabulator.panes.register( {
               // @@ button to Make a new addressBook
             }
         }).catch(function(e){
-          tabulator.panes.utils.complain(context, e)
+          UI.widgets.complain(context, e)
         })
 
         //          Render a AddressBook instance
@@ -1182,7 +1182,7 @@ tabulator.panes.register( {
         if (tabulator.mode == 'webapp' && typeof document !== 'undefined' &&
             document.location &&  ('' + document.location).slice(0,16) === 'http://localhost') {
 
-            me = kb.any(subject, tabulator.ns.acl('owner')); // when testing on plane with no webid
+            me = kb.any(subject, UI.ns.acl('owner')); // when testing on plane with no webid
             console.log("Assuming user is " + me)
         }
 

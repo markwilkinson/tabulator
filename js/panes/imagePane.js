@@ -8,11 +8,11 @@ tabulator.panes.register( {
     name: 'image',
     
     label: function(subject) {
-        var kb = tabulator.kb;
-        var ns = tabulator.ns;
+        var kb = UI.store;
+        var ns = UI.ns;
 
         if (!kb.anyStatementMatching(
-            subject, tabulator.ns.rdf( 'type'),
+            subject, UI.ns.rdf( 'type'),
             kb.sym('http://purl.org/dc/terms/Image'))) // NB: Not dc: namespace!
             return null;
 

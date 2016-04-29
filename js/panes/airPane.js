@@ -5,17 +5,7 @@
  * oshani@csail.mit.edu
  */
 
- var UI = {
-   icons: require('./iconBase.js'),
-   log: require('./log'),
-   ns: require('./ns'),
-   store: require('./store'),
-   rdf: require('./rdf'),
-   utils: require('./utils'),
-   widgets: require('./widget')
- }
- //var nsModule = require('./ns.js')
-
+ var UI = require('solid-ui')
 
 
 
@@ -834,7 +824,7 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 	  throbber_p.setAttribute('class', 'ap_premise_loading')
 	  var throbber = throbber_p.appendChild(myDocument.createElement
 						('img'));
-	  throbber.src = tabulator.iconPrefix + "icons/loading.png";
+	  throbber.src = UI.icon.originalIconBase  + "loading.png";
 	  throbber_p.appendChild(myDocument.createTextNode
 				 ("Looking for more information..."));
 	  divDescription.appendChild(throbber_p);

@@ -17,8 +17,8 @@ tabulator.panes.register( {
 
   // Does the subject deserve an pad pane?
   label: function(subject) {
-    var kb = tabulator.kb;
-    var ns = tabulator.ns;
+    var kb = UI.store;
+    var ns = UI.ns;
     var t = kb.findTypeURIs(subject);
     if (t['http://www.w3.org/ns/pim/pad#Notepad']) {
       return "pad";
@@ -35,7 +35,7 @@ tabulator.panes.register( {
 
     var complainIfBad = function(ok, message) {
         if (!ok) {
-            div.appendChild(tabulator.panes.utils.errorMessageBlock(dom, message, 'pink'));
+            div.appendChild(UI.widgets.errorMessageBlock(dom, message, 'pink'));
         }
     };
 
@@ -80,7 +80,7 @@ tabulator.panes.register( {
     var genACLtext = function(docURI, aclURI, allWrite) {
         var g = $rdf.graph(), auth = $rdf.Namespace('http://www.w3.org/ns/auth/acl#');
         var a = g.sym(aclURI + '#a1'), acl = g.sym(aclURI), doc = g.sym(docURI);
-        g.add(a, tabulator.ns.rdf('type'), auth('Authorization'), acl);
+        g.add(a, UI.ns.rdf('type'), auth('Authorization'), acl);
         g.add(a, auth('accessTo'), doc, acl)
         g.add(a, auth('agent'), me, acl);
         g.add(a, auth('mode'), auth('Read'), acl);
@@ -88,7 +88,7 @@ tabulator.panes.register( {
         g.add(a, auth('mode'), auth('Control'), acl);
 
         a = g.sym(aclURI + '#a2');
-        g.add(a, tabulator.ns.rdf('type'), auth('Authorization'), acl);
+        g.add(a, UI.ns.rdf('type'), auth('Authorization'), acl);
         g.add(a, auth('accessTo'), doc, acl)
         g.add(a, auth('agentClass'), ns.foaf('Agent'), acl);
         g.add(a, auth('mode'), auth('Read'), acl);
@@ -150,7 +150,7 @@ tabulator.panes.register( {
     var whoAmI = function() {
         var me_uri = tabulator.preferences.get('me');
         me = me_uri? kb.sym(me_uri) : null;
-        tabulator.panes.utils.checkUser(padDoc, setUser);
+        UI.widgets.checkUser(padDoc, setUser);
 
         if (!tabulator.preferences.get('me')) {
             console.log("(You do not have your Web Id set. Sign in or sign up to make changes.)");
@@ -158,7 +158,7 @@ tabulator.panes.register( {
             if (tabulator.mode == 'webapp' && typeof document !== 'undefined' &&
                 document.location &&  ('' + document.location).slice(0,16) === 'http://localhost') {
 
-                me = kb.any(subject, tabulator.ns.dc('author')); // when testing on plane with no webid
+                me = kb.any(subject, UI.ns.dc('author')); // when testing on plane with no webid
                 console.log("Assuming user is " + me)
             }
 
@@ -191,7 +191,7 @@ tabulator.panes.register( {
     //
     var showBootstrap = function showBootstrap(thisInstance, container, noun) {
         var div = clearElement(container);
-        var na = div.appendChild(tabulator.panes.utils.newAppInstance(
+        var na = div.appendChild(UI.widgets.newAppInstance(
             dom, "Start a new " + noun + " in a workspace", initializeNewInstanceInWorkspace));
 
         var hr = div.appendChild(dom.createElement('hr')); // @@
@@ -242,8 +242,8 @@ tabulator.panes.register( {
 
         var here = $rdf.sym(thisInstance.uri.split('#')[0]);
 
-        var sp = tabulator.ns.space;
-        var kb = tabulator.kb;
+        var sp = UI.ns.space;
+        var kb = UI.store;
 
 
         var newPadDoc = kb.sym(newBase + 'pad.ttl');
@@ -288,7 +288,7 @@ tabulator.panes.register( {
 			    }
 			    if (!me) {
 				console.log("Waiting to find out id user users to access " + xhr.resource)
-				tabulator.panes.utils.checkUser(xhr.resource, function(webid){
+				UI.widgets.checkUser(xhr.resource, function(webid){
 				    me = kb.sym(webid);
 				    console.log("Got user id: "+ me);
 				    setThatACL();
@@ -306,7 +306,7 @@ tabulator.panes.register( {
 	if (!me) {
 	    agenda.push(function(){
 		console.log("Waiting to dind out id user users to access " + newIndexDoc)
-		tabulator.panes.utils.checkUser(newIndexDoc, function(webid){
+		UI.widgets.checkUser(newIndexDoc, function(webid){
 		    me = kb.sym(webid);
 		    conole.log("Got user id: "+ me);
 		    agenda.shift()();
@@ -327,8 +327,8 @@ tabulator.panes.register( {
 	    kb.add(newInstance, PAD('next'), newInstance, newPadDoc); // linked list empty
 
 	    // Keep a paper trail   @@ Revisit when we have non-public ones @@ Privacy
-	    kb.add(newInstance, tabulator.ns.space('inspiration'), thisInstance, padDoc);
-	    kb.add(newInstance, tabulator.ns.space('inspiration'), thisInstance, newPadDoc);
+	    kb.add(newInstance, UI.ns.space('inspiration'), thisInstance, padDoc);
+	    kb.add(newInstance, UI.ns.space('inspiration'), thisInstance, newPadDoc);
 
             updater.put(
                 newPadDoc,
@@ -383,7 +383,7 @@ tabulator.panes.register( {
             kb.hold(pn, ns.dc('author'), me)});
         if (parps.length > 1) throw "Multiple participations";
         if (!parps.length) {
-            participation = tabulator.panes.utils.newThing(padDoc);
+            participation = UI.widgets.newThing(padDoc);
         }
 
     }
@@ -424,10 +424,10 @@ tabulator.panes.register( {
             window.document.title = title.value;
         }
         options.exists = exists;
-        padEle = (tabulator.panes.utils.notepad(dom, padDoc, subject, me, options));
+        padEle = (UI.widgets.notepad(dom, padDoc, subject, me, options));
         naviMain.appendChild(padEle);
 
-        var initiated = tabulator.updater.setRefreshHandler(padDoc, tabulator.kb, padEle.reloadAndSync);
+        var initiated = tabulator.updater.setRefreshHandler(padDoc, UI.store, padEle.reloadAndSync);
     };
 
     var showSignon = function showSignon() {
@@ -486,9 +486,9 @@ tabulator.panes.register( {
 
     var appPathSegment = 'app-pad.timbl.com'; // how to allocate this string and connect to
 
-    var kb = tabulator.kb;
-    var fetcher = tabulator.sf;
-    var ns = tabulator.ns;
+    var kb = UI.store;
+    var fetcher = UI.store.fetcher;
+    var ns = UI.ns;
     var me;
     var updater = new $rdf.UpdateManager(kb);
     var waitingForLogin = false;

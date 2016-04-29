@@ -15,15 +15,15 @@ tabulator.panes.register( {
 
     // Does the subject deserve this pane?
     label: function(subject) {
-        var n = tabulator.panes.utils.formsFor(subject).length;
-        tabulator.log.debug("Form pane: forms for "+subject+": "+n)
+        var n = UI.widgets.formsFor(subject).length;
+        UI.log.debug("Form pane: forms for "+subject+": "+n)
         if (!n) return null;
         return ""+n+" forms";
     },
 
     render: function(subject, dom) {
-        var kb = tabulator.kb;
-        var ns = tabulator.ns;
+        var kb = UI.store;
+        var ns = UI.ns;
         var WF = $rdf.Namespace('http://www.w3.org/2005/01/wf/flow#');
         var DC = $rdf.Namespace('http://purl.org/dc/elements/1.1/');
         var DCT = $rdf.Namespace('http://purl.org/dc/terms/');
@@ -56,7 +56,7 @@ tabulator.panes.register( {
             parent.replaceChild(box2, box);
         };
 
-        if (!tabulator.sparql) tabulator.sparql = new tabulator.rdf.UpdateManager(kb);
+        if (!tabulator.sparql) tabulator.sparql = new UI.rdf.UpdateManager(kb);
 
         //kb.statementsMatching(undefined, undefined, subject);
 
@@ -96,7 +96,7 @@ the file system (file:///) to store application data.\n")
 
                 //              Render the forms
 
-                var forms = tabulator.panes.utils.formsFor(subject);
+                var forms = UI.widgets.formsFor(subject);
 
                 // complain('Form for editing this form:');
                 for (var i=0; i<forms.length; i++) {
@@ -106,7 +106,7 @@ the file system (file:///) to store application data.\n")
                     if (form.uri) {
                         var formStore = $rdf.Util.uri.document(form);
                         if (formStore.uri != form.uri) {// The form is a hash-type URI
-                            var e = box.appendChild(tabulator.panes.utils.editFormButton(
+                            var e = box.appendChild(UI.widgets.editFormButton(
                                     dom, box, form, formStore,complainIfBad ));
                             e.setAttribute('style', 'float: right;');
                         }
@@ -114,7 +114,7 @@ the file system (file:///) to store application data.\n")
                     var anchor = dom.createElement('a');
                     anchor.setAttribute('href', form.uri);
                     heading.appendChild(anchor)
-                    anchor.textContent = tabulator.Util.label(form, true);
+                    anchor.textContent = UI.utils.label(form, true);
 
                     /*  Keep tis as a reminder to let a New one have its URI given by user
                     mention("Where will this information be stored?")
@@ -127,7 +127,7 @@ the file system (file:///) to store application data.\n")
                     ele.value = store.uri
                     */
 
-                    tabulator.panes.utils.appendForm(dom, box, {}, subject, form, store, complainIfBad);
+                    UI.widgets.appendForm(dom, box, {}, subject, form, store, complainIfBad);
                 }
 
             }); // end: when store loded
@@ -186,7 +186,7 @@ the file system (file:///) to store application data.\n")
             renderFormsFor(store, subject);
         } else {
             complain("No suitable store is known, to edit <" + subject.uri + ">.");
-            var foobarbaz = tabulator.panes.utils.selectWorkspace(dom,
+            var foobarbaz = UI.widgets.selectWorkspace(dom,
                                         function(ws){
                 mention("Workspace selected OK: " + ws);
 

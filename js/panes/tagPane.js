@@ -10,15 +10,15 @@
     tagPane.name = 'Tag';
 
     // namespace
-    var RDF = tabulator.rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
-    var RDFS = tabulator.rdf.Namespace("http://www.w3.org/2000/01/rdf-schema#");
-    var TAGS = tabulator.rdf.Namespace("http://www.holygoat.co.uk/owl/redwood/0.1/tags/");
-    var PAC = tabulator.rdf.Namespace("http://dig.csail.mit.edu/2008/PAC/ontology/pac#");
-    var OWL = tabulator.rdf.Namespace("http://www.w3.org/2002/07/owl#");
+    var RDF = UI.rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
+    var RDFS = UI.rdf.Namespace("http://www.w3.org/2000/01/rdf-schema#");
+    var TAGS = UI.rdf.Namespace("http://www.holygoat.co.uk/owl/redwood/0.1/tags/");
+    var PAC = UI.rdf.Namespace("http://dig.csail.mit.edu/2008/PAC/ontology/pac#");
+    var OWL = UI.rdf.Namespace("http://www.w3.org/2002/07/owl#");
 
     tagPane.label = function(subject) {
 
-        if (!tabulator.kb.whether(subject, RDF('type'), TAGS("Tag"))) {
+        if (!UI.store.whether(subject, RDF('type'), TAGS("Tag"))) {
             return null;
         }
         return "Tag";
@@ -26,9 +26,9 @@
 
 
     tagPane.render = function(subject, myDocument) {
-        var kb = tabulator.kb
+        var kb = UI.store
         var docURI = subject.uri.substring(0,subject.uri.lastIndexOf("#"));
-        var stWhy = new tabulator.rdf.NamedNode(docURI);
+        var stWhy = new UI.rdf.NamedNode(docURI);
         var outline = tabulator.outline;
         var editable = outline.UserInput.sparqler.editable(docURI, kb);
         var tag = kb.the(subject, RDFS("label"), undefined, stWhy);
@@ -44,9 +44,9 @@
             var uri = myDocument.getElementById("sameAs_"+id).textContent;
             var s = subject;
             var p = OWL("sameAs");
-            var o = new tabulator.rdf.NamedNode(uri);
-            var triple = new tabulator.rdf.Statement(s, p, o, stWhy);
-            var sparqlService = new tabulator.rdf.UpdateManager(kb);
+            var o = new UI.rdf.NamedNode(uri);
+            var triple = new UI.rdf.Statement(s, p, o, stWhy);
+            var sparqlService = new UI.rdf.UpdateManager(kb);
             sparqlService.delete_statement(triple, function(uri,success,error){
                 if (!success) {
                     alert("Error.");
@@ -146,9 +146,9 @@
             if ((uri != undefined) && (uri != "")) {
                 var s = subject;
                 var p = OWL("sameAs");
-                var o = new tabulator.rdf.NamedNode(uri);
-                var triple = new tabulator.rdf.Statement(s, p, o, stWhy);
-                var sparqlService = new tabulator.rdf.UpdateManager(kb);
+                var o = new UI.rdf.NamedNode(uri);
+                var triple = new UI.rdf.Statement(s, p, o, stWhy);
+                var sparqlService = new UI.rdf.UpdateManager(kb);
                 sparqlService.insert_statement(triple, function(uri,success,error){
                     if (!success) {
                         alert("Error.");
@@ -169,9 +169,9 @@
             if ((uri != undefined) && (uri != "")) {
                 var s = subject;
                 var p = OWL("sameAs");
-                var o = new tabulator.rdf.NamedNode(uri);
-                var triple = new tabulator.rdf.Statement(s, p, o, stWhy);
-                var sparqlService = new tabulator.rdf.UpdateManager(kb);
+                var o = new UI.rdf.NamedNode(uri);
+                var triple = new UI.rdf.Statement(s, p, o, stWhy);
+                var sparqlService = new UI.rdf.UpdateManager(kb);
                 sparqlService.insert_statement(triple, function(uri,success,error){
                     if (!success) {
                         alert("Error.");

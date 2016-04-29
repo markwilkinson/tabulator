@@ -12,7 +12,7 @@
 
 if (typeof console == 'undefined') { // e.g. firefox extension. Node and browser have console
     console = {};
-    console.log = function(msg) { tabulator.log.info(msg);};
+    console.log = function(msg) { UI.log.info(msg);};
 }
 
 
@@ -29,8 +29,8 @@ tabulator.panes.register( {
 
   // Does the subject deserve an contact pane?
   label: function(subject) {
-    var kb = tabulator.kb;
-    var ns = tabulator.ns;
+    var kb = UI.store;
+    var ns = UI.ns;
     var t = kb.findTypeURIs(subject);
     if (t[ns.ldp('Resource').uri]) return "Sharing"; // @@ be more sophisticated?
     if (t[ns.ldp('Container').uri]) return "Sharing"; // @@ be more sophisticated?
@@ -41,8 +41,8 @@ tabulator.panes.register( {
 
 
   render: function(subject, dom) {
-    var kb = tabulator.kb;
-    var ns = tabulator.ns;
+    var kb = UI.store;
+    var ns = UI.ns;
     var div = dom.createElement("div")
     div.setAttribute('class', 'sharingPane');
 
@@ -65,19 +65,19 @@ tabulator.panes.register( {
         div: pane, dom: dom, statusRegion: statusBlock };
     var uri = tabulator.preferences.get('me');
     context.me =  uri ? $rdf.sym(uri) : null;
-    tabulator.panes.utils.preventBrowserDropEvents(dom);
+    UI.widgets.preventBrowserDropEvents(dom);
 
-    box.appendChild(tabulator.panes.utils.ACLControlBox(subject, dom, noun, function(ok, body){
+    box.appendChild(UI.widgets.ACLControlBox(subject, dom, noun, function(ok, body){
       if (!ok) {
         box.innerHTML = "ACL control box Failed: " + body
       }
     }))
 
     /*
-    tabulator.panes.utils.logInLoadProfile(context).then(function(context){
+    UI.widgets.logInLoadProfile(context).then(function(context){
     }).catch(function(err){
       console.log('Catch from ACLControlBox: ' + err)
-      box.appendChild(tabulator.panes.utils.ACLControlBox(subject, dom, noun, function(ok, body){
+      box.appendChild(UI.widgets.ACLControlBox(subject, dom, noun, function(ok, body){
         if (!ok) {
           box.innerHTML = "ACL control box Failed (with no profile): " + body
         }

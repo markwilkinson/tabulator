@@ -5,7 +5,7 @@
 */
 
 tabulator.panes.panesFromData = function(subject){
-  var ns = tabulator.ns, kb = tabulator.kb
+  var ns = UI.ns, kb = UI.store
   var apps = kb.each(undefined, ns.rdf('type'), ns.solid('ApplicationRegistration'))
   var t = kb.findTypeURIs(subject)
   for (var i=0; i<apps.length; i++){
@@ -58,11 +58,11 @@ tabulator.panes.register({
 
     // same as classInstancePane
     label: function(subject, myDocument) {
-      var n = tabulator.kb.each(
-          undefined, tabulator.ns.rdf( 'type'), subject).length;
+      var n = UI.store.each(
+          undefined, UI.ns.rdf( 'type'), subject).length;
       if (n > 0) return "List (" + n + ")";  // Show how many in hover text
-      n = tabulator.kb.each(
-          subject, tabulator.ns.ldp( 'contains')).length;
+      n = UI.store.each(
+          subject, UI.ns.ldp( 'contains')).length;
       if (n > 0) {
         return "Contents (" + n + ")"  // Show how many in hover text
       }

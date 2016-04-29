@@ -1,8 +1,8 @@
 //  Common code for a discussion are a of messages about something
 //
 var messageArea = function (dom, kb, subject, messageStore, options) {
-  kb = kb || tabulator.kb
-  var ns = tabulator.ns
+  kb = kb || UI.store
+  var ns = UI.ns
   var WF = $rdf.Namespace('http://www.w3.org/2005/01/wf/flow#')
   var DCT = $rdf.Namespace('http://purl.org/dc/terms/')
 
@@ -19,13 +19,13 @@ var messageArea = function (dom, kb, subject, messageStore, options) {
   var me_uri = tabulator.preferences.get('me')
   var me = me_uri ? kb.sym(me_uri) : null
 
-  var updater = tabulator.updater || tabulator.updater || new tabulator.rdf.UpdateManager(kb)
+  var updater = tabulator.updater || tabulator.updater || new UI.rdf.UpdateManager(kb)
 
   var anchor = function (text, term) { // If there is no link return an element anyway
     var a = dom.createElement('a')
     if (term.uri) {
       a.setAttribute('href', term.uri)
-      a.addEventListener('click', tabulator.panes.utils.openHrefInOutlineMode, true)
+      a.addEventListener('click', UI.widgets.openHrefInOutlineMode, true)
       a.setAttribute('style', 'color: #3B5998; text-decoration: none; ') // font-weight: bold
     }
     a.textContent = text
@@ -78,7 +78,7 @@ var messageArea = function (dom, kb, subject, messageStore, options) {
 
       var sendComplete = function (uri, success, body) {
         if (!success) {
-          form.appendChild(tabulator.panes.utils.errorMessageBlock(
+          form.appendChild(UI.widgets.errorMessageBlock(
             dom, 'Error writing message: ' + body))
         } else {
           var bindings = { '?msg': message,
@@ -115,9 +115,9 @@ var messageArea = function (dom, kb, subject, messageStore, options) {
   }
 
   var nick = function (person) {
-    var s = tabulator.kb.any(person, tabulator.ns.foaf('nick'))
+    var s = UI.store.any(person, UI.ns.foaf('nick'))
     if (s) return '' + s.value
-    return '' + tabulator.Util.label(person)
+    return '' + UI.utils.label(person)
   }
 
   // ///////////////////////////////////////////////////////////////////////
@@ -182,7 +182,7 @@ var messageArea = function (dom, kb, subject, messageStore, options) {
     tr.AJAR_subject = message
 
     var done = false
-    for (var ele = messageTable.firstChild; ; ele = ele.nextSibling) {
+    for (var ele = messageTable.firstChild;; ele = ele.nextSibling) {
       if (!ele) { // empty
         break
       }
@@ -202,12 +202,12 @@ var messageArea = function (dom, kb, subject, messageStore, options) {
 
     var nickAnchor = td1.appendChild(anchor(nick(creator), creator))
     if (creator.uri) {
-      tabulator.fetcher.nowOrWhenFetched(creator.doc(), undefined, function (ok, body) {
+      UI.store.fetcher.nowOrWhenFetched(creator.doc(), undefined, function (ok, body) {
         nickAnchor.textContent = nick(creator)
       })
     }
     td1.appendChild(dom.createElement('br'))
-    td1.appendChild(anchor(tabulator.panes.utils.shortDate(dateString), message))
+    td1.appendChild(anchor(UI.widgets.shortDate(dateString), message))
 
     var td2 = dom.createElement('td')
     tr.appendChild(td2)
@@ -266,8 +266,8 @@ var messageArea = function (dom, kb, subject, messageStore, options) {
     query = options.query
   } else {
     query = new $rdf.Query('Messages')
-    var v = {}; // semicolon needed
-    ['msg', 'date', 'creator', 'content'].map(function (x) {
+    var v = {} // semicolon needed
+      ['msg', 'date', 'creator', 'content'].map(function (x) {
       query.vars.push(v[x] = $rdf.variable(x))
     })
     query.pat.add(subject, WF('message'), v['msg'])
@@ -283,8 +283,8 @@ var messageArea = function (dom, kb, subject, messageStore, options) {
   return div
 }
 
-if (typeof tabulator !== 'undefined' && tabulator.panes && tabulator.panes.utils) {
-  tabulator.panes.utils.messageArea = messageArea
+if (typeof tabulator !== 'undefined' && tabulator.panes && UI.widgets) {
+  UI.widgets.messageArea = messageArea
 }
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = messageArea

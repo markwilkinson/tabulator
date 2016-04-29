@@ -7,9 +7,9 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
     icon:tabulator.Icon.src.icon_social,
     name: 'social2',
     label: function(subject){
-        if (tabulator.kb.whether(
-            subject, tabulator.ns.rdf('type'),
-            tabulator.ns.foaf('Person'))){
+        if (UI.store.whether(
+            subject, UI.ns.rdf('type'),
+            UI.ns.foaf('Person'))){
             return 'social2';
         } else {
             return null;
@@ -67,17 +67,17 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
       };
 
       //NAMESPACES
-      var foaf = tabulator.rdf.Namespace("http://xmlns.com/foaf/0.1/");
-      var cloud = tabulator.rdf.Namespace("http://www.w3.org/ns/cloud#");
-      var sioc = tabulator.rdf.Namespace("http://rdfs.org/sioc/ns#");
-      var sioct = tabulator.rdf.Namespace('http://rdfs.org/sioc/types#');
-      var rdf= tabulator.ns.rdf;
-      var dc = tabulator.rdf.Namespace('http://purl.org/dc/elements/1.1/');
-      var dcterms = tabulator.rdf.Namespace('http://purl.org/dc/terms/');
-      var rss = tabulator.rdf.Namespace("http://purl.org/rss/1.0/");
-      var kb = tabulator.kb;
-      var sf = tabulator.fetcher;
-      var sparqlUpdater = new tabulator.rdf.UpdateManager(kb);
+      var foaf = UI.rdf.Namespace("http://xmlns.com/foaf/0.1/");
+      var cloud = UI.rdf.Namespace("http://www.w3.org/ns/cloud#");
+      var sioc = UI.rdf.Namespace("http://rdfs.org/sioc/ns#");
+      var sioct = UI.rdf.Namespace('http://rdfs.org/sioc/types#');
+      var rdf= UI.ns.rdf;
+      var dc = UI.rdf.Namespace('http://purl.org/dc/elements/1.1/');
+      var dcterms = UI.rdf.Namespace('http://purl.org/dc/terms/');
+      var rss = UI.rdf.Namespace("http://purl.org/rss/1.0/");
+      var kb = UI.store;
+      var sf = UI.store.fetcher;
+      var sparqlUpdater = new UI.rdf.UpdateManager(kb);
       var Events = new CustomEvents();
 
 
@@ -178,7 +178,7 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
         return "<p>"+content+"</p><p><a href='"+post.uri +"'> "+String(postDate)+"</a></p>";
       }
       function editable(uri){
-        return tabulator.outline.sparql.prototype.editable(uri,tabulator.kb);
+        return tabulator.outline.sparql.prototype.editable(uri,UI.store);
       }
       //LISTENERS-----------------------------------------------
       function updateFriends(that) //TODO  update users friends, send friend change event
@@ -187,10 +187,10 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
 
         ]
         sparqlUpdater.insert_statement(
-          [new tabulator.rdf.Statement(I, foaf('knows'),s, I)],
+          [new UI.rdf.Statement(I, foaf('knows'),s, I)],
           function(a,b,c) {
             sparqlUpdater.insert_statement(
-              [new tabulator.rdf.Statement(I, foaf('knows'),s, s)],
+              [new UI.rdf.Statement(I, foaf('knows'),s, s)],
               function(a,b,c){
                 Events.raiseEvent("evtStatusUpdate",[acc,statusMsg,person],this);
                 Events.raiseEvent("evtUpdateFriendState",[], that);
@@ -205,8 +205,8 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
       function updatePhotos(photo, comment, writableSpace){
         var photo = photo.replace(/^\s+|\s+$/g, '');
         batch = [
-          new tabulator.rdf.Statement(I, foaf('made'), kb.sym(photo), I),
-          new tabulator.rdf.Statement(kb.sym(photo), dc('description'),comment, I),
+          new UI.rdf.Statement(I, foaf('made'), kb.sym(photo), I),
+          new UI.rdf.Statement(kb.sym(photo), dc('description'),comment, I),
         ]
         sparqlUpdater.insert_statement(batch, function(a,b,c){
             //kb.add
@@ -241,7 +241,7 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
         v.className = "active";
       }
       function showNewAccForm(){ // allow user to generate new webid
-        var req =tabulator.rdf.Util.XMLHTTPFactory();
+        var req =UI.rdf.Util.XMLHTTPFactory();
         //req.open("POST","https://localhost/config/register.php",false);
         var nac =  doc.getElementById('newaccountform');
         //req.send(null);
@@ -254,11 +254,11 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
         var micro =  workspace+"/status";
         var newPost =kb.sym( micro+"#"+date.replace(/:/g,''));
         var batch = [
-          new tabulator.rdf.Statement(newPost, rdf('type'), sioct('MicroblogPost'),kb.sym(micro)),
-          new tabulator.rdf.Statement(newPost, sioc('content'), statusMsg,kb.sym(micro)),
-          new tabulator.rdf.Statement(newPost, dc('date'), date,kb.sym(micro)),
-          new tabulator.rdf.Statement(kb.sym(micro), sioc('container_of'), newPost,kb.sym(micro)),
-          new tabulator.rdf.Statement(newPost,foaf('maker'),person,kb.sym(micro))
+          new UI.rdf.Statement(newPost, rdf('type'), sioct('MicroblogPost'),kb.sym(micro)),
+          new UI.rdf.Statement(newPost, sioc('content'), statusMsg,kb.sym(micro)),
+          new UI.rdf.Statement(newPost, dc('date'), date,kb.sym(micro)),
+          new UI.rdf.Statement(kb.sym(micro), sioc('container_of'), newPost,kb.sym(micro)),
+          new UI.rdf.Statement(newPost,foaf('maker'),person,kb.sym(micro))
           ];
         su.insert_statement(batch,
             function(a, b, c) {
@@ -323,7 +323,7 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
       ui.newaccForm.addEventListener("change",function(){
           ui.newaccForm.action=ui.accprovider.value;
 //          dump(ui.accprovider.value)
-//        var req =tabulator.rdf.Util.XMLHTTPFactory();
+//        var req =UI.rdf.Util.XMLHTTPFactory();
 //        req.open("POST",ui.accprovider.value,false);
 //        req.send({username:ui.accusername, keygen:keygen.getElementById('keygen').value});
 //        return false;
@@ -350,7 +350,7 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
         ui.me.addEventListener('click', function(evt){
             if (evt.target.checked){
               if (!kb.whether(s,foaf("weblog"),kb.sym(workspace+"/status"))){
-                sparqlUpdater.insert_statement([ new tabulator.rdf.Statement(s, foaf('weblog'), kb.sym(workspace+"/status"), s)], function(){});
+                sparqlUpdater.insert_statement([ new UI.rdf.Statement(s, foaf('weblog'), kb.sym(workspace+"/status"), s)], function(){});
               }
               tabulator.preferences.set('me',s.uri);
             }
@@ -394,7 +394,7 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
           si = site.uri.replace(/\/$/,'')
           if (!(si in sites)){
             ui.site = newElement('li', ui.sites).child('a');
-            ui.site.innerHTML = tabulator.Util.label( site);
+            ui.site.innerHTML = UI.utils.label( site);
             ui.site.href = site.uri;
             sites[si] = true;
           }
@@ -540,7 +540,7 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
       ui.knows.friend = new Array();
       for (var friend in Iterator(acq.friends)){
         ui.knows.friend=newElement('li',ui.knows).child('a');
-        ui.knows.friend.innerHTML = tabulator.Util.label(friend[1]);
+        ui.knows.friend.innerHTML = UI.utils.label(friend[1]);
         ui.knows.friend.href= friend[1].uri;
       }
       newElement('h3',ui.knowsbox).innerHTML="Knows";
@@ -549,7 +549,7 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
       ui.unconf.friend = new Array();
       for (var unconfirmed in Iterator(acq.unconfirmed)){
         ui.unconf.friend=newElement('li',ui.unconf).child('a');
-        ui.unconf.friend.innerHTML = tabulator.Util.label(unconfirmed[1]);
+        ui.unconf.friend.innerHTML = UI.utils.label(unconfirmed[1]);
         ui.unconf.friend.href= unconfirmed[1].uri;
       }
       newElement('h3',ui.knowsbox).innerHTML="Friend Requests";
@@ -558,7 +558,7 @@ tabulator.panes.register(tabulator.panes.newsocialpane= {
       ui.knowsof.friend = new Array();
       for (var request in Iterator(acq.requests)){
         ui.knowsof.friend=newElement('li',ui.knowsof).child('a');
-        ui.knowsof.friend.innerHTML = tabulator.Util.label(request[1]);
+        ui.knowsof.friend.innerHTML = UI.utils.label(request[1]);
         ui.knowsof.friend.href= request[1].uri;
       }
       //EDIT PROFILE

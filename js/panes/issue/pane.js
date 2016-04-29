@@ -12,7 +12,7 @@
 
 if (typeof console == 'undefined') { // e.g. firefox extension. Node and browser have console
     console = {};
-    console.log = function(msg) { tabulator.log.info(msg);};
+    console.log = function(msg) { UI.log.info(msg);};
 }
 
 
@@ -29,7 +29,7 @@ tabulator.panes.register( {
 
     // Does the subject deserve an issue pane?
     label: function(subject) {
-        var kb = tabulator.kb;
+        var kb = UI.store;
         var t = kb.findTypeURIs(subject);
         if (t['http://www.w3.org/2005/01/wf/flow#Task']) return "issue";
         if (t['http://www.w3.org/2005/01/wf/flow#Tracker']) return "tracker";
@@ -39,8 +39,8 @@ tabulator.panes.register( {
     },
 
     render: function(subject, dom) {
-        var kb = tabulator.kb;
-        var ns = tabulator.ns;
+        var kb = UI.store;
+        var ns = UI.ns;
         var WF = $rdf.Namespace('http://www.w3.org/2005/01/wf/flow#');
         var DC = $rdf.Namespace('http://purl.org/dc/elements/1.1/');
         var DCT = $rdf.Namespace('http://purl.org/dc/terms/');
@@ -140,12 +140,12 @@ tabulator.panes.register( {
 
 
 
-            tabulator.fetcher.removeCallback('done','expand'); // @@ experimental -- does this kill the re-paint? no
-            tabulator.fetcher.removeCallback('fail','expand');
+            UI.store.fetcher.removeCallback('done','expand'); // @@ experimental -- does this kill the re-paint? no
+            UI.store.fetcher.removeCallback('fail','expand');
 
 
             var states = kb.any(tracker, WF('issueClass'));
-            classLabel = tabulator.Util.label(states);
+            classLabel = UI.utils.label(states);
             form.innerHTML = "<h2>Add new "+ (superIssue?"sub ":"")+
                     classLabel+"</h2><p>Title of new "+classLabel+":</p>";
             var titlefield = dom.createElement('input')
@@ -168,13 +168,13 @@ tabulator.panes.register( {
         /////////////////////// Reproduction: Spawn a new instance of this app
 
         var newTrackerButton = function(thisTracker) {
-	    var button = tabulator.panes.utils.newAppInstance(dom, "Start your own new tracker", function(ws){
+	    var button = UI.widgets.newAppInstance(dom, "Start your own new tracker", function(ws){
 
                 var appPathSegment = 'issuetracker.w3.org'; // how to allocate this string and connect to
 
                 // console.log("Ready to make new instance at "+ws);
-                var sp = tabulator.ns.space;
-                var kb = tabulator.kb;
+                var sp = UI.ns.space;
+                var kb = UI.store;
 
                 var base = kb.any(ws, sp('uriPrefix')).value;
                 if (base.slice(-1) !== '/') {
@@ -216,9 +216,9 @@ tabulator.panes.register( {
 
                 // Keep a paper trail   @@ Revisit when we have non-public ones @@ Privacy
                 //
-                kb.add(newTracker, tabulator.ns.space('inspiration'), thisTracker, stateStore);
+                kb.add(newTracker, UI.ns.space('inspiration'), thisTracker, stateStore);
 
-                kb.add(newTracker, tabulator.ns.space('inspiration'), thisTracker, there);
+                kb.add(newTracker, UI.ns.space('inspiration'), thisTracker, there);
 
                 // $rdf.log.debug("\n Ready to put " + kb.statementsMatching(undefined, undefined, undefined, there)); //@@
 
@@ -261,7 +261,7 @@ tabulator.panes.register( {
 ///////////////////////////////////////////////////////////////////////////////
 
 
-        tabulator.updater = tabulator.updater || new tabulator.rdf.UpdateManager(kb);
+        tabulator.updater = tabulator.updater || new UI.rdf.UpdateManager(kb);
         var updater = tabulator.updater;
 
 
@@ -277,8 +277,8 @@ tabulator.panes.register( {
         // Reload resorce then
 
         var reloadStore = function(store, callBack) {
-            tabulator.fetcher.unload(store);
-            tabulator.fetcher.nowOrWhenFetched(store.uri, undefined, function(ok, body){
+            UI.store.fetcher.unload(store);
+            UI.store.fetcher.nowOrWhenFetched(store.uri, undefined, function(ok, body){
                 if (!ok) {
                     console.log("Cant refresh data:" + body);
                 } else {
@@ -305,7 +305,7 @@ tabulator.panes.register( {
         //
         var singleIssueUI = function(subject, div) {
 
-            var ns = tabulator.ns
+            var ns = UI.ns
             var predicateURIsDone = {};
             var donePredicate = function(pred) {predicateURIsDone[pred.uri]=true};
             donePredicate(ns.rdf('type'));
@@ -340,12 +340,12 @@ tabulator.panes.register( {
                 refreshTree(div);
             }
 
-            tabulator.panes.utils.checkUserSetMe(stateStore);
+            UI.widgets.checkUserSetMe(stateStore);
 
 
             var states = kb.any(tracker, WF('issueClass'));
             if (!states) throw 'This tracker '+tracker+' has no issueClass';
-            var select = tabulator.panes.utils.makeSelectForCategory(dom, kb, subject, states, store, function(ok,body){
+            var select = UI.widgets.makeSelectForCategory(dom, kb, subject, states, store, function(ok,body){
                     if (ok) {
                         setModifiedDate(store, kb, store);
                         refreshTree(div);
@@ -357,7 +357,7 @@ tabulator.panes.register( {
 
             var cats = kb.each(tracker, WF('issueCategory')); // zero or more
             for (var i=0; i<cats.length; i++) {
-                div.appendChild(tabulator.panes.utils.makeSelectForCategory(dom,
+                div.appendChild(UI.widgets.makeSelectForCategory(dom,
                         kb, subject, cats[i], store, function(ok,body){
                     if (ok) {
                         setModifiedDate(store, kb, store);
@@ -370,12 +370,12 @@ tabulator.panes.register( {
             var a = dom.createElement('a');
             a.setAttribute('href',tracker.uri);
             a.setAttribute('style', 'float:right');
-            div.appendChild(a).textContent = tabulator.Util.label(tracker);
-            a.addEventListener('click', tabulator.panes.utils.openHrefInOutlineMode, true);
+            div.appendChild(a).textContent = UI.utils.label(tracker);
+            a.addEventListener('click', UI.widgets.openHrefInOutlineMode, true);
             donePredicate(ns.wf('tracker'));
 
 
-            div.appendChild(tabulator.panes.utils.makeDescription(dom, kb, subject, WF('description'),
+            div.appendChild(UI.widgets.makeDescription(dom, kb, subject, WF('description'),
                 store, function(ok,body){
                     if (ok) setModifiedDate(store, kb, store);
                     else console.log("Failed to description:\n"+body);
@@ -410,7 +410,7 @@ tabulator.panes.register( {
             var proj = kb.any(undefined, ns.doap('bug-database'), tracker);
             if (proj) devs = devs.concat(kb.each(proj, ns.doap('developer')));
             if (devs.length) {
-                devs.map(function(person){tabulator.fetcher.lookUpThing(person)}); // best effort async for names etc
+                devs.map(function(person){UI.store.fetcher.lookUpThing(person)}); // best effort async for names etc
                 var opts = { 'mint': "** Add new person **",
                             'nullLabel': "(unassigned)",
                             'mintStatementsFun': function(newDev) {
@@ -418,7 +418,7 @@ tabulator.panes.register( {
                                 if (proj) sts.push($rdf.st(proj, ns.doap('developer'), newDev))
                                 return sts;
                             }};
-                div.appendChild(tabulator.panes.utils.makeSelectForOptions(dom, kb,
+                div.appendChild(UI.widgets.makeSelectForOptions(dom, kb,
                     subject, ns.wf('assignee'), devs, opts, store,
                     function(ok,body){
                         if (ok) setModifiedDate(store, kb, store);
@@ -451,7 +451,7 @@ tabulator.panes.register( {
                 var b = dom.createElement("button");
                 b.setAttribute("type", "button");
                 div.appendChild(b)
-                classLabel = tabulator.Util.label(states);
+                classLabel = UI.utils.label(states);
                 b.innerHTML = "New sub "+classLabel;
                 b.setAttribute('style', 'float: right; margin: 0.5em 1em;');
                 b.addEventListener('click', function(e) {
@@ -460,7 +460,7 @@ tabulator.panes.register( {
 
             var extrasForm = kb.any(tracker, ns.wf('extrasEntryForm'));
             if (extrasForm) {
-                tabulator.panes.utils.appendForm(dom, div, {},
+                UI.widgets.appendForm(dom, div, {},
                             subject, extrasForm, stateStore, complainIfBad);
                 var fields = kb.each(extrasForm, ns.ui('part'));
                 fields.map(function(field) {
@@ -485,7 +485,7 @@ tabulator.panes.register( {
 		    er.textContent = body; // @@ use nice error message
 		    div.insertBefore(er, spacer);
 		} else {
-		    var discussion = tabulator.panes.utils.messageArea(
+		    var discussion = UI.widgets.messageArea(
 			dom, kb, subject, messageStore)
 		    div.insertBefore(discussion, spacer);
 		}
@@ -509,8 +509,8 @@ tabulator.panes.register( {
             var refreshButton = dom.createElement('button');
             refreshButton.textContent = "refresh";
             refreshButton.addEventListener('click', function(e) {
-                tabulator.fetcher.unload(messageStore);
-                tabulator.fetcher.nowOrWhenFetched(messageStore.uri, undefined, function(ok, body){
+                UI.store.fetcher.unload(messageStore);
+                UI.store.fetcher.nowOrWhenFetched(messageStore.uri, undefined, function(ok, body){
                     if (!ok) {
                         console.log("Cant refresh messages" + body);
                     } else {
@@ -534,11 +534,11 @@ tabulator.panes.register( {
 
             var trackerURI = tracker.uri.split('#')[0];
             // Much data is in the tracker instance, so wait for the data from it
-            tabulator.fetcher.nowOrWhenFetched(trackerURI, subject, function drawIssuePane1(ok, body) {
+            UI.store.fetcher.nowOrWhenFetched(trackerURI, subject, function drawIssuePane1(ok, body) {
                 if (!ok) return console.log("Failed to load config " + trackerURI + ' '+body);
                 var stateStore = kb.any(tracker, WF('stateStore'));
 
-                tabulator.fetcher.nowOrWhenFetched(stateStore, subject, function drawIssuePane2(ok, body) {
+                UI.store.fetcher.nowOrWhenFetched(stateStore, subject, function drawIssuePane2(ok, body) {
                     if (!ok) return console.log("Failed to load state " + stateStore + ' '+body);
 
                     singleIssueUI(subject, div);
@@ -559,14 +559,14 @@ tabulator.panes.register( {
             var stateStore = kb.any(subject, WF('stateStore'));
             if (!stateStore) throw 'This tracker has no stateStore';
 
-            tabulator.panes.utils.checkUserSetMe(stateStore);
+            UI.widgets.checkUserSetMe(stateStore);
 
             var cats = kb.each(subject, WF('issueCategory')); // zero or more
 
             var h = dom.createElement('h2');
             h.setAttribute('style', 'font-size: 150%');
             div.appendChild(h);
-            classLabel = tabulator.Util.label(states);
+            classLabel = UI.utils.label(states);
             h.appendChild(dom.createTextNode(classLabel+" list")); // Use class label @@I18n
 
             // New Issue button
@@ -583,9 +583,9 @@ tabulator.panes.register( {
                 }, false);
 
             // Table of issues - when we have the main issue list
-            tabulator.fetcher.nowOrWhenFetched(stateStore.uri, subject, function(ok, body) {
+            UI.store.fetcher.nowOrWhenFetched(stateStore.uri, subject, function(ok, body) {
                 if (!ok) return console.log("Cannot load state store "+body);
-                var query = new $rdf.Query(tabulator.Util.label(subject));
+                var query = new $rdf.Query(UI.utils.label(subject));
                 var cats = kb.each(tracker, WF('issueCategory')); // zero or more
                 var vars =  ['issue', 'state', 'created'];
                 for (var i=0; i<cats.length; i++) { vars.push('_cat_'+i) };
@@ -645,7 +645,7 @@ tabulator.panes.register( {
                     singleIssueUI(kb.sym(href), overlayPane);
                 }
 
-                var tableDiv = tabulator.panes.utils.renderTableViewPane(dom, {
+                var tableDiv = UI.widgets.renderTableViewPane(dom, {
                     query: query,
                     keyVariable: '?issue', // Charactersic of row
                     hints: {
@@ -662,8 +662,8 @@ tabulator.panes.register( {
                     var refreshButton = dom.createElement('button');
                     refreshButton.textContent = "refresh";
                     refreshButton.addEventListener('click', function(e) {
-                        tabulator.fetcher.unload(stateStore);
-                        tabulator.fetcher.nowOrWhenFetched(stateStore.uri, undefined, function(ok, body){
+                        UI.store.fetcher.unload(stateStore);
+                        UI.store.fetcher.nowOrWhenFetched(stateStore.uri, undefined, function(ok, body){
                             if (!ok) {
                                 console.log("Cant refresh data:" + body);
                             } else {
@@ -697,7 +697,7 @@ tabulator.panes.register( {
         };
 
 
-        var loginOutButton = tabulator.panes.utils.loginStatusBox(dom, function(webid){
+        var loginOutButton = UI.widgets.loginStatusBox(dom, function(webid){
             // sayt.parent.removeChild(sayt);
             if (webid) {
                 tabulator.preferences.set('me', webid);

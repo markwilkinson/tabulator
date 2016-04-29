@@ -19,7 +19,7 @@ tabulator.panes.register( {
     // Does the subject deserve this pane?
     label: function(subject) {
         var Q = $rdf.Namespace('http://www.w3.org/2000/10/swap/pim/qif#');
-        var kb = tabulator.kb;
+        var kb = UI.store;
         var t = kb.findTypeURIs(subject);
         if (t['http://www.w3.org/2000/10/swap/pim/qif#Transaction']) return "$$";
         if(kb.any(subject, Q('amount'))) return "$$$"; // In case schema not picked up
@@ -31,8 +31,8 @@ tabulator.panes.register( {
     },
 
     render: function(subject, dom) {
-        var kb = tabulator.kb;
-        var ns = tabulator.ns;
+        var kb = UI.store;
+        var ns = UI.ns;
         var WF = $rdf.Namespace('http://www.w3.org/2005/01/wf/flow#');
         var DC = $rdf.Namespace('http://purl.org/dc/elements/1.1/');
         var DCT = $rdf.Namespace('http://purl.org/dc/terms/');
@@ -77,7 +77,7 @@ tabulator.panes.register( {
 
 
 
-        var sparqlService = tabulator.updater = tabulator.updater || new tabulator.rdf.UpdateManager(kb);
+        var sparqlService = tabulator.updater = tabulator.updater || new UI.rdf.UpdateManager(kb);
 
 
         var plist = kb.statementsMatching(subject)
@@ -133,8 +133,8 @@ tabulator.panes.register( {
         };
 
         var oderByDate = function(x, y) {
-            dx = tabulator.kb.any(x, ns.qu('date'));
-            dy = tabulator.kb.any(y, ns.qu('date'));
+            dx = UI.store.any(x, ns.qu('date'));
+            dy = UI.store.any(y, ns.qu('date'));
             if (dx !== undefined && dy !== undefined) {
                 if (dx.value < dy.value) return -1;
                 if (dx.value > dy.value) return 1;
@@ -254,7 +254,7 @@ tabulator.panes.register( {
         if (t['http://www.w3.org/2000/10/swap/pim/qif#Transaction']) {
 
             var trip = kb.any(subject, WF('trip'));
-            var ns = tabulator.ns
+            var ns = UI.ns
             donePredicate(ns.rdf('type'));
 
             var setPaneStyle = function(account) {
@@ -297,7 +297,7 @@ tabulator.panes.register( {
                 var a = dom.createElement('a');
                 a.setAttribute('href',obj.uri);
                 a.setAttribute('style', 'float:right');
-                nav.appendChild(a).textContent = label ? label : tabulator.Util.label(obj);
+                nav.appendChild(a).textContent = label ? label : UI.utils.label(obj);
                 nav.appendChild(dom.createElement('br'));
             }
 
@@ -312,8 +312,8 @@ tabulator.panes.register( {
             var inner = preds.map(function(p){
                 donePredicate(p);
                 var value = kb.any(subject, p);
-                var s = value ? tabulator.Util.labelForXML(value) : '';
-                return '<tr><td style="text-align: right; padding-right: 0.6em">'+tabulator.Util.labelForXML(p)+
+                var s = value ? UI.utils.labelForXML(value) : '';
+                return '<tr><td style="text-align: right; padding-right: 0.6em">'+UI.utils.labelForXML(p)+
                     '</td><td style="font-weight: bold;">'+s+'</td></tr>';
             }).join('\n');
             table.innerHTML =  inner;
@@ -333,15 +333,15 @@ tabulator.panes.register( {
                 kb.fetcher.nowOrWhenFetched(store.uri, subject, function(ok, body){
                     if (!ok) complain("Cannot load store " + store + " " + body);
                     div.appendChild(
-                        tabulator.panes.utils.makeSelectForNestedCategory(dom, kb,
+                        UI.widgets.makeSelectForNestedCategory(dom, kb,
                             subject, Q('Classified'), store, complainIfBad));
 
-                    div.appendChild(tabulator.panes.utils.makeDescription(dom, kb, subject,
-                            tabulator.ns.rdfs('comment'), store, complainIfBad));
+                    div.appendChild(UI.widgets.makeDescription(dom, kb, subject,
+                            UI.ns.rdfs('comment'), store, complainIfBad));
 
                     var trips = kb.statementsMatching(undefined, TRIP('trip'), undefined, store)
                                 .map(function(st){return st.object}); // @@ Use rdfs
-                    var trips2 = kb.each(undefined, tabulator.ns.rdf('type'),  TRIP('Trip'));
+                    var trips2 = kb.each(undefined, UI.ns.rdf('type'),  TRIP('Trip'));
                     trips = trips.concat(trips2).sort(); // @@ Unique
 
                     var sortedBy = function(kb, list, pred, reverse) {
@@ -355,15 +355,15 @@ tabulator.panes.register( {
                         return l2.map(function(pair){return pair[1]});
                     }
 
-                    trips = sortedBy(kb, trips, tabulator.ns.cal('dtstart'), true); // Reverse chron
+                    trips = sortedBy(kb, trips, UI.ns.cal('dtstart'), true); // Reverse chron
 
-                    if (trips.length > 1) div.appendChild(tabulator.panes.utils.makeSelectForOptions(
+                    if (trips.length > 1) div.appendChild(UI.widgets.makeSelectForOptions(
                         dom, kb, subject, TRIP('trip'), trips,
                             { 'multiple': false, 'nullLabel': "-- what trip? --", 'mint': "New Trip *",
                                 'mintClass':  TRIP('Trip'),
                                 'mintStatementsFun': function(trip){
                                     var is = [];
-                                    is.push($rdf.st(trip, tabulator.ns.rdf('type'), TRIP('Trip')));
+                                    is.push($rdf.st(trip, UI.ns.rdf('type'), TRIP('Trip')));
                                     return is}},
                             store, complainIfBad));
 
@@ -406,7 +406,7 @@ tabulator.panes.register( {
         //
         } else if (t['http://www.w3.org/ns/pim/trip#Trip']) {
         /*
-            var query = new $rdf.Query(tabulator.Util.label(subject));
+            var query = new $rdf.Query(UI.utils.label(subject));
             var vars =  [ 'date', 'transaction', 'comment', 'type',  'in_USD'];
             var v = {};
             vars.map(function(x){query.vars.push(v[x]=$rdf.variable(x))}); // Only used by UI
@@ -427,7 +427,7 @@ tabulator.panes.register( {
 
             //query.pat.optional.push(opt);
 
-            var tableDiv = tabulator.panes.utils.renderTableViewPane(dom, {'query': query, 'onDone': calculations} );
+            var tableDiv = UI.widgets.renderTableViewPane(dom, {'query': query, 'onDone': calculations} );
             div.appendChild(tableDiv);
 
 */
@@ -498,7 +498,7 @@ tabulator.panes.register( {
                     var cat = kb.sym(types[j]);
                     row = table.appendChild(dom.createElement('tr'));
                     label = row.appendChild(dom.createElement('td'));
-                    label.textContent = tabulator.Util.label(cat);
+                    label.textContent = UI.utils.label(cat);
                     if (ny > 1) {
                         for (i = 0; i < ny; i++) {
                             z = yearCategoryTotal[years[i]][types[j]];
@@ -658,8 +658,8 @@ tabulator.panes.register( {
                 if (guilty.length) {
                     tab = transactionTable(dom, guilty);
                     count = tab.children.length;
-                    div.appendChild(dom.createElement('h3')).textContent = tabulator.Util.label(cat)
-                        + " with no " + tabulator.Util.label(pred) +
+                    div.appendChild(dom.createElement('h3')).textContent = UI.utils.label(cat)
+                        + " with no " + UI.utils.label(pred) +
                         ( count < 4 ? '' : ' (' + count + ')' );
                     div.appendChild(tab);
                 }
@@ -720,7 +720,7 @@ tabulator.panes.register( {
                 if (guilty.length) {
                     tab = transactionTable(dom, guilty);
                     count = tab.children.length;
-                    div.appendChild(dom.createElement('h3')).textContent = tabulator.Util.label(cat)
+                    div.appendChild(dom.createElement('h3')).textContent = UI.utils.label(cat)
                         + " which do not pair up " +
                         ( count < 4 ? '' : ' (' + count + ')' );
                     div.appendChild(tab);

@@ -19,15 +19,15 @@ tabulator.panes.register( {
     // Does the subject deserve this pane?
     label: function(subject) {
         var Q = $rdf.Namespace('http://www.w3.org/2000/10/swap/pim/qif#');
-        var kb = tabulator.kb;
+        var kb = UI.store;
         var t = kb.findTypeURIs(subject);
         if (t['http://www.w3.org/2000/10/swap/pim/qif#Period']) return "period";
         return null; // No under other circumstances (while testing at least!)
     },
 
     render: function(subject, dom) {
-        var kb = tabulator.kb;
-        var ns = tabulator.ns;
+        var kb = UI.store;
+        var ns = UI.ns;
         var WF = $rdf.Namespace('http://www.w3.org/2005/01/wf/flow#');
         var DC = $rdf.Namespace('http://purl.org/dc/elements/1.1/');
         var DCT = $rdf.Namespace('http://purl.org/dc/terms/');
@@ -73,7 +73,7 @@ tabulator.panes.register( {
 
 
 
-        var sparqlService = new tabulator.rdf.UpdateManager(kb);
+        var sparqlService = new UI.rdf.UpdateManager(kb);
 
 
         var plist = kb.statementsMatching(subject)
@@ -129,8 +129,8 @@ tabulator.panes.register( {
             };
 
             var oderByDate = function(x, y) {
-                dx = tabulator.kb.any(x, ns.qu('date'));
-                dy = tabulator.kb.any(y, ns.qu('date'));
+                dx = UI.store.any(x, ns.qu('date'));
+                dy = UI.store.any(y, ns.qu('date'));
                 if (dx !== undefined && dy !== undefined) {
                     if (dx.value < dy.value) return -1;
                     if (dx.value > dy.value) return 1;
@@ -334,8 +334,8 @@ tabulator.panes.register( {
                 if (guilty.length) {
                     tab = transactionTable(dom, guilty);
                     count = tab.children.length;
-                    div.appendChild(dom.createElement('h3')).textContent = tabulator.Util.label(cat)
-                        + " with no " + tabulator.Util.label(pred) +
+                    div.appendChild(dom.createElement('h3')).textContent = UI.utils.label(cat)
+                        + " with no " + UI.utils.label(pred) +
                         ( count < 4 ? '' : ' (' + count + ')' );
                     div.appendChild(tab);
                 }

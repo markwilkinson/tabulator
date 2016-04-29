@@ -20,7 +20,7 @@ tabulator.panes.register( {
 
     // Does the subject deserve a categorizing pane?
     label: function(subject) {
-        var kb = tabulator.kb
+        var kb = UI.store
         var t = kb.findTypeURIs(subject);
         //@@@ t = kb.topTypeURIs(t);
         var classes = 0;
@@ -36,7 +36,7 @@ tabulator.panes.register( {
     },
 
     render: function(subject, myDocument) {
-        var kb = tabulator.kb;
+        var kb = UI.store;
 
         var div = myDocument.createElement("div")
         div.setAttribute('class', 'categoryPane');
@@ -63,7 +63,7 @@ tabulator.panes.register( {
             if (c.uri) anchor.setAttribute('href', c.uri);
             anchor.setAttribute('class', c.uri in types ? 'categoryIn' : 'categoryOut')
             if (c.uri in bots) anchor.setAttribute('class', 'categoryBottom');
-            var lab = tabulator.Util.label(c, true);
+            var lab = UI.utils.label(c, true);
             if (c.uri in types) lab += " *";
             anchor.appendChild(myDocument.createTextNode(lab));
             tr.appendChild(anchor);
@@ -78,9 +78,9 @@ tabulator.panes.register( {
                         var anchor = myDocument.createElement('A');
                         anchor.appendChild(myDocument.createTextNode(
                             "  ("+
-                            tabulator.Util.label(st.subject)+" "+
-                            tabulator.Util.label(st.predicate)+" "+
-                            tabulator.Util.label(st.object)+")"));
+                            UI.utils.label(st.subject)+" "+
+                            UI.utils.label(st.predicate)+" "+
+                            UI.utils.label(st.object)+")"));
                         if (st.why.uri) anchor.setAttribute('href', st.why.uri)
                         anchor.setAttribute('class', 'categoryWhy')
                         tr.appendChild(anchor);
@@ -103,7 +103,7 @@ tabulator.panes.register( {
                     select.innerHTML = "<option>-- classify --</option>";
                     for (var uri in uris) {
                         var option = myDocument.createElement('option');
-                        option.appendChild(myDocument.createTextNode(tabulator.Util.label(kb.sym(uri))));
+                        option.appendChild(myDocument.createTextNode(UI.utils.label(kb.sym(uri))));
                         option.setAttribute('name', uri);
                         if (uri in types) option.setAttribute('selected', 'true')
                         select.appendChild(option);
@@ -116,7 +116,7 @@ tabulator.panes.register( {
             */
 
             if (kb.any(c, kb.sym('http://www.w3.org/2002/07/owl#disjointUnionOf'))) {
-                var sel = tabulator.panes.utils.makeSelectForCategory(
+                var sel = UI.widgets.makeSelectForCategory(
                     myDocument, kb, subject, c,
                     subs, false); // Not multiple
             }
@@ -126,7 +126,7 @@ tabulator.panes.register( {
                 for (j=0; j<disjointSubclassLists.length; j++) {
                     td.appendChild(myDocument.createTextNode('subs:'+subs));
                     var subs = disjointSubclassLists[j].elements;
-                    var sel = tabulator.panes.utils.makeSelectForCategory(
+                    var sel = UI.widgets.makeSelectForCategory(
                         myDocument, kb, subject, c,
                         subs, false); // Not multiple
                     if (sel) tr.appendChild(sel);

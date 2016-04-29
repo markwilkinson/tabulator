@@ -21,9 +21,9 @@ tabulator.panes.defaultPane = {
     render: function(subject, myDocument) {
         //var doc = myDocument.wrappedJSObject;   Jim? why-tim
         // dump( doc );
-        var kb = tabulator.kb;
+        var kb = UI.store;
         var outline = tabulator.outline; //@@
-        tabulator.log.info("@defaultPane.render, myDocument is now " + myDocument.location);    
+        UI.log.info("@defaultPane.render, myDocument is now " + myDocument.location);    
         subject = kb.canon(subject);
         var div = myDocument.createElement('div')
         //var f = jq("<div></div>", doc);
@@ -38,10 +38,10 @@ tabulator.panes.defaultPane = {
         tabulator.outline.appendPropertyTRs(div, plist, true, tabulator.panes.defaultPane.filter)
         if ((subject.termType == 'literal') && (subject.value.slice(0,7) == 'http://'))
             tabulator.outline.appendPropertyTRs(div,
-                [$rdf.st(kb.sym(subject.value), tabulator.ns.link('uri'), subject)],
+                [$rdf.st(kb.sym(subject.value), UI.ns.link('uri'), subject)],
                 true, tabulator.panes.defaultPane.filter)
         if ((subject.termType == 'symbol' && 
-             tabulator.sparql.editable(tabulator.rdf.Util.uri.docpart(subject.uri), kb))
+             tabulator.sparql.editable(UI.rdf.Util.uri.docpart(subject.uri), kb))
              || (subject.termType == 'bnode'
                 && kb.anyStatementMatching(subject) 
                 && kb.anyStatementMatching(subject).why
@@ -72,7 +72,7 @@ tabulator.panes.defaultPane = {
     // This code was cut out of outline.js
     //    best way is to leave TRs there and add/delete any necessray extras 
 
-        tabulator.log.info('Re-expand: '+div)
+        UI.log.info('Re-expand: '+div)
         // try{table.replaceChild(expandedHeaderTR(subject),table.firstChild)}
         // catch(e){}   // kludge... Todo: remove this (seeAlso UserInput::clearInputAndSave)
         var row, s

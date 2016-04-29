@@ -24,20 +24,20 @@ tabulator.panes.register({
     name: "tableOfClass",
 
     label: function(subject) {
-            //if (!tabulator.kb.holds(subject, tabulator.ns.rdf('type'),tabulator.ns.rdfs('Class'))) return null;
-            if (!tabulator.kb.any(undefined, tabulator.ns.rdf('type'),subject)) return null;
-            var n = tabulator.kb.statementsMatching(
-                undefined, tabulator.ns.rdf( 'type'), subject).length;
+            //if (!UI.store.holds(subject, UI.ns.rdf('type'),UI.ns.rdfs('Class'))) return null;
+            if (!UI.store.any(undefined, UI.ns.rdf('type'),subject)) return null;
+            var n = UI.store.statementsMatching(
+                undefined, UI.ns.rdf( 'type'), subject).length;
             if (n == 0) return null;  // None, suppress pane
             if (n > 15) return null;  // @@ At the moment this pane can be slow with too many @@ fixme by using limits
             return "List "+n;     // Show how many in hover text
-            return (tabulator.Util.label(subject) + " table")
+            return (UI.utils.label(subject) + " table")
         },
 
     render: function(subject, myDocument) {
         var div = myDocument.createElement("div");
         div.setAttribute('class', 'tablePane');
-        div.appendChild(tabulator.panes.utils.renderTableViewPane(myDocument, {'tableClass': subject}));
+        div.appendChild(UI.widgets.renderTableViewPane(myDocument, {'tableClass': subject}));
         return div;
     }
 });
@@ -72,7 +72,7 @@ tabulator.panes.register({
             return true;
         }
 
-        var sts = tabulator.kb.statementsMatching(undefined, undefined, undefined,
+        var sts = UI.store.statementsMatching(undefined, undefined, undefined,
                                         subject);
 
         // If all the statements are on a single subject, a table view
@@ -88,7 +88,7 @@ tabulator.panes.register({
     render: function(subject, myDocument) {
         var div = myDocument.createElement("div");
         div.setAttribute('class', 'n3Pane'); // needs a proper class
-        div.appendChild(tabulator.panes.utils.renderTableViewPane(myDocument, {'sourceDocument': subject}));
+        div.appendChild(UI.widgets.renderTableViewPane(myDocument, {'sourceDocument': subject}));
         return div;
     }
 });
