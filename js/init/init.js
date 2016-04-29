@@ -183,6 +183,12 @@ var setList = function(set){
   return str
 }
 
+var addJSsuffix = function(fn){
+  if (fn.slice(-3) !== '.js' && fn.slice(-5) !== '.json'){
+    fn += '.js'
+  }
+  return fn
+}
 // require
 
 var require = function(relURI){
@@ -199,22 +205,21 @@ var require = function(relURI){
         dump('        -------> package cache hit\n')
         return requireState.loadedPackage[packageName]
       }
+      if (packageName in requireState.ignore){
+        dump('        ------- ignoring package ' + packageName+'\n')
+        return {}
+      }
       var packageURI = packageBase + 'package.json'
       var filename = mungeFilename(packageURI)
       dump('   filename is ' + filename + '\n')
       var pack = readJSONFile(filename);
-      var mainURI = join(pack.main, packageURI)
+      // For e.g. http-browserify, we take the browserify version
+      var mainURI = join(pack.browserify || pack.main, packageURI) // eg for http take the bowesr
       dump('   package main URI : ' + mainURI + '\n')
-      absURI = mainURI
-      if (absURI.slice(-3) !== '.js'){
-        absURI += '.js'
-      }
+      absURI = addJSsuffix(mainURI)
     } else {
-      var absURI = join(relURI, module.scriptURI)
-      if (absURI.slice(-3) !== '.js'){
-        absURI += '.js'
-      }
-      if (relURI.slice(0,2) === './'){
+      var absURI = addJSsuffix(join(relURI, module.scriptURI))
+      if (relURI.slice(0,2) === './' || relURI.slice(0,3) === '../'){
         packageBase = module.packageBase // keep the same when just a relative path
         // dump('aaaaa simple '+packageBase+'\n')
       } else {
@@ -260,14 +265,23 @@ var require = function(relURI){
       module.packageBase = packageBase
       module.exports = {}
 
-      try {
-        loader.loadSubScript(absURI, sandbox);
-      } catch(e){
-        dump('****  Error loading ' + absURI + ': ' + e + '\n')
+      if (absURI.slice(-5) === '.json'){
+        var jsonfn = mungeFilename(absURI)
+        try {
+          module.exports = readJSONFile(jsonfn)
+        } catch(e){
+          dump('****  Error loading JSON  ' + absURI + ': ' + e + '\n')
+        }
+      } else {
+        try {
+          loader.loadSubScript(absURI, sandbox);
+        } catch(e){
+          dump('****  Error loading ' + absURI + ': ' + e + '\n')
+        }
       }
       result = module.exports
+      dump(' finished require: ' + module.scriptURI + '\n')
       module.scriptURI = last.scriptURI
-      // dump('    back to last URI: '+ module.scriptURI + '\n')
       module.packageBase = last.packageBase
       require = last.require // eg N3 corrupts require
     }
@@ -275,11 +289,11 @@ var require = function(relURI){
       requireState.loadedPackage[packageName] = result
     }
     requireState.loadedURI[module.scriptURI] = result
-    dump(' finished require: ' + module.scriptURI + '\n')
     // dump('   cache D: ' + setList(requireState.loadedURI) + '\n')
     return result
 }
 
+requireState.ignore = {}
 
 //Before anything else, load up the logger so that errors can get logged.
 // dump('trying import services: \n')
@@ -302,13 +316,17 @@ var require = function(relURI){
 
 $rdf = {}
 
+var events = require('events') // load in the order which they are npm installed
 var http = require('http-browserify')
 requireState.loadedPackage['http'] = requireState.loadedPackage['http-browserify']
 
+var temp = module.packageBase
+module.packageBase = join('solid-ui/', module.packageBase)
 var UI = tabulator.solidUi = require('../solid-ui/index.js')
+module.packageBase = temp
 
 // Because it wasn't loaded as a module (yet) we cheat
-requireState.loadedPackage['solid-iu'] = tabulator.solidUi
+requireState.loadedPackage['solid-ui'] = tabulator.solidUi
 
 // $rdf = tabulator.rdf = require('../rdf/dist/rdflib-node.js')
 
