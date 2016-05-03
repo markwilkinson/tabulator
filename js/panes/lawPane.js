@@ -3,7 +3,11 @@
 *  This pane shows the Lawyer's view of reasoning
 *
 */
-LawPane = {};
+
+var UI = require('solid-ui')
+
+var LawPane = module.exports = {};
+
 LawPane.icon = tabulator.Icon.src.icon_LawPane;
 LawPane.name = 'Law';
 
@@ -423,6 +427,5 @@ LawPane.render = function(subject, myDocument) {
 
 }
 
-tabulator.panes.register(LawPane, false);
 
 //ends

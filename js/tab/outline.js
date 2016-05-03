@@ -5,9 +5,6 @@
 */
 
 tabulator.OutlineObject = function(doc) {
-//      Needed? If so why?
-//        var tabulator = Components.classes["@dig.csail.mit.edu/tabulator;1"]
-//            .getService(Components.interfaces.nsISupports).wrappedJSObject;
     if (tabulator.isExtension) {
         var wm = Components.classes["@mozilla.org/appshell/window-mediator;1"]
                        .getService(Components.interfaces.nsIWindowMediator);
@@ -2210,13 +2207,13 @@ tabulator.OutlineObject = function(doc) {
         // dump('myDocument.getElementById("tabulator-display") = '+myDocument.getElementById("tabulator-display")+"\n");
         window.addEventListener('unload',function() {
                 var tabStatusBar = gBrowser.ownerDocument.getElementById("tabulator-display");
-                tabStatusBar.label=="";
+                tabStatusBar.label = "";
                 tabStatusBar.setAttribute('style','display:none');
             },true);
 
         gBrowser.mPanelContainer.addEventListener("select", function() {
                 var tabStatusBar = gBrowser.ownerDocument.getElementById("tabulator-display");
-                tabStatusBar.label=="";
+                tabStatusBar.label = "";
                 tabStatusBar.setAttribute('style','display:none');
             },true);
     }

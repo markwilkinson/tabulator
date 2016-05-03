@@ -1,17 +1,15 @@
 /*   pad Pane
 **
 */
-
-
-// load also js/panes/pad/better-simple-pad/css/simple-pad-styles.css
-
 // These used to be in js/init/icons.js but are better in the pane.
-tabulator.Icon.src.icon_pad = tabulator.iconPrefix + 'js/panes/pad/images/ColourOn.png';
-tabulator.Icon.tooltips[tabulator.Icon.src.icon_pad] = 'notepad'
+// tabulator.Icon.src.icon_pad = tabulator.iconPrefix + 'js/panes/pad/images/ColourOn.png';
+// tabulator.Icon.tooltips[tabulator.Icon.src.icon_pad] = 'notepad'
 
-tabulator.panes.register( {
+var UI = require('solid-ui')
 
-  icon: tabulator.Icon.src.icon_pad,
+module.exports = {
+
+  icon:  (module.__dirname || __dirname) + 'images/ColourOn.png',
 
   name: 'pad',
 
@@ -550,6 +548,5 @@ tabulator.panes.register( {
     return div
 
   }
-}, false);
-
+}
 //ends

@@ -17,8 +17,9 @@
 /////////////////////////////////////////////////////////////////////
 
 /* Table view pane  -- view of a class*/
+var UI = require('solid-ui')
 
-tabulator.panes.register({
+module.exports = {
     icon: tabulator.iconPrefix + "icons/table.png",
 
     name: "tableOfClass",
@@ -30,7 +31,6 @@ tabulator.panes.register({
                 undefined, UI.ns.rdf( 'type'), subject).length;
             if (n == 0) return null;  // None, suppress pane
             if (n > 15) return null;  // @@ At the moment this pane can be slow with too many @@ fixme by using limits
-            return "List "+n;     // Show how many in hover text
             return (UI.utils.label(subject) + " table")
         },
 
@@ -40,56 +40,4 @@ tabulator.panes.register({
         div.appendChild(UI.widgets.renderTableViewPane(myDocument, {'tableClass': subject}));
         return div;
     }
-});
-
-/* Table view pane -- as a view of a document
-*/
-/*
-
-tabulator.panes.register({
-    icon: tabulator.iconPrefix + "icons/table2.png",
-    @@@@@@  Needs to be different from other icons used eg above as eems to be used as to fire up the pane
-    @@@@@@ Needs to be lower prio for a document than the data content pane
-
-    name: "tableOfDocument",
-
-    label: function(subject) {
-
-        // Returns true if the specified list of statements contains
-        // information on a single subject.
-
-        function singleSubject(statements) {
-            var subj = null;
-
-            for (var i=0; i<statements.length; ++i) {
-                if (subj == null) {
-                    subj = statements[i].subject;
-                } else if (statements[i].subject != subj) {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        var sts = UI.store.statementsMatching(undefined, undefined, undefined,
-                                        subject);
-
-        // If all the statements are on a single subject, a table view
-        // is futile, so hide the table view icon.
-
-        if (!singleSubject(sts)) {
-            return "Table view";
-        } else {
-            return null;
-        }
-    },
-
-    render: function(subject, myDocument) {
-        var div = myDocument.createElement("div");
-        div.setAttribute('class', 'n3Pane'); // needs a proper class
-        div.appendChild(UI.widgets.renderTableViewPane(myDocument, {'sourceDocument': subject}));
-        return div;
-    }
-});
-*/
+}

@@ -9,7 +9,7 @@
  * @link    http://jscolor.com
  */
 
-tabulator.panes.jscolor = function() {
+module.exports = function() {
     jscolor = {
 
         // All the following 4 changed for tabulator
@@ -840,5 +840,4 @@ tabulator.panes.jscolor = function() {
     // jscolor.install();
 
     return jscolor;
-}();
-
+}()

@@ -6,18 +6,22 @@
 */
 
 
-tabulator.Icon.src.icon_money = tabulator.iconPrefix +
-    'js/panes/transaction/22-pixel-068010-3d-transparent-glass-icon-alphanumeric-dollar-sign.png';
-tabulator.Icon.tooltips[tabulator.Icon.src.icon_money] = 'Transaction'
+// tabulator.Icon.src.icon_money = tabulator.iconPrefix +
+//    'js/panes/transaction/22-pixel-068010-3d-transparent-glass-icon-alphanumeric-dollar-sign.png';
+// tabulator.Icon.tooltips[tabulator.Icon.src.icon_money] = 'Transaction'
 
-tabulator.panes.register( {
+var UI = require('solid-ui')
 
-    icon: tabulator.Icon.src.icon_money,
+module.exports = {
+
+    icon:  (module.__dirname || __dirname) + '22-pixel-068010-3d-transparent-glass-icon-alphanumeric-dollar-sign.png',
 
     name: 'transaction',
 
     // Does the subject deserve this pane?
     label: function(subject) {
+        var UI = require('solid-ui')
+
         var Q = $rdf.Namespace('http://www.w3.org/2000/10/swap/pim/qif#');
         var kb = UI.store;
         var t = kb.findTypeURIs(subject);
@@ -31,6 +35,8 @@ tabulator.panes.register( {
     },
 
     render: function(subject, dom) {
+        var UI = require('solid-ui')
+
         var kb = UI.store;
         var ns = UI.ns;
         var WF = $rdf.Namespace('http://www.w3.org/2005/01/wf/flow#');
@@ -742,8 +748,6 @@ tabulator.panes.register( {
 
         return div;
     }
-
-
-}, true);
+}
 
 //ends

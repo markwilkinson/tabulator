@@ -6,7 +6,10 @@
 **  - Similarly easy user interface, but data storage distributed
 **  - Read and write both user-private (address book) and public data clearly
 */
-tabulator.panes.register( tabulator.panes.socialPane = {
+
+var UI = require('solid-ui')
+
+module.exports  = {
 
     icon: tabulator.Icon.src.icon_foaf,
 
@@ -558,9 +561,10 @@ tabulator.panes.register( tabulator.panes.socialPane = {
         return div;
     }  // render()
 
-}, false);  // tabulator.panes.register({})
-
+}  // 
+/*
 if (tabulator.preferences && tabulator.preferences.get('me')) {
     UI.store.fetcher.lookUpThing(UI.store.sym(tabulator.preferences.get('me')));
 };
+*/
 //ends

@@ -176,11 +176,11 @@ var setCount = function(set){
   return count
 }
 var setList = function(set){
-  var str = ''
+  var str = '{}'
   for (x in set) {
-    str += x + ','
+    str += x + ', '
   }
-  return str
+  return str.slice(0,-2) + '}'
 }
 
 var addJSsuffix = function(fn){
@@ -193,10 +193,13 @@ var addJSsuffix = function(fn){
 
 var require = function(relURI){
     dump(" require "+relURI+ " from " + module.scriptURI +"\n");
-    dump("    initial module.packageBase: " + module.packageBase + '\n')
+    // dump("    initial module.packageBase: " + module.packageBase + '\n')
     var absURI
     var packageBase
     var packageName = null;
+    //if (tabulator.trace ){ // @@@@@ kludge
+    //  dump("     tabulator.trace -> {" + setList(tabulator.trace)+ "}\n")
+    //}
     if (relURI.indexOf('/') < 0){ // module name
       packageBase = join('node_modules/' + relURI + '/' , module.packageBase )
       dump('   package ' + relURI + ' base: ' + packageBase + '\n')
@@ -227,115 +230,107 @@ var require = function(relURI){
         // dump('aaaaa complex '+packageBase+'\n')
       }
     }
-    dump("   --> " + absURI + "\n");
     if (requireState.loadedURI[absURI]){
-      dump("        -----> URI cache hit\n");
+      dump("   --> " + absURI + " URI cache hit.\n");
+      // dump("       i.e {" + setList(requireState.loadedURI[absURI])+ "}\n")
       return requireState.loadedURI[absURI]
+    } else {
+      dump("   --> " + absURI + " fetching:\n");
     }
     // dump('   cache A: '  + setCount(requireState.loadedURI)+') '+ requireState.loadedURI[absURI] + ' -- ' + absURI + '\n')
 
-
     var __dirname = absURI.slice(0, absURI.lastIndexOf('/'))
-    var doSandbox = false
+    module.__dirname = __dirname
+
     var result
-    if (doSandbox) {
-      var sandbox = {}
-      sandbox.module = {}
-      sandbox.module.require = require
-      sandbox.module.scriptURI = absURI
-      sandbox.module.packageBase = packageBase
-      sandbox.module.exports = {}
-      // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/mozIJSSubScriptLoader
-      try {
-        loader.loadSubScript(absURI, sandbox);
-      } catch(e){
-        dump('****  Error loading sandboxed ' + absURI + ': ' + e + '\n')
-      }
-      result = sandbox.module.exports
-    } else {
       //module = {}
-      var last = {}
-      last.scriptURI = module.scriptURI
-      last.packageBase = module.packageBase
-      // dump('    last package base ' + module.packageBase + '\n')
-      last.require = require
-      dump('    next package base ' + packageBase + '\n')
+    var last = {}
+    last.scriptURI = module.scriptURI
+    last.packageBase = module.packageBase
+    last.exports = module.exports
 
-      module.scriptURI = absURI
-      module.packageBase = packageBase
-      module.exports = {}
+    // dump('    last package base ' + module.packageBase + '\n')
+    last.require = require
+    dump('    next package base ' + packageBase + '\n')
 
-      if (absURI.slice(-5) === '.json'){
-        var jsonfn = mungeFilename(absURI)
-        try {
-          module.exports = readJSONFile(jsonfn)
-        } catch(e){
-          dump('****  Error loading JSON  ' + absURI + ': ' + e + '\n')
-        }
-      } else {
-        try {
-          loader.loadSubScript(absURI, sandbox);
-        } catch(e){
-          dump('****  Error loading ' + absURI + ': ' + e + '\n')
-        }
+    module.scriptURI = absURI
+    module.packageBase = packageBase
+    module.exports = {}
+
+    if (absURI.slice(-5) === '.json'){
+      var jsonfn = mungeFilename(absURI)
+      try {
+        module.exports = readJSONFile(jsonfn)
+      } catch(e){
+        dump('****  Error loading JSON  ' + absURI + ': ' + e + '\n')
       }
-      result = module.exports
-      dump(' finished require: ' + module.scriptURI + '\n')
-      module.scriptURI = last.scriptURI
-      module.packageBase = last.packageBase
-      require = last.require // eg N3 corrupts require
+    } else {
+      try {
+        loader.loadSubScript(absURI);
+      } catch(e){
+        dump('****  Error loading ' + absURI + ': ' + e + '\n')
+      }
     }
+    result = module.exports
+    requireState.loadedURI[module.scriptURI] = result
+
+    // if (tabulator.trace ){ // @@@@@ kludge
+    //  dump("     tabulator.trace 2 -> {" + setList(tabulator.trace)+ "}\n")
+    // }
+
+
+    dump(' finished require: ' + module.scriptURI + '\n')
+    module.exports = last.exports // continue defining the module we are in
+    module.scriptURI = last.scriptURI
+    module.packageBase = last.packageBase
+    require = last.require // eg N3 corrupts require
+
     if (packageName){
       requireState.loadedPackage[packageName] = result
     }
-    requireState.loadedURI[module.scriptURI] = result
     // dump('   cache D: ' + setList(requireState.loadedURI) + '\n')
     return result
 }
 
 requireState.ignore = {}
 
+///////////////////////////////////////////////////////////////////////////////
+//
+//
 //Before anything else, load up the logger so that errors can get logged.
 // dump('trying import services: \n')
 // Components.utils.import("resource://gre/modules/Services.jsm");
 // dump('trying require: \n')
 // var foo = require("../tab/log-ext.js");
 
-// tabulator.log = require('../tab/log-ext-node.js')
+tabulator.log = require('../tab/log-ext-node.js')
 
-// tabulator.loadScript("js/tab/log-ext.js");
-
-// tabulator.log = new TabulatorLogger();
-
-// dump('aaaaaa' + require + '\n')
-
-// tabulator.loadScript("js/solid/dist/solid.js"); // Defines Solid
-// dump('aaaaaa' + require + '\n')
-
-// $rdf.log = tabulator.log // @@ for now
-
-$rdf = {}
 
 var events = require('events') // load in the order which they are npm installed
 var http = require('http-browserify')
 requireState.loadedPackage['http'] = requireState.loadedPackage['http-browserify']
 
+
+//  Require the solid-compatible UI module which pulls in lots
 var temp = module.packageBase
 module.packageBase = join('solid-ui/', module.packageBase)
-var UI = tabulator.solidUi = require('../solid-ui/index.js')
+var UI = tabulator.UI = require('../solid-ui/index.js')
 module.packageBase = temp
-
 // Because it wasn't loaded as a module (yet) we cheat
-requireState.loadedPackage['solid-ui'] = tabulator.solidUi
+requireState.loadedPackage['solid-ui'] = tabulator.UI
 
-// $rdf = tabulator.rdf = require('../rdf/dist/rdflib-node.js')
+var $rdf = tabulator.rdf = UI.rdf
+$rdf.log = tabulator.log
 
 
-tabulator.Util = tabulator.solidUi.utils
+tabulator.Util = tabulator.UI.utils
+tabulator.ns = UI.ns
 
-//Common code has  stackString used reporting errors in catch() below
-// moved to ui.utils
-// tabulator.loadScript("js/tab/common.js");
+
+tabulator.OutlineObject  = require('../panes/outline/manager.js')
+
+// later in the context of a window and a document:
+// dom.outline = new tabulator.OutlineObject(dom)
 
 // This is because Firefox silently throws away any errors here alas
 try {
@@ -343,10 +338,14 @@ try {
     //Load the icons namespace onto tabulator.
     tabulator.loadScript("js/init/icons.js");
     //And Namespaces..
-    tabulator.loadScript("js/init/namespaces.js");
-    //And Panes.. (see the below file to change which panes are turned on)
-    tabulator.loadScript("js/init/panes.js");
-    tabulator.loadScript("js/jscolor/jscolor.js");
+    // tabulator.loadScript("js/init/namespaces.js");
+    //And Panes.. (see the below file to change which panes are included)
+    tabulator.panes = UI.panes = require("../panes/index.js")
+
+
+    // tabulator.loadScript("js/init/panes.js");
+    // tabulator.loadScript("js/jscolor/jscolor.js");
+    tabulator.panes.jscolor = UI.color = require('../jscolor/jscolor.js')
     //And Preferences mechanisms.
     tabulator.loadScript("js/init/prefs.js");
 
@@ -356,9 +355,9 @@ try {
     //And, finally, all non-pane UI code.
     tabulator.loadScript("js/tab/labeler.js");
     tabulator.loadScript("js/tab/request.js");
-    tabulator.loadScript("js/tab/outlineinit.js");
-    tabulator.loadScript("js/tab/userinput.js");
-    tabulator.loadScript("js/tab/outline.js");
+    // tabulator.loadScript("js/tab/outlineinit.js");
+    tabulator.loadScript("js/tab/userinput.js"); // moved to panes
+    // tabulator.loadScript("js/tab/outline.js");
 
     //Oh, and the views!
     tabulator.loadScript("js/init/views.js");
@@ -612,6 +611,6 @@ try {
     dump('Tabulator init.js:  Aaaaagh loading failed\n');
     dump('Tabulator init.js: '+tabulator.Util.stackString(e)+'\n');
 }
-
+dump('626 typeof tabulator.rdf.IndexedFormula ' + typeof tabulator.rdf.IndexedFormula + '\n')
 // Ends
 dump("@@ init.js END\n");

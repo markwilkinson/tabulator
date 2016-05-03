@@ -1,10 +1,10 @@
-tabulator.panes.register({
+module.exports = {
   icon: tabulator.Icon.src.icon_CVPane, // This icon should be defined in 'test.js' and 'tabulate.js'
 
   name: 'CV',
 
   label:
-  /*function(subject) 
+  /*function(subject)
   { return 'CV '
   },*/
   function (subject) { // 'subject' is the source of the document
@@ -203,4 +203,4 @@ tabulator.panes.register({
 
     return content
   }
-} , true)
+}

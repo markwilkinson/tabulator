@@ -4,7 +4,11 @@
 **  according to metadata
 */
 
-tabulator.panes.panesFromData = function(subject){
+var UI = require('solid-ui')
+
+// @@ todo: move this function elsewhere generic
+
+var panesFromData = function(subject){
   var ns = UI.ns, kb = UI.store
   var apps = kb.each(undefined, ns.rdf('type'), ns.solid('ApplicationRegistration'))
   var t = kb.findTypeURIs(subject)
@@ -46,13 +50,17 @@ tabulator.panes.panesFromData = function(subject){
     }
   }
 }
+
+//   Andrei's  'warp' file manager as a pane
+
 // black rocket not ongh-pages: js/panes/common/icons/noun_113198.svg
 // red rocket:  js/panes/warp/icons/warp-icon.png
-tabulator.Icon.src.icon_warp = tabulator.scriptBase + 'js/panes/warp/icons/warp-icon.png';
-tabulator.Icon.tooltips[tabulator.Icon.src.icon_warp] = 'warp'
-tabulator.panes.register({
+//tabulator.Icon.src.icon_warp = tabulator.scriptBase + 'js/panes/warp/icons/warp-icon.png';
+//tabulator.Icon.tooltips[tabulator.Icon.src.icon_warp] = 'warp'
 
-    icon: tabulator.Icon.src.icon_warp,
+module.exports = {
+
+    icon: UI.icons.iconBase + 'noun_113198.svg',
 
     name: 'warp',
 
@@ -96,5 +104,5 @@ tabulator.panes.register({
         div.appendChild(tr)
         return div
     }
-}, true);
+}
 //ends

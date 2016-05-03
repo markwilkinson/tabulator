@@ -8,22 +8,13 @@
 ** like "this" where the string is seen by the user and so I18n is an issue.
 */
 
-
-
-if (typeof console == 'undefined') { // e.g. firefox extension. Node and browser have console
-    console = {};
-    console.log = function(msg) { UI.log.info(msg);};
-}
-
-
-
 // These used to be in js/init/icons.js but are better in the pane.
-tabulator.Icon.src.icon_sharing = tabulator.iconPrefix + 'js/panes/common/icons/noun_123691.svg';
-tabulator.Icon.tooltips[tabulator.Icon.src.icon_sharing] = 'Sharing'
+// tabulator.Icon.src.icon_sharing = tabulator.iconPrefix + 'js/panes/common/icons/noun_123691.svg';
+// tabulator.Icon.tooltips[tabulator.Icon.src.icon_sharing] = 'Sharing'
 
-tabulator.panes.register( {
+module.exports = {
 
-  icon: tabulator.Icon.src.icon_sharing,
+  icon:  UI.icons.iconBase + 'js/panes/common/icons/noun_123691.svg',
 
   name: 'sharing',
 
@@ -88,6 +79,6 @@ tabulator.panes.register( {
     div.appendChild(pane);
     return div;
   }
-}, true);
+}
 
 //ends

@@ -3,7 +3,9 @@
     **  This outline pane contains the properties which are
     ** internal to the user's interaction with the web, and are not normaly displayed
     */
-tabulator.panes.internalPane = {
+var UI = require('solid-ui')
+
+module.exports = {
 
     icon: tabulator.Icon.src.icon_internals,
 
@@ -21,7 +23,7 @@ tabulator.panes.internalPane = {
         var types = kb.findTypeURIs(subject);
         function filter(pred, inverse) {
             if (types['http://www.w3.org/2007/ont/link#ProtocolEvent']) return true; // display everything for them
-            return  !!(typeof tabulator.panes.internalPane.predicates[pred.uri] != 'undefined');
+            return  !!(typeof tabulator.panes.internal.predicates[pred.uri] != 'undefined');
         }
         var div = myDocument.createElement('div')
         div.setAttribute('class', 'internalPane')
@@ -70,6 +72,8 @@ tabulator.panes.internalPane = {
         'http://www.w3.org/2007/ont/link#all': 1, // From userinput.js
         'http://www.w3.org/2007/ont/link#Document': 1,
         'http://www.w3.org/ns/rww#editable': 1,
+        'http://www.w3.org/2000/01/rdf-schema#seeAlso': 1,
+        'http://www.w3.org/2002/07/owl#': 1
     },
     classes: { // Things which are inherently already undercover
         'http://www.w3.org/2007/ont/link#ProtocolEvent': 1
@@ -77,8 +81,7 @@ tabulator.panes.internalPane = {
 };
 
 //    if (!SourceOptions["seeAlso not internal"].enabled)
-tabulator.panes.internalPane.predicates['http://www.w3.org/2000/01/rdf-schema#seeAlso'] = 1;
-tabulator.panes.internalPane.predicates[UI.ns.owl('sameAs').uri] = 1;
-tabulator.panes.register(tabulator.panes.internalPane, true);
+// tabulator.panes.internal.predicates['http://www.w3.org/2000/01/rdf-schema#seeAlso'] = 1;
+// tabulator.panes.internal.predicates[UI.ns.owl('sameAs').uri] = 1;
 
 //ends

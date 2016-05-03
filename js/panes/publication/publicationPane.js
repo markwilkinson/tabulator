@@ -9,11 +9,13 @@
 
 //load('RDFTreeSearcher.js');
 
-var tabulator = Components.classes["@dig.csail.mit.edu/tabulator;1"].getService(Components.interfaces.nsISupports).wrappedJSObject;
-tabulator.panes.register(tabulator.panes.publishingPane = new function() {
-    this.name = 'Publication';
+var UI = require('solid-ui')
+var PatternSearch = require('./patternSearch.js')
+
+module.exports = new function() {
+    this.name = 'publication';
     this.icon = Icon.src.icon_publicationPane;
-	
+
     this.label = function(subject) {
         var typeTriples = UI.store.statementsMatching(subject,UI.ns.rdf('type'),null,null); // Stores all the 'types' of the URI in an array
         if(this.isEmpty(typeTriples)) return null;
@@ -59,7 +61,7 @@ tabulator.panes.register(tabulator.panes.publishingPane = new function() {
                                                               titleNameTree
                                                              ])
                                      ]);
-        
+
         var authorTree = ps.MOBN([
                                   ps.SOPN(bibo('authorList'),[
                                                               personNameTree
@@ -129,7 +131,7 @@ tabulator.panes.register(tabulator.panes.publishingPane = new function() {
             div = this.appendEntry(document, div, dataToAssemble[i][0], dataToAssemble[i][1], dataToAssemble[i][2]);
 
         //alert("statementsMatching: "+UI.store.statementsMatching(UI.store.sym("http://www.advogato.org/person/timbl/foaf.rdf#me"),rdf('type'))+"\nwhether: "+UI.store.statementsMatching(UI.store.sym("http://www.advogato.org/person/timbl/foaf.rdf#me"),rdf('type'),foaf('Person'))+"\nsource of foaf(Person): "+foaf('Person').toSource());
-   
+
         return div;
     }
 
@@ -158,4 +160,4 @@ tabulator.panes.register(tabulator.panes.publishingPane = new function() {
         else if(arr.length == 0) return true;
         else return false;
     }
-}, false);
+}

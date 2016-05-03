@@ -9,12 +9,14 @@
 //         - Expand automatically all the way down
 //         - original source view?  Use ffox view source
 
-tabulator.panes.dataContentPane = {
-    
+var UI = require('solid-ui')
+
+module.exports = {
+
     icon:  tabulator.Icon.src.icon_dataContents,
-    
+
     name: 'dataContents',
-    
+
     label: function(subject) {
         if('http://www.w3.org/2007/ont/link#ProtocolEvent' in UI.store.findTypeURIs(subject)) return null;
         var n = UI.store.statementsMatching(
@@ -35,10 +37,10 @@ tabulator.panes.dataContentPane = {
         var subjects = res.subjects;
         var loopBreakers = res.loopBreakers;
         for (var x in loopBreakers) dump('\tdataContentPane: loopbreaker:'+x+'\n')
-        var outline = tabulator.outline;
+        var outline = UI.outline;
         var doneBnodes = {}; // For preventing looping
         var referencedBnodes = {}; // Bnodes which need to be named alas
-        
+
         // The property tree for a single subject or anonymos node
         function propertyTree(subject) {
             // print('Proprty tree for '+subject);
@@ -88,7 +90,7 @@ tabulator.panes.dataContentPane = {
                     anchor.addEventListener('click', UI.widgets.openHrefInOutlineMode, true);
                     anchor.appendChild(myDocument.createTextNode(UI.utils.label(obj)));
                     return anchor;
-                    
+
                 case 'literal':
 
                     if (!obj.datatype || !obj.datatype.uri) {
@@ -102,8 +104,8 @@ tabulator.panes.dataContentPane = {
                         res.innerHTML = obj.value; // Try that  @@@ beware embedded dangerous code
                         return res;
                     };
-                    return myDocument.createTextNode(obj.value); // placeholder - could be smarter, 
-                    
+                    return myDocument.createTextNode(obj.value); // placeholder - could be smarter,
+
                 case 'bnode':
                     if (obj.toNT() in doneBnodes) { // Break infinite recursion
                         referencedBnodes[(obj.toNT())] = true;
@@ -111,7 +113,7 @@ tabulator.panes.dataContentPane = {
                         anchor.setAttribute('href', '#'+obj.toNT().slice(2))
                         anchor.setAttribute('class','bnodeRef')
                         anchor.textContent = '*'+obj.toNT().slice(3);
-                        return anchor; 
+                        return anchor;
                     }
                     doneBnodes[obj.toNT()] = true; // Flag to prevent infinite recusruion in propertyTree
                     var newTable =  propertyTree(obj);
@@ -122,7 +124,7 @@ tabulator.panes.dataContentPane = {
                         newTable.style.backgroundColor='white'
                     }
                     return newTable;
-                    
+
                 case 'collection':
                     var res = myDocument.createElement('table')
                     res.setAttribute('class', 'collectionAsTables')
@@ -139,11 +141,11 @@ tabulator.panes.dataContentPane = {
                 case 'variable':
                     var res = myDocument.createTextNode('?' + obj.uri);
                     return res;
-                    
+
             }
             throw "Unhandled node type: "+obj.termType
         }
-    
+
         // roots.sort();
 
         if (initialRoots) {
@@ -164,7 +166,7 @@ tabulator.panes.dataContentPane = {
             var root = roots[i];
             if (root.termType == 'bnode') {
                 td_s.appendChild(myDocument.createTextNode(UI.utils.label(root))); // Don't recurse!
-            } 
+            }
             else {
                 td_s.appendChild(objectTree(root)); // won't have tree
             }
@@ -201,7 +203,7 @@ tabulator.panes.dataContentPane = {
             if (ps) initialRoots.push(ps);
             div.appendChild(tabulator.panes.dataContentPane.statementsAsTables(
                             sts, myDocument, initialRoots));
-            
+
         } else {  // An outline mode openable rendering .. might be better
             var sz = UI.rdf.Serializer( UI.store );
             var res = sz.rootSubjects(sts);
@@ -210,11 +212,11 @@ tabulator.panes.dataContentPane = {
             // p.icon = dataContentPane.icon
             p.render = function(s2) {
                 var div = myDocument.createElement('div')
-                
+
                 div.setAttribute('class', 'withinDocumentPane')
                 var plist = kb.statementsMatching(s2, undefined, undefined, subject)
                 appendPropertyTRs(div, plist, false, function(pred, inverse) {return true;})
-                return div    
+                return div
             }
             for (var i=0; i<roots.length; i++) {
                 var tr = myDocument.createElement("TR");
@@ -228,39 +230,4 @@ tabulator.panes.dataContentPane = {
         }
         return div
     }
-};
-
-tabulator.panes.register(tabulator.panes.dataContentPane, false);
-
-
-/*   Pane within Document data content view
-**
-**  This outline pane contains docuemnts from a specific source document only.
-** It is a pane used recursively within an outer dataContentPane. (above)
-*/
-/*  Not used in fact??
-tabulator.panes.register({
-
-    icon: Icon.src.icon_withinDocumentPane, // should not show
-
-    label: function(subject) { return 'doc contents';},
-    
-    filter: function(pred, inverse) {
-        return true; // show all
-    },
-    
-    render: function(subject, source) {
-        var div = myDocument.createElement('div')
-        div.setAttribute('class', 'withinDocumentPane')                  
-        var plist = kb.statementsMatching(subject, undefined, undefined, source)
-        tabulator.outline.appendPropertyTRs(div, plist, false,
-                function(pred, inverse) {return true;});
-        return div ;
-    }
-}, true);
-    
-*/
-
-
-//ends
-
+}

@@ -4,7 +4,10 @@
 ** or at least the RDF semantics we attribute to that resource,
 ** in generated N3 syntax.
 */
-tabulator.panes.register({
+
+var UI = require('solid-ui')
+
+module.exports = {
   icon: tabulator.Icon.src.icon_RDFXMLPane,
 
   name: 'RDFXML',
@@ -42,6 +45,6 @@ tabulator.panes.register({
     div.appendChild(pre)
     return div
   }
-}, false)
+}
 
 // ends

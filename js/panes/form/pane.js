@@ -4,12 +4,12 @@
 */
 
 
-tabulator.Icon.src.icon_form = tabulator.iconPrefix + 'js/panes/form/form-b-22.png';
-tabulator.Icon.tooltips[tabulator.Icon.src.icon_form] = 'forms';
+// tabulator.Icon.src.icon_form = tabulator.iconPrefix + 'js/panes/form/form-b-22.png';
+// tabulator.Icon.tooltips[tabulator.Icon.src.icon_form] = 'forms';
 
-tabulator.panes.register( {
+module.exports =  {
 
-    icon: tabulator.Icon.src.icon_form,
+    icon: (module.__dirname || __dirname) + 'form-b-22.png',
 
     name: 'form',
 
@@ -211,7 +211,6 @@ the file system (file:///) to store application data.\n")
 
         return box;
     }
-
-}, false);
+}
 
 //ends

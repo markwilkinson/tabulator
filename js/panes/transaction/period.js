@@ -5,14 +5,12 @@
 ** trips, etc
 */
 
-/*
-tabulator.Icon.src.icon_money = tabulator.iconPrefix +
-    'js/panes/transaction/22-pixel-068010-3d-transparent-glass-icon-alphanumeric-dollar-sign.png';
-tabulator.Icon.tooltips[tabulator.Icon.src.icon_money] = 'Period'
+var UI = require('solid-ui')
 
-tabulator.panes.register( {
 
-    icon: tabulator.Icon.src.icon_money,
+module.exports = {
+
+    icon:  UI.icons.iconBase + 'noun_142708.svg',
 
     name: 'period',
 
@@ -349,20 +347,13 @@ tabulator.panes.register( {
             if (checkCatHasField('Other_Inc_Speaking', ns.trip('trip')) === 0) {
                 happy("Speaking income all has trips")
             };
-
         // end of render period instance
-
-        };
-
-
+        }
 
         //if (!me) complain("You do not have your Web Id set. Set your Web ID to make changes.");
 
-        return div;
+        return div
     }
+}
 
-
-}, true);
-
-*/
 //ends

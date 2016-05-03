@@ -1,8 +1,11 @@
 /*   slideshow Pane
 **
 */
+var UI = require('solid-ui')
 
-// Stick a stylesheet linjk int hte document if not already there
+// todo: move these two
+
+// Stick a stylesheet link the document if not already there
 UI.widgets.addStyleSheet = function(dom, href) {
   var links = dom.querySelectorAll('link');
   for (i=0; i<links.length; i++){
@@ -24,21 +27,22 @@ UI.widgets.isImage = function(file){
 
 
 
-tabulator.loadScript("js/panes/slideshow/better-simple-slideshow/js/better-simple-slideshow.js");
+// tabulator.loadScript("js/panes/slideshow/better-simple-slideshow/js/better-simple-slideshow.js");
 
+var makeBSS = require('./better-simple-slideshow/js/better-simple-slideshow.js')
 // load also js/panes/slideshow/better-simple-slideshow/css/simple-slideshow-styles.css
 
 // These used to be in js/init/icons.js but are better in the pane.
-tabulator.Icon.src.icon_slideshow = tabulator.iconPrefix + 'js/panes/common/icons/noun_138712.svg';
-tabulator.Icon.tooltips[tabulator.Icon.src.icon_slideshow] = 'Slideshow'
+// tabulator.Icon.src.icon_slideshow = UI.icons.iconBase + 'noun_138712.svg';
+// tabulator.Icon.tooltips[tabulator.Icon.src.icon_slideshow] = 'Slideshow'
 
-tabulator.panes.register( {
+module.exports =  {
 
-  icon: tabulator.Icon.src.icon_slideshow,
+  icon: UI.icons.iconBase + 'noun_138712.svg',
 
   name: 'slideshow',
 
-  // Does the subject deserve an contact pane?
+  // Does the subject deserve an slideshow pane?
   label: function(subject) {
     var kb = UI.store;
     var ns = UI.ns;
@@ -58,9 +62,6 @@ tabulator.panes.register( {
   render: function(subject, dom) {
 
     UI.widgets.addStyleSheet(dom, tabulator.scriptBase + 'js/panes/slideshow/better-simple-slideshow/css/simple-slideshow-styles.css')
-    // for now test we don't get two!
-    UI.widgets.addStyleSheet(dom, tabulator.scriptBase + 'js/panes/slideshow/better-simple-slideshow/css/simple-slideshow-styles.css')
-
 
     var kb = UI.store;
     var ns = UI.ns;
@@ -90,6 +91,6 @@ tabulator.panes.register( {
 
     return div;
   }
-}, true);
+}
 
 //ends

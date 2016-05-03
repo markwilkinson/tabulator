@@ -12,13 +12,17 @@
 */
 
 // These used to be in js/init/icons.js but are better in the pane.
-tabulator.Icon.src.icon_paperclip = tabulator.iconPrefix + 'js/panes/attach/tbl-paperclip-22.png'
-tabulator.Icon.tooltips[tabulator.Icon.src.icon_bug] = 'Attachments'
+//tabulator.Icon.src.icon_paperclip = UI.icons.originalIconBase + 'js/panes/attach/tbl-paperclip-22.png'
+//tabulator.Icon.tooltips[tabulator.Icon.src.icon_paperclip] = 'Attachments'
 
-if (!tabulator.sparql) tabulator.sparql = new UI.rdf.UpdateManager(UI.store)
-
-tabulator.panes.register({
-  icon: tabulator.Icon.src.icon_paperclip,
+var here;
+if (typeof __dirname !== 'undefined'){
+  here = __dirname
+} else {
+  here = module.__dirname
+}
+module.exports = {
+  icon: here + 'tbl-paperclip-22.png',
 
   name: 'attachments',
 
@@ -82,7 +86,7 @@ tabulator.panes.register({
     // Returns term for document or null
     var findStore = function (kb, subject) {
       var docURI = UI.rdf.Util.uri.docpart(subject.uri)
-      if (tabulator.sparql.editable(docURI, kb)) return kb.sym(docURI)
+      if (kb.updater.editable(docURI, kb)) return kb.sym(docURI)
       var store = kb.any(kb.sym(docURI), QU('annotationStore'))
       // if (!store) complain("No store for "+docURI)
       return store
@@ -225,9 +229,9 @@ tabulator.panes.register({
       } else {
         var sts = [$rdf.st(x, predicate, y, store)]
         if (value) {
-          tabulator.sparql.update([], sts, linkDone3)
+          kb.updater.update([], sts, linkDone3)
         } else {
-          tabulator.sparql.update(sts, [], linkDone3)
+          kb.updater.update(sts, [], linkDone3)
         }
       }
     }
@@ -284,8 +288,6 @@ tabulator.panes.register({
       currentObject = x
       try {
         /*
-                        var table = dom.createElement('table')
-                        tabulator.outline.GotoSubject(x, true, undefined, false, undefined, table)
         */
         var dispalyable = function (kb, x) {
           var cts = kb.fetcher.getHeader(x, 'content-type')
@@ -314,12 +316,12 @@ tabulator.panes.register({
           })
 
           /*
-                          if (dispalyable(kb, x) || x.uri.slice(-4) == ".pdf" || x.uri.slice(-4) == ".png" || x.uri.slice(-5) == ".html" ||
-                                  x.uri.slice(-5) == ".jpeg") { // @@@@@@ MAJOR KLUDGE! use metadata after HEAD
-                              preview.innerHTML = '<iframe height="100%" width="100%"src="'
-                                  + x.uri + '">' + x.uri + '</iframe>'
-                          } else {
-                          }
+              if (dispalyable(kb, x) || x.uri.slice(-4) == ".pdf" || x.uri.slice(-4) == ".png" || x.uri.slice(-5) == ".html" ||
+                      x.uri.slice(-5) == ".jpeg") { // @@@@@@ MAJOR KLUDGE! use metadata after HEAD
+                  preview.innerHTML = '<iframe height="100%" width="100%"src="'
+                      + x.uri + '">' + x.uri + '</iframe>'
+              } else {
+              }
           */
 
       } catch(e) {
@@ -438,6 +440,6 @@ tabulator.panes.register({
 
     return div
   }
-}, true)
+} // pane object
 
 // ends

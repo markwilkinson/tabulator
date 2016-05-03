@@ -14,9 +14,11 @@
 
         search methods always begin with search; fetch methods also follow
         this pattern.
+
+        This is used by the publication pane, which was a student project
 */
 
-function PatternSearch() { // Encapsulates all of the methods and classes
+module.exports  = { // Encapsulates all of the methods and classes
     /*****************************
      *     Main Node Class       *
      *****************************/
@@ -288,7 +290,7 @@ function PatternSearch() { // Encapsulates all of the methods and classes
                     toBeAdded = treeArray[i].lastIndexOf(">",leftBrackets[leftBrackets.length-1])-(leftBrackets.length)+3;
                 var toBePopped = rightBrackets.length;
                 var spaces = sumArray(numberOfSpaces);
-                
+
                 treeArray[i] = createBlankString(spaces) + treeArray[i];
                 if(toBeAdded > 0) numberOfSpaces.push(toBeAdded);
                 for(;toBePopped > 0;toBePopped--)
@@ -358,7 +360,7 @@ function PatternSearch() { // Encapsulates all of the methods and classes
                 indicesLevels[line].push([lineIndices[level],level+levelOffset])
         }
         alert(indicesLevels.toSource());
-        
+
 
         // Builds a two-dimensional array of nodes resembling the original string
         var stringTree = new Array();

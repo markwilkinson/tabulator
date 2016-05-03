@@ -3,12 +3,14 @@
 **  This outline pane contains the document contents for an HTML document
 **  This is for peeking at a page, because the user might not want to leave the tabulator.
 */
-tabulator.panes.register({
-    
+var UI = require('solid-ui')
+
+module.exports = {
+
     icon: tabulator.Icon.src.icon_visit,
-    
+
     name: 'humanReadable',
-    
+
     label: function(subject, myDocument) {
         // Prevent infinite recursion with iframe loading a web page which uses tabulator which shows iframe...
         if (tabulator.isExtension && myDocument.location == subject.uri) return null;
@@ -16,11 +18,11 @@ tabulator.panes.register({
         var ns = UI.ns;
 
         //   See aslo tthe source pane, which has lower precedence.
-        
+
         var allowed = ['text/plain',
                        'text/html','application/xhtml+xml',
                         'image/png', 'image/jpeg', 'application/pdf'];
- 
+
         var hasContentTypeIn = function(kb, x, displayables) {
             var cts = kb.fetcher.getHeader(x, 'content-type');
             if (cts) {
@@ -34,9 +36,9 @@ tabulator.panes.register({
             }
             return false;
         };
-        
+
         if (!subject.uri) return null; // no bnodes
-        
+
         var t = kb.findTypeURIs(subject);
         if (t[ns.link('WebPage').uri]) return "view";
 
@@ -44,12 +46,12 @@ tabulator.panes.register({
 
         return null;
     },
-    
+
     render: function(subject, myDocument) {
         var div = myDocument.createElement("div")
 
         //  @@ When we can, use CSP to turn off scripts within the iframe
-        div.setAttribute('class', 'docView')    
+        div.setAttribute('class', 'docView')
         var iframe = myDocument.createElement("IFRAME")
         iframe.setAttribute('src', subject.uri)    // allow-same-origin
         iframe.setAttribute('class', 'doc')
@@ -63,7 +65,5 @@ tabulator.panes.register({
         div.appendChild(tr)
         return div
     }
-}, true);
+};
 //ends
-
-

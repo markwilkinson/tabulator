@@ -1,16 +1,18 @@
  /** AIR (Amord in RDF) Pane
  *
+ * TAMI (Transparent and Accountabe Data Mining) project
  * This pane will display the justification trace of a when it encounters
  * air reasoner output
  * oshani@csail.mit.edu
+ *
+ * AIR is a rule language used in the TAMI project.  The AIR reasoner
+ * outputs a proof of its results. This pane displays the proof as a
+ * human-redable justification of the result.
  */
 
  var UI = require('solid-ui')
 
 
-
-//These are horrible global vars. To minimize the chance of an unintended name collision
-//these are prefixed with 'ap_' (short for air pane) - Oshani
 // moved to airpane.js from paneutils.js 2014 tbl
 
 var ap_air = UI.rdf.Namespace("http://dig.csail.mit.edu/TAMI/2007/amord/air#");
@@ -28,8 +30,8 @@ var justificationsArr = [];
 
 
 
+var airPane = module.exports = {};
 
-airPane = {};
 airPane.name = 'air';
 airPane.icon = tabulator.Icon.src.icon_airPane;
 
@@ -768,7 +770,7 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 		      divDescription.informationFound = true;
 		      if (p.lastChild.nodeName=="#text"){
 			var explain_icon = p.appendChild(myDocument.createElement('img'));
-			explain_icon.src = UI.icon.originalIconBase + "tango/22-help-browser.png";
+			explain_icon.src = UI.icons.originalIconBase + "tango/22-help-browser.png";
 			var click_cb = function(){
 			  airPane.renderReasonsForStatement(
 			    p.AJAR_formula, divJustification);
@@ -824,7 +826,7 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 	  throbber_p.setAttribute('class', 'ap_premise_loading')
 	  var throbber = throbber_p.appendChild(myDocument.createElement
 						('img'));
-	  throbber.src = UI.icon.originalIconBase  + "loading.png";
+	  throbber.src = UI.icons.originalIconBase  + "loading.png";
 	  throbber_p.appendChild(myDocument.createTextNode
 				 ("Looking for more information..."));
 	  divDescription.appendChild(throbber_p);
@@ -1045,6 +1047,5 @@ airPane.renderExplanationForStatement = function renderExplanationForStatement(s
 
     return div;
 }
-tabulator.panes.register(airPane, false);
 
 // ends

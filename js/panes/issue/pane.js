@@ -9,21 +9,17 @@
 ** like "this" where the string is seen by the user and so I18n is an issue.
 */
 
-
-if (typeof console == 'undefined') { // e.g. firefox extension. Node and browser have console
-    console = {};
-    console.log = function(msg) { UI.log.info(msg);};
-}
+var UI = require('solid-ui')
 
 
 
 // These used to be in js/init/icons.js but are better in the pane.
-tabulator.Icon.src.icon_bug = tabulator.iconPrefix + 'js/panes/issue/tbl-bug-22.png';
-tabulator.Icon.tooltips[tabulator.Icon.src.icon_bug] = 'Track issue'
+// tabulator.Icon.src.icon_bug = tabulator.iconPrefix + 'js/panes/issue/tbl-bug-22.png';
+// tabulator.Icon.tooltips[tabulator.Icon.src.icon_bug] = 'Track issue'
 
-tabulator.panes.register( {
+module.exports = {
 
-    icon: tabulator.Icon.src.icon_bug,
+    icon:  UI.icons.iconBase + 'noun_97839.svg', // was: js/panes/issue/tbl-bug-22.png
 
     name: 'issue',
 
@@ -715,6 +711,6 @@ tabulator.panes.register( {
         return div;
 
     }
-}, true);
+}
 
 //ends

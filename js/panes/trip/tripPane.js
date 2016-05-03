@@ -8,14 +8,15 @@
 **  trips, etc
 */
 
+var UI = require('solid-ui')
 
-tabulator.Icon.src.icon_trip = tabulator.iconPrefix +
-    'js/panes/transaction/22-pixel-068010-3d-transparent-glass-icon-alphanumeric-dollar-sign.png'; // @@
-tabulator.Icon.tooltips[tabulator.Icon.src.icon_trip] = 'travel expenses'
+// tabulator.Icon.src.icon_trip = tabulator.iconPrefix +
+//    'js/panes/transaction/22-pixel-068010-3d-transparent-glass-icon-alphanumeric-dollar-sign.png'; // @@
+// tabulator.Icon.tooltips[tabulator.Icon.src.icon_trip] = 'travel expenses'
 
-tabulator.panes.register( {
+module.exports = {
 
-    icon: tabulator.Icon.src.icon_trip,
+    icon: UI.icons.iconBase + 'noun_62007.svg',
 
     name: 'travel expenses',
 
@@ -202,14 +203,11 @@ tabulator.panes.register( {
 
         }
 
-
-
         //if (!me) complain("You do not have your Web Id set. Set your Web ID to make changes.");
 
         return div;
     }
 
-
-}, true);
+}
 
 //ends

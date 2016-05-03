@@ -2,11 +2,13 @@
 **
 **  This outline pane contains the document contents for an Image document
 */
-tabulator.panes.register( {
+var UI = require('solid-ui')
+
+module.exports ={
     icon: tabulator.Icon.src.icon_imageContents,
-    
+
     name: 'image',
-    
+
     label: function(subject) {
         var kb = UI.store;
         var ns = UI.ns;
@@ -17,7 +19,7 @@ tabulator.panes.register( {
             return null;
 
         //   See aslo the source pane, which has lower precedence.
- 
+
         var contentTypeMatch = function(kb, x, contentTypes) {
             var cts = kb.fetcher.getHeader(x, 'content-type');
             if (cts) {
@@ -31,7 +33,7 @@ tabulator.panes.register( {
             }
             return false;
         };
-        
+
         var suppressed = [ 'application/pdf'];
         if (contentTypeMatch(kb, subject, suppressed)) return null;
 
@@ -51,8 +53,6 @@ tabulator.panes.register( {
         div.appendChild(tr)
         return div
     }
-}, true);
+}
 
 //ends
-
-

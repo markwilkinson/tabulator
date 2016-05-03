@@ -3,12 +3,13 @@
 */
 
 
-tabulator.Icon.src.icon_builder = tabulator.iconPrefix + 'js/panes/ui/22-builder.png';
-tabulator.Icon.tooltips[tabulator.Icon.src.icon_builder] = 'build user interface'
+//tabulator.Icon.src.icon_builder = tabulator.iconPrefix + 'js/panes/ui/22-builder.png';
+//tabulator.Icon.tooltips[tabulator.Icon.src.icon_builder] = 'build user interface'
+var UI = require('solid-ui')
 
-tabulator.panes.register( {
+module.exports = {
 
-    icon: tabulator.Icon.src.icon_builder,
+    icon: (module.__dirname || __dirname) + '22-builder.png',
 
     name: 'ui',
 
@@ -183,7 +184,6 @@ tabulator.panes.register( {
 
         return box;
     }
-
-}, false);
+}
 
 //ends
