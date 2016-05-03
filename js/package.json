@@ -38,7 +38,7 @@
     "http-browserify": "^0.0.0",
     "events": "",
     "url":"",
-    "solid-ui": "./solid-ui"
+    "solid-ui": "git://github.com/linkeddata/solid-ui.git"
   },
   "devDependencies": {
     "browserify": "^13.0.0",
