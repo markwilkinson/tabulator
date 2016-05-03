@@ -8,5 +8,5 @@
 	path = js/panes/slideshow/better-simple-slideshow
 	url = https://github.com/leemark/better-simple-slideshow
 [submodule "js/solid-ui"]
-	path = js/node_modules/solid-ui
+	path = js/solid-ui
 	url = https://github.com/linkeddata/solid-ui.git
