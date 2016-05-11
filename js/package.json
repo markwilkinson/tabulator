@@ -1,8 +1,9 @@
 {
-  "name": "mashlib",
+  "name": "tabulator-firefox-node-js",
   "version": "0.1.1",
-  "description": "Data mashup library",
-  "main": "./init/init-node.js",
+  "description": "Most of the modules for the tabulator FF extension, moularized",
+  "readme": "This is made just to be used with NPM install inside the Firefox Extension code.",
+  "main": "./init/init.js",
   "scripts": {
     "build-browserified": "browserify -r ./init/init-node.js:mashup --exclude 'xhr2' > mashup/mashup-node.js",
     "build-minified": "browserify -r ./index.js:solid-ui --exclude 'xhr2' --exclude 'rdflib' -d -p [minifyify --no-map] > mashup/mashup-node.min.js",
@@ -38,7 +39,9 @@
     "http-browserify": "^0.0.0",
     "events": "",
     "url":"",
-    "solid-ui": "git://github.com/linkeddata/solid-ui.git"
+    "solid-app-set": "git://github.com/linkeddata/solid-app-set.git",
+    "solid-ui": "git://github.com/linkeddata/solid-ui.git",
+    "rdflib": "git://github.com/linkeddata/rdflib.js.git"
   },
   "devDependencies": {
     "browserify": "^13.0.0",
