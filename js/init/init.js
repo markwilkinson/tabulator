@@ -28,6 +28,11 @@ var mungeFilename = function(fn){
 }
 
 dump('\nFirefox extension init.js starts.\n')
+
+if (typeof console === 'undefined'){
+  console = {log: function(msg){dump(msg + '\n')}}
+}
+
 var loader = Components.classes["@mozilla.org/moz/jssubscript-loader;1"]
     .getService(Components.interfaces.mozIJSSubScriptLoader);
 
@@ -58,9 +63,7 @@ var readJSONFile = function(filename){
 
   var file = Components.classes['@mozilla.org/file/local;1']
     .createInstance(Components.interfaces.nsILocalFile)
-  file.initWithPath(filename)
-  //
-  // |file| is nsIFile
+  file.initWithPath(filename)  // |file| is nsIFile
   var data = "";
   var fstream = Components.classes["@mozilla.org/network/file-input-stream;1"].
                 createInstance(Components.interfaces.nsIFileInputStream);
@@ -71,24 +74,8 @@ var readJSONFile = function(filename){
 
   var nativeJSON = Components.classes["@mozilla.org/dom/json;1"]
                  .createInstance(Components.interfaces.nsIJSON);
-
-
   var obj = nativeJSON.decodeFromStream(fstream, 99999)  // length parameter??
-  // dump('json object: ' +obj)
   return obj
-
-  /*
-  var str = {}
-  var read = 0;
-  do {
-      read = cstream.readString(0xffffffff, str); // read as much as we can and put it in str.value
-      data += str.value;
-  } while (read != 0);
-
-  cstream.close(); // this closes fstream
-  //dump(data + '\n');
-  return data
-  */
 }
 
 var join = function (given, base) {
@@ -176,7 +163,7 @@ var setCount = function(set){
   return count
 }
 var setList = function(set){
-  var str = '{}'
+  var str = '{'
   for (x in set) {
     str += x + ', '
   }
@@ -185,7 +172,11 @@ var setList = function(set){
 
 var addJSsuffix = function(fn){
   if (fn.slice(-3) !== '.js' && fn.slice(-5) !== '.json'){
-    fn += '.js'
+    if (fn.slice(-7) === 'package'){ // kludge - should try both but want to deterministic
+      fn += '.json'
+    } else {
+      fn += '.js'
+    }
   }
   return fn
 }
@@ -205,7 +196,7 @@ var require = function(relURI){
       dump('   package ' + relURI + ' base: ' + packageBase + '\n')
       packageName = relURI
       if (requireState.loadedPackage[packageName]){
-        dump('        -------> package cache hit\n')
+        dump('        -------> package cache hit '+setList(requireState.loadedPackage[packageName])+'\n')
         return requireState.loadedPackage[packageName]
       }
       if (packageName in requireState.ignore){
@@ -220,7 +211,7 @@ var require = function(relURI){
       var mainURI = join(pack.browserify || pack.main, packageURI) // eg for http take the bowesr
       dump('   package main URI : ' + mainURI + '\n')
       absURI = addJSsuffix(mainURI)
-    } else {
+    } else { // not module
       var absURI = addJSsuffix(join(relURI, module.scriptURI))
       if (relURI.slice(0,2) === './' || relURI.slice(0,3) === '../'){
         packageBase = module.packageBase // keep the same when just a relative path
@@ -306,11 +297,13 @@ requireState.ignore = {}
 tabulator.log = require('../tab/log-ext-node.js')
 
 
-var events = require('events') // load in the order which they are npm installed
-var http = require('http-browserify')
+// var events = require('events') // load in the order which they are npm installed
+// var http = require('http-browserify')
 requireState.loadedPackage['http'] = requireState.loadedPackage['http-browserify']
 
+var UI = tabulator.UI = require('solid-ui')
 
+/*
 //  Require the solid-compatible UI module which pulls in lots
 var temp = module.packageBase
 module.packageBase = join('solid-ui/', module.packageBase)
@@ -318,6 +311,7 @@ var UI = tabulator.UI = require('../solid-ui/index.js')
 module.packageBase = temp
 // Because it wasn't loaded as a module (yet) we cheat
 requireState.loadedPackage['solid-ui'] = tabulator.UI
+*/
 
 var $rdf = tabulator.rdf = UI.rdf
 $rdf.log = tabulator.log
@@ -327,7 +321,7 @@ tabulator.Util = tabulator.UI.utils
 tabulator.ns = UI.ns
 
 
-tabulator.OutlineObject  = require('../panes/outline/manager.js')
+// tabulator.OutlineObject  = require('../panes/outline/manager.js')
 
 // later in the context of a window and a document:
 // dom.outline = new tabulator.OutlineObject(dom)
@@ -335,12 +329,15 @@ tabulator.OutlineObject  = require('../panes/outline/manager.js')
 // This is because Firefox silently throws away any errors here alas
 try {
 
-    //Load the icons namespace onto tabulator.
+    //Load the icons  onto tabulator. --> now in solid-ui
     tabulator.loadScript("js/init/icons.js");
-    //And Namespaces..
-    // tabulator.loadScript("js/init/namespaces.js");
+
     //And Panes.. (see the below file to change which panes are included)
-    tabulator.panes = UI.panes = require("../panes/index.js")
+
+    tabulator.panes = UI.panes = require("solid-app-set")
+    // tabulator.panes = UI.panes = require("../panes/index.js")
+
+    tabulator.OutlineObject = UI.panes.OutlineManager
 
 
     // tabulator.loadScript("js/init/panes.js");
